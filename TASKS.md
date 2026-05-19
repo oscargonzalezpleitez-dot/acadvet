@@ -122,4 +122,34 @@
 
 ---
 
-**Total: 19 tareas | Completadas: 19 | Pendientes: 0**
+## Fase 5 — Módulo QR + Integración
+
+- [ ] **T20** — Sesión QR (lado profesor)
+  - Botón "Sesión QR" en la vista de alumnos por materia
+  - Genera token alfanumérico + QR que apunta a `registro.html`
+  - Rotación automática del token (1/2/3/5 min) + temporizador visual
+  - Panel en vivo: contador de presentes actualizándose en tiempo real
+  - Botón Detener → archiva sesión en Firebase
+
+- [ ] **T21** — Página pública de registro para alumnos (`registro.html`)
+  - Accesible sin PIN (pública)
+  - Formulario: nombre, carné, código QR
+  - Validación: token activo en Firebase, no expirado
+  - Deduplicación: mismo carné no puede registrarse dos veces
+  - Match automático con alumnos inscritos → registra asistencia en su expediente
+  - Pantalla de confirmación
+
+- [ ] **T22** — Importar asistencias desde sistema QR externo
+  - Botón "Importar CSV" en la tab Asistencias del expediente
+  - Parsea el CSV exportado del sistema QR (columnas: nombre, carnet, hora, estado)
+  - Mapea por carné → agrega asistencias al alumno correspondiente
+  - Preview antes de confirmar, reporte de coincidencias/no encontrados
+
+- [ ] **T23** — Vista Proyector
+  - Ruta `#/proyector/:materiaId` accesible desde la vista de alumnos
+  - Pantalla completa: QR grande + materia + token + contador de presentes + temporizador
+  - Optimizada para proyectar en el aula
+
+---
+
+**Total: 23 tareas | Completadas: 19 | Pendientes: 4**

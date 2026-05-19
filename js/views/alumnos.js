@@ -10,6 +10,7 @@ import {
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
+import { openQRSession } from '../qr-session.js';
 
 // --- Estado del módulo ---
 let _container = null;
@@ -101,6 +102,15 @@ function paint() {
           </div>
         </div>
         <div class="view-header-actions">
+          <button class="btn btn--sm" id="btnSesionQR" title="Iniciar sesión QR de asistencia"
+            style="background:linear-gradient(135deg,var(--color-accent),#009899);color:#fff;border:none;box-shadow:0 3px 12px rgba(0,210,211,0.35)">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
+              <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/>
+              <rect x="18" y="18" width="3" height="3"/>
+            </svg>
+            Sesión QR
+          </button>
           <button class="btn btn--secondary btn--sm" id="btnExportGrupal" title="Exportar Excel grupal">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -251,6 +261,10 @@ function emptyTable() {
 function wireEvents() {
   document.getElementById('btnAgregarAlumno')?.addEventListener('click', openCreateModal);
   document.getElementById('btnAgregarAlumnoEmpty')?.addEventListener('click', openCreateModal);
+
+  document.getElementById('btnSesionQR')?.addEventListener('click', () => {
+    openQRSession(_materia, _alumnos);
+  });
 
   document.getElementById('btnExportGrupal')?.addEventListener('click', e => {
     exportGrupoExcel(e.currentTarget);

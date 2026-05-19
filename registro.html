@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Registro de Asistencia — AcadVet USAM">
+  <title>Registro de Asistencia — USAM</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/views.css">
+</head>
+
+<body class="login-page">
+  <div class="bg-blob bg-blob--purple" aria-hidden="true"></div>
+  <div class="bg-blob bg-blob--cyan"   aria-hidden="true"></div>
+  <div class="bg-blob bg-blob--coral"  aria-hidden="true"></div>
+
+  <main class="login-card" role="main" style="max-width:440px">
+
+    <!-- LOADING -->
+    <div id="stLoading" style="text-align:center">
+      <div class="loading-spinner" style="margin:0 auto var(--space-4)"></div>
+      <p class="text-muted">Verificando sesión…</p>
+    </div>
+
+    <!-- ERROR -->
+    <div id="stError" class="hidden" style="text-align:center">
+      <div style="font-size:3rem;margin-bottom:var(--space-3)">❌</div>
+      <h2 style="font-size:1.4rem;margin-bottom:var(--space-2)">Sesión no disponible</h2>
+      <p class="text-muted text-sm" id="errMsg">La sesión QR no está activa o el token expiró.</p>
+    </div>
+
+    <!-- FORMULARIO -->
+    <div id="stForm" class="hidden">
+      <div class="login-brand" style="margin-bottom:var(--space-5)">
+        <div class="login-logo" aria-hidden="true">🐾</div>
+        <div>
+          <h1 class="login-title" style="font-size:1.5rem;line-height:1.2">
+            Registro de<br>Asistencia
+          </h1>
+          <p class="login-subtitle" id="fMateria">Cargando…</p>
+        </div>
+      </div>
+
+      <section class="login-form" aria-label="Formulario de asistencia">
+
+        <div class="form-group">
+          <label class="form-label" for="rNombre">Nombre completo *</label>
+          <input class="form-input" id="rNombre" type="text"
+            placeholder="Ej. Juan Carlos Pérez López"
+            maxlength="120" autocomplete="name" autocapitalize="words">
+          <span class="form-error hidden" id="rNombreErr">El nombre es obligatorio.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rCarnet">Número de carné *</label>
+          <input class="form-input" id="rCarnet" type="text"
+            placeholder="Ej. 2023001"
+            maxlength="20" autocomplete="off" inputmode="numeric">
+          <span class="form-error hidden" id="rCarnetErr">El carné es obligatorio.</span>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label" for="rToken">Código de sesión *</label>
+          <input class="form-input" id="rToken" type="text"
+            placeholder="Ej. FF4-6ZD"
+            maxlength="7" autocomplete="off"
+            style="font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-family:var(--font-display)">
+          <span class="form-error hidden" id="rTokenErr">Ingresá el código visible en pantalla.</span>
+        </div>
+
+        <p class="form-error hidden" id="rGlobalErr" role="alert" aria-live="assertive"></p>
+
+        <button class="btn btn--primary btn--full login-btn" id="btnReg" type="button">
+          <span class="btn-text">Registrar asistencia</span>
+          <span aria-hidden="true">→</span>
+        </button>
+
+      </section>
+
+      <p class="login-footer">USAM · Facultad de Medicina Veterinaria</p>
+    </div>
+
+    <!-- ÉXITO -->
+    <div id="stSuccess" class="hidden" style="text-align:center">
+      <div style="font-size:4rem;margin-bottom:var(--space-4)">✅</div>
+      <h2 style="font-size:1.35rem;font-weight:700;margin-bottom:var(--space-2)">
+        ¡Asistencia registrada!
+      </h2>
+      <p class="text-muted text-sm" id="successDetail" style="margin-bottom:var(--space-5)"></p>
+      <div id="successCard" style="
+        background:var(--color-surface-2);border-radius:var(--radius-md);
+        padding:var(--space-4);text-align:left;margin-bottom:var(--space-5)">
+      </div>
+      <p class="text-muted text-sm">Podés cerrar esta pestaña.</p>
+    </div>
+
+  </main>
+
+  <script type="module" src="js/registro.js"></script>
+</body>
+</html>

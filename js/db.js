@@ -3,7 +3,7 @@
 // ÚNICA capa que habla con Firebase. Todo el resto llama estas funciones.
 // =============================================================================
 
-import { getDatabase, ref, get, set, push, update, remove }
+import { getDatabase, ref, get, set, push, update, remove, onValue }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { app } from './firebase-config.js';
 
@@ -231,4 +231,50 @@ export async function getObservaciones(alumnoId, materiaId) {
 
 export async function updateObservaciones(alumnoId, materiaId, texto) {
   await set(ref(db, `${inscRef(alumnoId, materiaId)}/observaciones`), texto);
+}
+
+// ---------------------------------------------------------------------------
+// SESIONES QR
+// ---------------------------------------------------------------------------
+
+export async function createQRSession({ materiaId, materiaNombre, ciclo, token, duration }) {
+  const newRef = push(ref(db, 'qr_sessions'));
+  const now = Date.now();
+  await set(newRef, {
+    materiaId,
+    materiaNombre,
+    ciclo: ciclo ?? '',
+    token,
+    duration,
+    active: true,
+    startedAt: now,
+    rotatedAt: now,
+    fecha: new Date().toISOString().slice(0, 10),
+  });
+  return newRef.key;
+}
+
+export async function updateQRSession(sessionId, data) {
+  await update(ref(db, `qr_sessions/${sessionId}`), data);
+}
+
+export async function getQRSession(sessionId) {
+  const s = await get(ref(db, `qr_sessions/${sessionId}`));
+  if (!s.exists()) return null;
+  return { id: sessionId, ...s.val() };
+}
+
+export async function addQRAsistente(sessionId, { nombre, carnet, alumnoId = null }) {
+  const newRef = push(ref(db, `qr_sessions/${sessionId}/asistentes`));
+  await set(newRef, { nombre, carnet, alumnoId, ts: Date.now() });
+  return newRef.key;
+}
+
+export function listenQRAsistentes(sessionId, callback) {
+  const dbRef = ref(db, `qr_sessions/${sessionId}/asistentes`);
+  return onValue(dbRef, snapshot => {
+    const arr = !snapshot.exists() ? [] :
+      Object.entries(snapshot.val()).map(([id, d]) => ({ id, ...d }));
+    callback(arr);
+  });
 }
