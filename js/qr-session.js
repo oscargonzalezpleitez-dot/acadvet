@@ -56,6 +56,7 @@ export async function openQRSession(materia, alumnos) {
     geoRadius:        stored.geoRadius        ?? 100,
     aulaLat:          stored.aulaLat          ?? null,
     aulaLng:          stored.aulaLng          ?? null,
+    checkType:        stored.checkType        ?? 'unico',
     sessionStartedAt: now,
   };
 
@@ -137,6 +138,16 @@ function buildOverlay(materia) {
           ${[1, 2, 3, 5].map(m =>
             `<button class="qr-duration-btn${m === 2 ? ' active' : ''}" data-min="${m}">${m} min</button>`
           ).join('')}
+        </div>
+      </div>
+
+      <!-- ── Tipo de registro ── -->
+      <div class="qr-config-section">
+        <div class="qr-config-title">Tipo de registro</div>
+        <div class="qr-checktype-btns">
+          <button class="qr-checktype-btn${c.checkType !== 'inicio' && c.checkType !== 'fin' ? ' active' : ''}" data-ct="unico">✅ Único</button>
+          <button class="qr-checktype-btn${c.checkType === 'inicio' ? ' active' : ''}" data-ct="inicio">🟢 Inicio</button>
+          <button class="qr-checktype-btn${c.checkType === 'fin' ? ' active' : ''}" data-ct="fin">🔴 Fin</button>
         </div>
       </div>
 
@@ -280,6 +291,16 @@ function wireEvents() {
     btn.addEventListener('click', () => {
       _s.config.geoRadius = parseInt(btn.dataset.radius, 10);
       document.querySelectorAll('.qr-duration-btn[data-radius]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      pushConfig();
+    });
+  });
+
+  // Check type selector
+  document.querySelectorAll('.qr-checktype-btn[data-ct]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _s.config.checkType = btn.dataset.ct;
+      document.querySelectorAll('.qr-checktype-btn[data-ct]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       pushConfig();
     });
@@ -453,6 +474,11 @@ function renderAttendees(asistentes) {
 
     const emailHtml = a.email ? ` · ${esc(a.email)}` : '';
 
+    const ct = a.checkType ?? (_s?.config?.checkType ?? 'unico');
+    const ctHtml = ct !== 'unico'
+      ? `<span class="qr-attendee-ct-chip qr-attendee-ct-chip--${ct}">${ct === 'inicio' ? '🟢 I' : '🔴 F'}</span>`
+      : '';
+
     return `
       <div class="qr-attendee-row">
         ${selfieHtml}
@@ -462,6 +488,7 @@ function renderAttendees(asistentes) {
           <div class="qr-attendee-carnet">Carné ${esc(a.carnet)} · ${hora}${emailHtml}</div>
         </div>
         <span class="qr-attendee-badge ${badgeClass}">${badgeText}</span>
+        ${ctHtml}
       </div>`;
   }).join('');
 }

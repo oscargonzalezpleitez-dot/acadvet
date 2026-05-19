@@ -252,6 +252,36 @@ function paintAsistencias(el) {
   const asists  = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
   const summary = calcAsistSummary(asists);
 
+  // Agrupar por fecha para mostrar estado combinado inicio/fin
+  const byDate = {};
+  for (const a of asists) {
+    const f = a.fecha ?? 'sin-fecha';
+    if (!byDate[f]) byDate[f] = [];
+    byDate[f].push(a);
+  }
+  const dates = Object.keys(byDate).sort((a, b) => b.localeCompare(a));
+
+  const listHTML = dates.map(fecha => {
+    const entries  = byDate[fecha];
+    const hasInicio = entries.some(a => a.checkType === 'inicio');
+    const hasFin    = entries.some(a => a.checkType === 'fin');
+    const hasMixed  = hasInicio || hasFin;
+
+    let headerHtml = '';
+    if (hasMixed) {
+      let combinedBadge;
+      if (hasInicio && hasFin) {
+        combinedBadge = `<span class="badge asist-combined-badge asist-combined--full">✓ Ambos registros</span>`;
+      } else if (hasInicio) {
+        combinedBadge = `<span class="badge asist-combined-badge asist-combined--partial">Solo Inicio</span>`;
+      } else {
+        combinedBadge = `<span class="badge asist-combined-badge asist-combined--partial">Solo Fin</span>`;
+      }
+      headerHtml = `<div class="asist-date-header">${combinedBadge}</div>`;
+    }
+    return `<div class="asist-date-group">${headerHtml}${entries.map(a => asistRowHTML(a)).join('')}</div>`;
+  }).join('');
+
   el.innerHTML = `
     <div class="tab-section">
 
@@ -267,16 +297,14 @@ function paintAsistencias(el) {
         <button class="btn btn--primary btn--sm" id="btnAddAsist">+ Agregar</button>
       </div>
 
-      <!-- Lista de asistencias -->
+      <!-- Lista de asistencias agrupada por fecha -->
       ${asists.length === 0
         ? `<div class="empty-state" style="padding:var(--space-10)">
              <div class="empty-state__icon">📅</div>
              <h3 class="empty-state__title">Sin asistencias registradas</h3>
              <p class="empty-state__text">Empezá registrando la primera clase.</p>
            </div>`
-        : `<div class="asist-list">
-             ${asists.map(a => asistRowHTML(a)).join('')}
-           </div>`
+        : `<div class="asist-list">${listHTML}</div>`
       }
 
     </div>
@@ -297,10 +325,15 @@ function paintAsistencias(el) {
 
 function asistRowHTML(asist) {
   const cfg = ESTADO_CONFIG[asist.estado] ?? ESTADO_CONFIG.ausente;
+  const ct = asist.checkType;
+  const ctChip = (ct && ct !== 'unico')
+    ? `<span class="asist-ct-chip asist-ct-chip--${ct}">${ct === 'inicio' ? '🟢 Inicio' : '🔴 Fin'}</span>`
+    : '';
   return `
     <div class="asist-row">
       <div class="asist-estado-dot" style="background:${cfg.dot}" title="${cfg.label}"></div>
       <div class="asist-fecha">${formatFecha(asist.fecha)}</div>
+      ${ctChip}
       <span class="badge ${cfg.badgeCls}">${cfg.label}</span>
       <div class="asist-row-actions">
         <button class="btn btn--ghost btn--sm"

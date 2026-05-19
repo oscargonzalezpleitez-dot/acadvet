@@ -78,6 +78,19 @@ async function init() {
       startGPS();
     }
 
+    // Banner de tipo de registro (inicio / fin)
+    const checkType = _cfg.checkType ?? 'unico';
+    if (checkType !== 'unico') {
+      const badge = document.getElementById('checkTypeBadge');
+      if (badge) {
+        badge.textContent = checkType === 'inicio'
+          ? '🟢 Registro de INICIO de clase'
+          : '🔴 Registro de FIN de clase';
+        badge.className = `check-type-badge check-type-badge--${checkType}`;
+        badge.classList.remove('hidden');
+      }
+    }
+
     // Etiqueta del botón según flujo
     const btnText = document.querySelector('#btnReg .btn-text');
     if (btnText) btnText.textContent = _cfg.photoRequired ? 'Continuar →' : 'Registrar asistencia';
@@ -316,21 +329,23 @@ function backToForm() {
 // ---------------------------------------------------------------------------
 async function submitRegistro() {
   const { nombre, carnet, email } = _formData;
-  const alumnoId = await findAlumno(_session.materiaId, carnet);
-  const estado   = computeEstado(email);
-  const now      = Date.now();
+  const alumnoId  = await findAlumno(_session.materiaId, carnet);
+  const estado    = computeEstado(email);
+  const checkType = _cfg.checkType ?? 'unico';
+  const now       = Date.now();
 
   const payload = {
     nombre,
     carnet,
-    email:    email    ?? null,
-    alumnoId: alumnoId ?? null,
-    ts:       now,
+    email:     email     ?? null,
+    alumnoId:  alumnoId  ?? null,
+    ts:        now,
     estado,
-    selfie:   _selfieB64          ?? null,
-    deviceId: _deviceId           ?? null,
-    lat:      _gpsCoords?.lat     ?? null,
-    lng:      _gpsCoords?.lng     ?? null,
+    checkType,
+    selfie:    _selfieB64      ?? null,
+    deviceId:  _deviceId       ?? null,
+    lat:       _gpsCoords?.lat ?? null,
+    lng:       _gpsCoords?.lng ?? null,
   };
 
   const asistRef = push(ref(db, `qr_sessions/${sessionId}/asistentes`));
@@ -342,7 +357,7 @@ async function submitRegistro() {
     const expRef = push(
       ref(db, `alumnos/${alumnoId}/inscripciones/${_session.materiaId}/asistencias`)
     );
-    await set(expRef, { fecha, estado: 'presente' });
+    await set(expRef, { fecha, estado: 'presente', checkType });
   }
 
   showSuccess(nombre, carnet, alumnoId !== null, estado);

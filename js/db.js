@@ -260,6 +260,7 @@ export async function createQRSession({ materiaId, materiaNombre, ciclo, token, 
       geoRadius:        config.geoRadius        ?? 100,
       aulaLat:          config.aulaLat          ?? null,
       aulaLng:          config.aulaLng          ?? null,
+      checkType:        config.checkType        ?? 'unico',
       sessionStartedAt: now,
     },
   });

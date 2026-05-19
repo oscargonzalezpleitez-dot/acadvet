@@ -1448,3 +1448,87 @@
   .qr-token-display { font-size: 1.8rem; }
   .qr-counter       { font-size: 2.5rem; }
 }
+
+/* =============================================================================
+   INICIO / FIN DE CLASE — estilos compartidos
+   ============================================================================= */
+
+/* ── Selector en el overlay del profesor ─────────────────────────── */
+.qr-checktype-btns {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-2);
+}
+.qr-checktype-btn {
+  flex: 1;
+  padding: 5px var(--space-1);
+  border: 1.5px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  color: var(--color-text-secondary);
+  font-size: .72rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  text-align: center;
+  white-space: nowrap;
+}
+.qr-checktype-btn:hover { background: var(--color-surface-2); }
+.qr-checktype-btn.active { border-color: var(--color-primary); background: var(--color-primary-dim); color: var(--color-primary); }
+.qr-checktype-btn.active[data-ct="inicio"] { border-color: #00B894; background: rgba(0,184,148,.12); color: #00B894; }
+.qr-checktype-btn.active[data-ct="fin"]    { border-color: #FF6B6B; background: rgba(255,107,107,.12); color: #FF6B6B; }
+
+/* ── Chip tipo en la lista de asistentes del overlay ─────────────── */
+.qr-attendee-ct-chip {
+  font-size: .65rem;
+  font-weight: 700;
+  padding: 2px 6px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+.qr-attendee-ct-chip--inicio { background: rgba(0,184,148,.15); color: #00B894; }
+.qr-attendee-ct-chip--fin    { background: rgba(255,107,107,.15); color: #FF6B6B; }
+
+/* ── Banner en la página del alumno (registro.html) ──────────────── */
+.check-type-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 99px;
+  font-size: .74rem;
+  font-weight: 700;
+  margin-top: 4px;
+}
+.check-type-badge--inicio { background: rgba(0,184,148,.12); color: #00B894; border: 1px solid rgba(0,184,148,.3); }
+.check-type-badge--fin    { background: rgba(255,107,107,.12); color: #FF6B6B; border: 1px solid rgba(255,107,107,.3); }
+
+/* ── Asistencias: chip tipo en cada fila ─────────────────────────── */
+.asist-ct-chip {
+  font-size: .68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 99px;
+  flex-shrink: 0;
+}
+.asist-ct-chip--inicio { background: rgba(0,184,148,.12); color: #00B894; }
+.asist-ct-chip--fin    { background: rgba(255,107,107,.12); color: #FF6B6B; }
+
+/* ── Asistencias: agrupado por fecha ─────────────────────────────── */
+.asist-date-group { margin-bottom: var(--space-2); }
+.asist-date-group > .asist-row:not(:last-child) { border-bottom: none; border-radius: 0; }
+.asist-date-group > .asist-row:last-child        { border-radius: 0 0 var(--radius-md) var(--radius-md); }
+.asist-date-group > .asist-row:first-child:not(.asist-date-header ~ .asist-row) { border-radius: var(--radius-md); }
+
+.asist-date-header {
+  display: flex;
+  align-items: center;
+  padding: 4px var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  border-bottom: none;
+  border-radius: var(--radius-md) var(--radius-md) 0 0;
+  gap: var(--space-2);
+}
+
+.asist-combined-badge { font-size: .68rem; padding: 2px 8px; }
+.asist-combined--full    { background: rgba(0,184,148,.12) !important; color: #00B894 !important; }
+.asist-combined--partial { background: rgba(253,203,110,.12) !important; color: #9A7D0A !important; }
