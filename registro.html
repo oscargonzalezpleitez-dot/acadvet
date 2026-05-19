@@ -35,7 +35,7 @@
       <p class="text-muted text-sm" id="errMsg">La sesión QR no está activa o el token expiró.</p>
     </div>
 
-    <!-- FORMULARIO -->
+    <!-- FORMULARIO (Paso 1) -->
     <div id="stForm" class="hidden">
       <div class="login-brand" style="margin-bottom:var(--space-5)">
         <div class="login-logo" aria-hidden="true">🐾</div>
@@ -54,7 +54,7 @@
           <input class="form-input" id="rNombre" type="text"
             placeholder="Ej. Juan Carlos Pérez López"
             maxlength="120" autocomplete="name" autocapitalize="words">
-          <span class="form-error hidden" id="rNombreErr">El nombre es obligatorio.</span>
+          <span class="form-error hidden" id="rNombreErr"></span>
         </div>
 
         <div class="form-group">
@@ -62,7 +62,16 @@
           <input class="form-input" id="rCarnet" type="text"
             placeholder="Ej. 2023001"
             maxlength="20" autocomplete="off" inputmode="numeric">
-          <span class="form-error hidden" id="rCarnetErr">El carné es obligatorio.</span>
+          <span class="form-error hidden" id="rCarnetErr"></span>
+        </div>
+
+        <!-- Correo institucional (mostrado dinámicamente si la sesión lo requiere) -->
+        <div id="emailGroup" class="form-group hidden">
+          <label class="form-label" for="rEmail" id="rEmailLabel">Correo institucional</label>
+          <input class="form-input" id="rEmail" type="email"
+            placeholder="usuario@usam.edu.sv"
+            maxlength="80" autocomplete="email" inputmode="email">
+          <span class="form-error hidden" id="rEmailErr"></span>
         </div>
 
         <div class="form-group">
@@ -71,7 +80,15 @@
             placeholder="Ej. FF4-6ZD"
             maxlength="7" autocomplete="off"
             style="font-weight:700;letter-spacing:.12em;text-transform:uppercase;font-family:var(--font-display)">
-          <span class="form-error hidden" id="rTokenErr">Ingresá el código visible en pantalla.</span>
+          <span class="form-error hidden" id="rTokenErr"></span>
+        </div>
+
+        <!-- Estado GPS (mostrado dinámicamente si la sesión lo requiere) -->
+        <div id="gpsGroup" class="hidden" style="margin-bottom:var(--space-3)">
+          <div class="gps-status-bar">
+            <span id="gpsIcon">📡</span>
+            <span id="gpsStatusText" class="gps-status-text gps-status--loading">Obteniendo ubicación…</span>
+          </div>
         </div>
 
         <p class="form-error hidden" id="rGlobalErr" role="alert" aria-live="assertive"></p>
@@ -86,9 +103,59 @@
       <p class="login-footer">USAM · Facultad de Medicina Veterinaria</p>
     </div>
 
+    <!-- SELFIE (Paso 2) -->
+    <div id="stSelfie" class="hidden">
+      <div class="login-brand" style="margin-bottom:var(--space-4)">
+        <div class="login-logo" aria-hidden="true">📷</div>
+        <div>
+          <h1 class="login-title" style="font-size:1.4rem;line-height:1.2">Toma tu foto</h1>
+          <p class="login-subtitle">Paso 2 de 2 — verificación de identidad</p>
+        </div>
+      </div>
+
+      <div class="selfie-wrap">
+        <p class="selfie-subtitle">Centrá tu rostro en el encuadre y tomá la foto.</p>
+
+        <!-- Cámara -->
+        <video id="selfieVideo" autoplay playsinline muted
+          style="width:100%;max-width:320px;border-radius:var(--radius-md);background:#000;aspect-ratio:4/3"></video>
+
+        <!-- Canvas oculto para captura -->
+        <canvas id="selfieCanvas" style="display:none"></canvas>
+
+        <!-- Preview de la foto tomada -->
+        <img id="selfiePreview" alt="Tu foto"
+          style="display:none;width:100%;max-width:320px;border-radius:var(--radius-md);border:2px solid var(--color-primary)">
+
+        <!-- Error de cámara -->
+        <p id="selfieStatus" class="form-error hidden" role="alert"></p>
+
+        <div class="selfie-actions">
+          <button class="btn btn--primary btn--full" id="btnCapture" type="button">
+            <span class="btn-text">📷 Tomar foto</span>
+          </button>
+          <button class="btn btn--ghost" id="btnRetake" type="button" style="display:none">
+            ↩ Repetir
+          </button>
+        </div>
+
+        <button class="btn btn--primary btn--full" id="btnSendSelfie" type="button" disabled>
+          <span class="btn-text">Enviar registro</span>
+          <span aria-hidden="true">→</span>
+        </button>
+
+        <button class="btn btn--ghost btn--sm" id="btnBackForm" type="button"
+          style="align-self:center;margin-top:var(--space-1)">
+          ← Volver al formulario
+        </button>
+      </div>
+
+      <p class="login-footer">USAM · Facultad de Medicina Veterinaria</p>
+    </div>
+
     <!-- ÉXITO -->
     <div id="stSuccess" class="hidden" style="text-align:center">
-      <div style="font-size:4rem;margin-bottom:var(--space-4)">✅</div>
+      <div id="successIcon" style="font-size:4rem;margin-bottom:var(--space-4)">✅</div>
       <h2 style="font-size:1.35rem;font-weight:700;margin-bottom:var(--space-2)">
         ¡Asistencia registrada!
       </h2>

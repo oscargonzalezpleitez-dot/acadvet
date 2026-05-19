@@ -139,17 +139,17 @@
   - Match automático con alumnos inscritos → registra asistencia en su expediente
   - Pantalla de confirmación
 
-- [ ] **T22** — Importar asistencias desde sistema QR externo
+- [✓] **T22** — Importar asistencias desde sistema QR externo
   - Botón "Importar CSV" en la tab Asistencias del expediente
   - Parsea el CSV exportado del sistema QR (columnas: nombre, carnet, hora, estado)
   - Mapea por carné → agrega asistencias al alumno correspondiente
   - Preview antes de confirmar, reporte de coincidencias/no encontrados
 
-- [ ] **T23** — Vista Proyector
+- [✓] **T23** — Vista Proyector
   - Ruta `#/proyector/:materiaId` accesible desde la vista de alumnos
   - Pantalla completa: QR grande + materia + token + contador de presentes + temporizador
   - Optimizada para proyectar en el aula
 
 ---
 
-**Total: 23 tareas | Completadas: 19 | Pendientes: 4**
+**Total: 23 tareas | Completadas: 23 | Pendientes: 0**

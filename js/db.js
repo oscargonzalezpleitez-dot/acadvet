@@ -237,7 +237,7 @@ export async function updateObservaciones(alumnoId, materiaId, texto) {
 // SESIONES QR
 // ---------------------------------------------------------------------------
 
-export async function createQRSession({ materiaId, materiaNombre, ciclo, token, duration }) {
+export async function createQRSession({ materiaId, materiaNombre, ciclo, token, duration, config = {} }) {
   const newRef = push(ref(db, 'qr_sessions'));
   const now = Date.now();
   await set(newRef, {
@@ -250,6 +250,18 @@ export async function createQRSession({ materiaId, materiaNombre, ciclo, token, 
     startedAt: now,
     rotatedAt: now,
     fecha: new Date().toISOString().slice(0, 10),
+    config: {
+      photoRequired:    config.photoRequired    ?? false,
+      onceDevice:       config.onceDevice       ?? false,
+      markLate:         config.markLate         ?? false,
+      lateMinutes:      config.lateMinutes      ?? 10,
+      requireUsamEmail: config.requireUsamEmail ?? false,
+      requireGeo:       config.requireGeo       ?? false,
+      geoRadius:        config.geoRadius        ?? 100,
+      aulaLat:          config.aulaLat          ?? null,
+      aulaLng:          config.aulaLng          ?? null,
+      sessionStartedAt: now,
+    },
   });
   return newRef.key;
 }

@@ -1,6 +1,6 @@
 // =============================================================================
-// AcadVet USAM — Módulo de Sesión QR (T20)
-// Genera QR rotante, escucha asistentes en tiempo real desde el panel profesor
+// AcadVet USAM — Módulo de Sesión QR (T20 + features: foto, dispositivo,
+//   tardíos, correo institucional, GPS)
 // =============================================================================
 
 import { createQRSession, updateQRSession, listenQRAsistentes } from './db.js';
@@ -10,19 +10,54 @@ import { showToast } from './ui.js';
 // Estado
 // ---------------------------------------------------------------------------
 let _s = null;
-// _s = { id, materiaId, alumnos, token, duration, intervalId, unsubscribe, rotatedAt }
+// _s = { id, materiaId, alumnos, token, duration, intervalId, unsubscribe,
+//         rotatedAt, config: { photoRequired, onceDevice, markLate, lateMinutes,
+//           requireUsamEmail, requireGeo, geoRadius, aulaLat, aulaLng, sessionStartedAt } }
 
-const CIRC = 276.5; // 2π × r(44) para el anillo SVG
+const CIRC    = 276.5; // 2π × r(44) para el anillo SVG
+const CFG_KEY = 'acadvet_qr_config';
+
+// ---------------------------------------------------------------------------
+// Persistencia de configuración (localStorage ↔ Firebase)
+// ---------------------------------------------------------------------------
+function loadStoredConfig() {
+  try { return JSON.parse(localStorage.getItem(CFG_KEY) ?? '{}'); } catch { return {}; }
+}
+
+function saveConfigToStorage() {
+  if (!_s) return;
+  try { localStorage.setItem(CFG_KEY, JSON.stringify(_s.config)); } catch {}
+}
+
+async function pushConfig() {
+  if (!_s) return;
+  saveConfigToStorage();
+  await updateQRSession(_s.id, { config: _s.config }).catch(() => {});
+}
 
 // ---------------------------------------------------------------------------
 // Entrada pública
 // ---------------------------------------------------------------------------
-
 export async function openQRSession(materia, alumnos) {
   if (_s) return;
 
   const token    = genToken();
-  const duration = 120_000; // 2 min por defecto
+  const duration = 120_000;
+  const now      = Date.now();
+
+  const stored = loadStoredConfig();
+  const config = {
+    photoRequired:    stored.photoRequired    ?? false,
+    onceDevice:       stored.onceDevice       ?? false,
+    markLate:         stored.markLate         ?? false,
+    lateMinutes:      stored.lateMinutes      ?? 10,
+    requireUsamEmail: stored.requireUsamEmail ?? false,
+    requireGeo:       stored.requireGeo       ?? false,
+    geoRadius:        stored.geoRadius        ?? 100,
+    aulaLat:          stored.aulaLat          ?? null,
+    aulaLng:          stored.aulaLng          ?? null,
+    sessionStartedAt: now,
+  };
 
   let sessionId;
   try {
@@ -32,6 +67,7 @@ export async function openQRSession(materia, alumnos) {
       ciclo:         materia.ciclo ?? '',
       token,
       duration,
+      config,
     });
   } catch {
     showToast('No se pudo crear la sesión QR. Verificá tu conexión.', 'error');
@@ -39,7 +75,7 @@ export async function openQRSession(materia, alumnos) {
   }
 
   _s = { id: sessionId, materiaId: materia.id, alumnos, token, duration,
-         intervalId: null, unsubscribe: null, rotatedAt: Date.now() };
+         intervalId: null, unsubscribe: null, rotatedAt: now, config };
 
   buildOverlay(materia);
   drawQR();
@@ -50,11 +86,12 @@ export async function openQRSession(materia, alumnos) {
 // ---------------------------------------------------------------------------
 // Overlay
 // ---------------------------------------------------------------------------
-
 function buildOverlay(materia) {
   const div = document.createElement('div');
   div.id = 'qrOverlay';
   div.className = 'qr-overlay';
+  const c = _s.config;
+
   div.innerHTML = `
     <div class="qr-panel-left">
       <div class="qr-panel-header">
@@ -103,7 +140,54 @@ function buildOverlay(materia) {
         </div>
       </div>
 
-      <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:auto">
+      <!-- ── Configuración de sesión ── -->
+      <div class="qr-config-section">
+        <div class="qr-config-title">Configuración</div>
+
+        <label class="qr-toggle-row">
+          <span class="qr-toggle-label">📷 Foto obligatoria</span>
+          <input type="checkbox" id="cfgPhoto" class="qr-toggle-check" ${c.photoRequired ? 'checked' : ''}>
+        </label>
+
+        <label class="qr-toggle-row">
+          <span class="qr-toggle-label">📱 Un dispositivo = un alumno</span>
+          <input type="checkbox" id="cfgDevice" class="qr-toggle-check" ${c.onceDevice ? 'checked' : ''}>
+        </label>
+
+        <label class="qr-toggle-row">
+          <span class="qr-toggle-label">⏱ Marcar tardíos</span>
+          <input type="checkbox" id="cfgLate" class="qr-toggle-check" ${c.markLate ? 'checked' : ''}>
+        </label>
+        <div id="cfgLateOpts" class="qr-config-sub${c.markLate ? '' : ' hidden'}">
+          <input type="number" id="cfgLateMin" value="${c.lateMinutes}" min="1" max="60" class="qr-mini-input">
+          <span class="text-xs text-muted">min de gracia</span>
+        </div>
+
+        <label class="qr-toggle-row">
+          <span class="qr-toggle-label">✉️ Solo @usam.edu.sv</span>
+          <input type="checkbox" id="cfgEmail" class="qr-toggle-check" ${c.requireUsamEmail ? 'checked' : ''}>
+        </label>
+
+        <label class="qr-toggle-row">
+          <span class="qr-toggle-label">📍 Verificar GPS</span>
+          <input type="checkbox" id="cfgGeo" class="qr-toggle-check" ${c.requireGeo ? 'checked' : ''}>
+        </label>
+        <div id="cfgGeoOpts" class="qr-config-sub${c.requireGeo ? '' : ' hidden'}">
+          <div class="qr-duration-btns" style="margin-bottom:var(--space-2)">
+            ${[50, 100, 200, 500].map(r =>
+              `<button class="qr-duration-btn${r === (c.geoRadius ?? 100) ? ' active' : ''}" data-radius="${r}">${r}m</button>`
+            ).join('')}
+          </div>
+          <button class="btn btn--ghost btn--sm" id="qrGeoCapture" style="width:100%">
+            📍 Capturar mi ubicación
+          </button>
+          <div id="qrGeoStatus" class="text-xs text-muted" style="text-align:center;margin-top:var(--space-1)">
+            ${c.aulaLat != null ? `Lat: ${c.aulaLat.toFixed(5)}, Lng: ${c.aulaLng.toFixed(5)}` : 'Sin ubicación capturada'}
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:auto;padding-top:var(--space-3)">
         <button class="btn btn--secondary btn--sm" id="qrRotate">⟳ Rotar token ahora</button>
         <button class="btn btn--secondary btn--sm" id="qrProyect">📽 Abrir proyector</button>
         <button class="btn btn--sm" id="qrStop"
@@ -119,7 +203,10 @@ function buildOverlay(materia) {
           <div class="qr-counter" id="qrCount">0</div>
           <div class="qr-counter-label">presentes</div>
         </div>
-        <div class="qr-stats-bar"></div>
+        <div id="qrTardioWrap" style="display:${c.markLate ? 'flex' : 'none'};flex-direction:column;align-items:center">
+          <div class="qr-tardio-count" id="qrTardioCount">0</div>
+          <div class="qr-counter-label" style="font-size:.8rem;color:#FDCB6E">tardíos</div>
+        </div>
       </div>
       <div class="qr-attendee-list" id="qrAttendeeList">
         <div class="empty-state" style="padding:var(--space-8)">
@@ -142,15 +229,84 @@ function wireEvents() {
     window.open(`${base}proyector.html?s=${_s.id}`, '_blank');
   });
 
-  document.querySelectorAll('.qr-duration-btn').forEach(btn => {
+  document.querySelectorAll('.qr-duration-btn[data-min]').forEach(btn => {
     btn.addEventListener('click', () => {
       const mins = parseInt(btn.dataset.min, 10);
       _s.duration = mins * 60_000;
       updateQRSession(_s.id, { duration: _s.duration }).catch(() => {});
-      document.querySelectorAll('.qr-duration-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.qr-duration-btn[data-min]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       rotateToken();
     });
+  });
+
+  // ── Config toggles ───────────────────────────────────────────────────────
+  document.getElementById('cfgPhoto')?.addEventListener('change', e => {
+    _s.config.photoRequired = e.target.checked;
+    pushConfig();
+  });
+
+  document.getElementById('cfgDevice')?.addEventListener('change', e => {
+    _s.config.onceDevice = e.target.checked;
+    pushConfig();
+  });
+
+  document.getElementById('cfgLate')?.addEventListener('change', e => {
+    _s.config.markLate = e.target.checked;
+    document.getElementById('cfgLateOpts')?.classList.toggle('hidden', !e.target.checked);
+    const wrap = document.getElementById('qrTardioWrap');
+    if (wrap) wrap.style.display = e.target.checked ? 'flex' : 'none';
+    pushConfig();
+  });
+
+  document.getElementById('cfgLateMin')?.addEventListener('change', e => {
+    _s.config.lateMinutes = parseInt(e.target.value, 10) || 10;
+    pushConfig();
+  });
+
+  document.getElementById('cfgEmail')?.addEventListener('change', e => {
+    _s.config.requireUsamEmail = e.target.checked;
+    pushConfig();
+  });
+
+  document.getElementById('cfgGeo')?.addEventListener('change', e => {
+    _s.config.requireGeo = e.target.checked;
+    document.getElementById('cfgGeoOpts')?.classList.toggle('hidden', !e.target.checked);
+    pushConfig();
+  });
+
+  // GPS radius buttons
+  document.querySelectorAll('.qr-duration-btn[data-radius]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _s.config.geoRadius = parseInt(btn.dataset.radius, 10);
+      document.querySelectorAll('.qr-duration-btn[data-radius]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      pushConfig();
+    });
+  });
+
+  // GPS capture button
+  document.getElementById('qrGeoCapture')?.addEventListener('click', () => {
+    const btn    = document.getElementById('qrGeoCapture');
+    const status = document.getElementById('qrGeoStatus');
+    btn.disabled = true;
+    btn.textContent = 'Obteniendo…';
+    navigator.geolocation.getCurrentPosition(
+      async pos => {
+        _s.config.aulaLat = pos.coords.latitude;
+        _s.config.aulaLng = pos.coords.longitude;
+        await pushConfig();
+        btn.disabled = false;
+        btn.textContent = '✓ Ubicación capturada';
+        if (status) status.textContent = `Lat: ${pos.coords.latitude.toFixed(5)}, Lng: ${pos.coords.longitude.toFixed(5)}`;
+      },
+      err => {
+        btn.disabled = false;
+        btn.textContent = '📍 Capturar mi ubicación';
+        if (status) status.textContent = 'Error: ' + err.message;
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
   });
 }
 
@@ -163,7 +319,6 @@ function confirmStop() {
 // ---------------------------------------------------------------------------
 // QR Code
 // ---------------------------------------------------------------------------
-
 async function drawQR() {
   try {
     await loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js');
@@ -192,7 +347,6 @@ function getRegistroUrl() {
 // ---------------------------------------------------------------------------
 // Token
 // ---------------------------------------------------------------------------
-
 function genToken() {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   const seg = n => Array.from({ length: n }, () =>
@@ -220,7 +374,6 @@ async function rotateToken() {
 // ---------------------------------------------------------------------------
 // Countdown
 // ---------------------------------------------------------------------------
-
 function startCountdown() {
   _s.rotatedAt = Date.now();
 
@@ -257,18 +410,20 @@ function updateRing(pct) {
 // ---------------------------------------------------------------------------
 // Asistentes en tiempo real
 // ---------------------------------------------------------------------------
-
 function watchAttendees() {
   _s.unsubscribe = listenQRAsistentes(_s.id, renderAttendees);
 }
 
 function renderAttendees(asistentes) {
-  const countEl = document.getElementById('qrCount');
-  const listEl  = document.getElementById('qrAttendeeList');
+  const countEl  = document.getElementById('qrCount');
+  const tardioEl = document.getElementById('qrTardioCount');
+  const listEl   = document.getElementById('qrAttendeeList');
   if (!countEl || !listEl) return;
 
-  const sorted = [...asistentes].sort((a, b) => b.ts - a.ts);
-  countEl.textContent = String(sorted.length);
+  const sorted  = [...asistentes].sort((a, b) => b.ts - a.ts);
+  const tardios = sorted.filter(a => a.estado === 'tardio').length;
+  countEl.textContent  = String(sorted.length);
+  if (tardioEl) tardioEl.textContent = String(tardios);
 
   if (sorted.length === 0) {
     listEl.innerHTML = `
@@ -279,19 +434,34 @@ function renderAttendees(asistentes) {
     return;
   }
 
+  const showLate  = _s?.config?.markLate;
+  const showPhoto = _s?.config?.photoRequired;
+
   listEl.innerHTML = sorted.map((a, i) => {
-    const matched = !!a.alumnoId;
-    const hora = new Date(a.ts).toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
+    const matched  = !!a.alumnoId;
+    const isTardio = showLate && a.estado === 'tardio';
+    const hora     = new Date(a.ts).toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
+
+    let badgeClass, badgeText;
+    if (!matched)       { badgeClass = 'qr-attendee-badge--warn'; badgeText = '⚠ No encontrado'; }
+    else if (isTardio)  { badgeClass = 'qr-attendee-badge--late'; badgeText = '⏱ Tardío'; }
+    else                { badgeClass = 'qr-attendee-badge--ok';   badgeText = '✓ Inscrito'; }
+
+    const selfieHtml = (showPhoto && a.selfie)
+      ? `<img src="data:image/jpeg;base64,${a.selfie}" class="qr-selfie-thumb" alt="Foto">`
+      : '';
+
+    const emailHtml = a.email ? ` · ${esc(a.email)}` : '';
+
     return `
       <div class="qr-attendee-row">
+        ${selfieHtml}
         <div class="qr-attendee-num">${sorted.length - i}</div>
         <div class="qr-attendee-info">
           <div class="qr-attendee-name">${esc(a.nombre)}</div>
-          <div class="qr-attendee-carnet">Carné ${esc(a.carnet)} · ${hora}</div>
+          <div class="qr-attendee-carnet">Carné ${esc(a.carnet)} · ${hora}${emailHtml}</div>
         </div>
-        <span class="qr-attendee-badge ${matched ? 'qr-attendee-badge--ok' : 'qr-attendee-badge--warn'}">
-          ${matched ? '✓ Inscrito' : '⚠ No encontrado'}
-        </span>
+        <span class="qr-attendee-badge ${badgeClass}">${badgeText}</span>
       </div>`;
   }).join('');
 }
@@ -299,7 +469,6 @@ function renderAttendees(asistentes) {
 // ---------------------------------------------------------------------------
 // Detener sesión
 // ---------------------------------------------------------------------------
-
 async function stopSession() {
   if (!_s) return;
   clearInterval(_s.intervalId);
@@ -313,7 +482,6 @@ async function stopSession() {
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
 function today() {
   return new Date().toLocaleDateString('es-SV', { day: '2-digit', month: 'long', year: 'numeric' });
 }

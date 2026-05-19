@@ -1307,6 +1307,132 @@
 }
 .qr-attendee-badge--ok   { background: var(--color-success-dim); color: var(--color-success); }
 .qr-attendee-badge--warn { background: var(--color-warning-dim); color: #B8860B; }
+.qr-attendee-badge--late { background: rgba(253,203,110,.15); color: #FDCB6E; border: 1px solid rgba(253,203,110,.3); }
+
+/* Foto miniatura en la lista de asistentes */
+.qr-selfie-thumb {
+  width: 40px;
+  height: 30px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  flex-shrink: 0;
+}
+
+/* Contador de tardíos */
+.qr-tardio-count {
+  font-size: 2.2rem;
+  font-weight: 800;
+  color: #FDCB6E;
+  line-height: 1;
+}
+
+/* ── Config de sesión (panel izquierdo del overlay) ─────────────── */
+.qr-config-section {
+  border-top: 1px solid var(--color-border);
+  padding-top: var(--space-3);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.qr-config-title {
+  font-size: .65rem;
+  font-weight: 700;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-1);
+}
+.qr-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px var(--space-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  transition: background .15s;
+  user-select: none;
+}
+.qr-toggle-row:hover { background: var(--color-surface-2); }
+.qr-toggle-label { font-size: .78rem; color: var(--color-text); line-height: 1.4; }
+.qr-toggle-check {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 34px;
+  height: 18px;
+  border-radius: 9px;
+  background: var(--color-border);
+  position: relative;
+  cursor: pointer;
+  transition: background .2s;
+  flex-shrink: 0;
+}
+.qr-toggle-check::after {
+  content: '';
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #fff;
+  top: 2px;
+  left: 2px;
+  transition: transform .2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.qr-toggle-check:checked { background: var(--color-primary); }
+.qr-toggle-check:checked::after { transform: translateX(16px); }
+
+.qr-config-sub {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: 2px var(--space-2) var(--space-2);
+  flex-wrap: wrap;
+}
+.qr-mini-input {
+  width: 52px;
+  padding: 2px 6px;
+  font-size: .85rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  text-align: center;
+  font-family: var(--font-body);
+}
+
+/* ── GPS status bar (página del alumno) ─────────────────────────── */
+.gps-status-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-md);
+  background: var(--color-surface-2);
+  font-size: .8rem;
+}
+.gps-status-text { flex: 1; line-height: 1.4; }
+.gps-status--loading { color: var(--color-text-muted); }
+.gps-status--ok      { color: var(--color-success); }
+.gps-status--error   { color: var(--color-danger); }
+
+/* ── Selfie step (página del alumno) ─────────────────────────────── */
+.selfie-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-3);
+}
+.selfie-subtitle {
+  font-size: .85rem;
+  color: var(--color-text-muted);
+  text-align: center;
+}
+.selfie-actions {
+  display: flex;
+  gap: var(--space-2);
+  width: 100%;
+  max-width: 320px;
+}
 
 /* Mobile: una columna */
 @media (max-width: 768px) {
