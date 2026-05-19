@@ -124,14 +124,14 @@
 
 ## Fase 5 — Módulo QR + Integración
 
-- [ ] **T20** — Sesión QR (lado profesor)
+- [✓] **T20** — Sesión QR (lado profesor)
   - Botón "Sesión QR" en la vista de alumnos por materia
   - Genera token alfanumérico + QR que apunta a `registro.html`
   - Rotación automática del token (1/2/3/5 min) + temporizador visual
   - Panel en vivo: contador de presentes actualizándose en tiempo real
   - Botón Detener → archiva sesión en Firebase
 
-- [ ] **T21** — Página pública de registro para alumnos (`registro.html`)
+- [✓] **T21** — Página pública de registro para alumnos (`registro.html`)
   - Accesible sin PIN (pública)
   - Formulario: nombre, carné, código QR
   - Validación: token activo en Firebase, no expirado

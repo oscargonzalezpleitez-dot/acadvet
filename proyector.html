@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Proyector QR — AcadVet USAM</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #0B0D1A;
+      color: #F0F2FF;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      user-select: none;
+    }
+
+    /* Header */
+    .proy-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 20px 36px 16px;
+      border-bottom: 1px solid rgba(108,99,255,.2);
+      flex-shrink: 0;
+    }
+    .proy-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .proy-logo-icon { font-size: 2rem; }
+    .proy-logo-text { font-size: 1.1rem; font-weight: 700; color: #A29BFE; letter-spacing: .05em; }
+    .proy-materia   { font-size: 1.3rem; font-weight: 700; color: #F0F2FF; max-width: 55vw;
+                      white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .proy-fecha     { font-size: .9rem; color: #8888AA; }
+
+    /* Main grid */
+    .proy-main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0;
+      overflow: hidden;
+    }
+
+    /* QR panel */
+    .proy-qr-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 28px;
+      padding: 32px;
+      border-right: 1px solid rgba(108,99,255,.2);
+    }
+    .proy-qr-box {
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 0 60px rgba(108,99,255,.4);
+    }
+    .proy-token {
+      font-size: clamp(3rem, 6vw, 5rem);
+      font-weight: 800;
+      letter-spacing: .25em;
+      color: #6C63FF;
+      text-align: center;
+      line-height: 1;
+    }
+    .proy-token-label {
+      font-size: .85rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      color: #8888AA;
+      text-align: center;
+      margin-top: 6px;
+    }
+
+    /* Timer */
+    .proy-timer-wrap {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+    .proy-timer-text {
+      font-size: 2rem;
+      font-weight: 700;
+      color: #F0F2FF;
+      min-width: 72px;
+      text-align: center;
+    }
+
+    /* Stats panel */
+    .proy-stats-panel {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      padding: 32px;
+    }
+    .proy-counter {
+      font-size: clamp(5rem, 14vw, 12rem);
+      font-weight: 800;
+      color: #6C63FF;
+      line-height: 1;
+      text-shadow: 0 0 60px rgba(108,99,255,.6);
+    }
+    .proy-counter-label {
+      font-size: 1.6rem;
+      font-weight: 600;
+      color: #A29BFE;
+      text-align: center;
+    }
+    .proy-last {
+      font-size: 1rem;
+      color: #8888AA;
+      text-align: center;
+      min-height: 24px;
+    }
+
+    /* Status bar */
+    .proy-statusbar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      padding: 10px 36px;
+      border-top: 1px solid rgba(108,99,255,.2);
+      flex-shrink: 0;
+    }
+    .proy-dot {
+      width: 10px; height: 10px;
+      border-radius: 50%;
+      background: #00B894;
+      animation: pulse 2s ease infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .4; }
+    }
+    .proy-status-text { font-size: .85rem; color: #8888AA; }
+
+    /* Loading / error */
+    .proy-center {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      font-size: 1.2rem;
+      color: #8888AA;
+    }
+
+    /* SVG ring circ */
+    .proy-ring { transform: rotate(-90deg); }
+  </style>
+</head>
+
+<body>
+  <header class="proy-header">
+    <div class="proy-logo">
+      <div class="proy-logo-icon">🐾</div>
+      <div class="proy-logo-text">AcadVet USAM</div>
+    </div>
+    <div style="text-align:right">
+      <div class="proy-materia" id="proyMateria">Cargando…</div>
+      <div class="proy-fecha"   id="proyFecha"></div>
+    </div>
+  </header>
+
+  <div id="mainLoading" class="proy-center">
+    <div>⏳ Conectando con la sesión…</div>
+  </div>
+
+  <div id="mainError" class="proy-center" style="display:none">
+    <div>❌</div>
+    <div id="errTxt">La sesión no está disponible.</div>
+  </div>
+
+  <div id="mainContent" class="proy-main" style="display:none">
+
+    <!-- Panel izquierdo: QR -->
+    <div class="proy-qr-panel">
+      <div class="proy-qr-box">
+        <div id="proyQR"></div>
+      </div>
+
+      <div>
+        <div class="proy-token" id="proyToken">—</div>
+        <div class="proy-token-label">CÓDIGO DE SESIÓN</div>
+      </div>
+
+      <div class="proy-timer-wrap">
+        <svg viewBox="0 0 100 100" width="64" height="64">
+          <circle cx="50" cy="50" r="44" fill="none" stroke="#1f2040" stroke-width="10"/>
+          <circle id="proyRing" cx="50" cy="50" r="44" fill="none"
+            stroke="#6C63FF" stroke-width="10"
+            stroke-dasharray="276.5" stroke-dashoffset="0"
+            stroke-linecap="round" class="proy-ring"
+            style="transition:stroke-dashoffset .95s linear"/>
+        </svg>
+        <div>
+          <div class="proy-timer-text" id="proyTimer">—</div>
+          <div style="font-size:.75rem;color:#8888AA;text-align:center">próx. rotación</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel derecho: contador -->
+    <div class="proy-stats-panel">
+      <div>
+        <div class="proy-counter"       id="proyCount">0</div>
+        <div class="proy-counter-label">presentes</div>
+      </div>
+      <div class="proy-last" id="proyLast"></div>
+    </div>
+
+  </div>
+
+  <footer class="proy-statusbar">
+    <div class="proy-dot" id="proyDot" style="background:#8888AA"></div>
+    <span class="proy-status-text" id="proyStatusTxt">Conectando…</span>
+  </footer>
+
+  <script type="module" src="js/proyector.js"></script>
+</body>
+</html>

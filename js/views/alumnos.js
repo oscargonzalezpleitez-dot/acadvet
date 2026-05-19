@@ -7,6 +7,7 @@ import {
   getMateria, getAlumnos, alumnosByMateria,
   createAlumno, updateAlumno,
   createInscripcion, deleteInscripcion,
+  addAsistencia,
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
@@ -102,6 +103,13 @@ function paint() {
           </div>
         </div>
         <div class="view-header-actions">
+          <button class="btn btn--secondary btn--sm" id="btnImportarQR" title="Importar asistencias desde CSV del Sistema QR">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Importar QR
+          </button>
           <button class="btn btn--sm" id="btnSesionQR" title="Iniciar sesión QR de asistencia"
             style="background:linear-gradient(135deg,var(--color-accent),#009899);color:#fff;border:none;box-shadow:0 3px 12px rgba(0,210,211,0.35)">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -261,6 +269,8 @@ function emptyTable() {
 function wireEvents() {
   document.getElementById('btnAgregarAlumno')?.addEventListener('click', openCreateModal);
   document.getElementById('btnAgregarAlumnoEmpty')?.addEventListener('click', openCreateModal);
+
+  document.getElementById('btnImportarQR')?.addEventListener('click', openImportModal);
 
   document.getElementById('btnSesionQR')?.addEventListener('click', () => {
     openQRSession(_materia, _alumnos);
@@ -722,4 +732,184 @@ function loadScript(src) {
     s.onerror = () => reject(new Error(`No se pudo cargar: ${src}`));
     document.head.appendChild(s);
   });
+}
+
+// ---------------------------------------------------------------------------
+// IMPORTAR ASISTENCIAS DESDE CSV DEL SISTEMA QR (T22)
+// ---------------------------------------------------------------------------
+
+function openImportModal() {
+  const today = new Date().toISOString().slice(0, 10);
+  openModal({
+    title: 'Importar asistencias desde Sistema QR',
+    body: `
+      <div style="display:flex;flex-direction:column;gap:var(--space-4)">
+        <div class="alert-warning" style="background:var(--color-info-dim);border-color:var(--color-info);color:#1a4a7a">
+          Exportá el CSV desde el Sistema QR y pegá su contenido aquí.
+          El sistema detecta los alumnos de <strong>${escHtml(_materia.nombre)}</strong> por carné automáticamente.
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="impFecha">Fecha de la clase *</label>
+          <input class="form-input" id="impFecha" type="date" value="${today}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Contenido del CSV</label>
+          <label class="btn btn--secondary btn--sm" style="cursor:pointer;width:fit-content;margin-bottom:var(--space-2)">
+            📂 Abrir archivo CSV
+            <input type="file" id="impFile" accept=".csv,.txt" style="display:none">
+          </label>
+          <textarea class="form-input" id="impCSV" rows="5"
+            placeholder="#,nombre,carnet,correo,hora,estado&#10;1,Juan Pérez,2023001,,08:05,A TIEMPO"
+            style="font-family:monospace;font-size:var(--text-xs);resize:vertical"></textarea>
+        </div>
+        <p class="form-error hidden" id="impErr"></p>
+        <button class="btn btn--secondary btn--sm" id="btnImpPreview">🔍 Previsualizar</button>
+        <div id="impPreview" class="hidden"></div>
+      </div>`,
+    confirmLabel: null,
+    cancelLabel: 'Cerrar',
+  });
+
+  document.getElementById('impFile')?.addEventListener('change', e => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const ta = document.getElementById('impCSV');
+      if (ta) ta.value = ev.target.result ?? '';
+    };
+    reader.readAsText(file, 'UTF-8');
+  });
+
+  document.getElementById('btnImpPreview')?.addEventListener('click', () => {
+    const csv   = document.getElementById('impCSV')?.value.trim() ?? '';
+    const fecha = document.getElementById('impFecha')?.value ?? '';
+    const errEl = document.getElementById('impErr');
+    if (errEl) errEl.classList.add('hidden');
+
+    if (!fecha) {
+      if (errEl) { errEl.textContent = 'Seleccioná la fecha de la clase.'; errEl.classList.remove('hidden'); }
+      return;
+    }
+    if (!csv) {
+      if (errEl) { errEl.textContent = 'Pegá el contenido del CSV o abrí un archivo.'; errEl.classList.remove('hidden'); }
+      return;
+    }
+
+    renderImportPreview(csv, fecha);
+  });
+}
+
+function renderImportPreview(csvText, fecha) {
+  const rows = parseQRCsv(csvText);
+  if (!rows.length) {
+    const e = document.getElementById('impErr');
+    if (e) { e.textContent = 'No se pudo leer el CSV. Verificá que el formato sea correcto.'; e.classList.remove('hidden'); }
+    return;
+  }
+
+  const matches = rows.map(row => {
+    const carnet = (row.carnet ?? row['carné'] ?? row.carne ?? '').trim();
+    const alumno = _alumnos.find(a =>
+      (a.carnet ?? '').toLowerCase().trim() === carnet.toLowerCase()
+    );
+    return { ...row, carnet, alumno: alumno ?? null };
+  }).filter(r => r.carnet);
+
+  const matched   = matches.filter(r => r.alumno);
+  const unmatched = matches.filter(r => !r.alumno);
+
+  const prev = document.getElementById('impPreview');
+  if (!prev) return;
+  prev.classList.remove('hidden');
+
+  prev.innerHTML = `
+    <div style="display:flex;gap:var(--space-3);align-items:center;margin-bottom:var(--space-3)">
+      <span class="badge badge--success">${matched.length} coincidencia${matched.length !== 1 ? 's' : ''}</span>
+      ${unmatched.length ? `<span class="badge badge--warning">${unmatched.length} sin coincidencia</span>` : ''}
+      <span class="text-xs text-muted">${rows.length} registros en el CSV</span>
+    </div>
+    ${matched.length === 0 ? `
+      <p class="text-sm text-muted">
+        Ningún carné del CSV coincide con los alumnos inscritos en esta materia.
+      </p>` : `
+      <div style="max-height:180px;overflow-y:auto;border:1px solid var(--color-border);border-radius:var(--radius-md);margin-bottom:var(--space-3)">
+        <table class="data-table">
+          <thead><tr><th>Alumno en AcadVet</th><th>Carné</th></tr></thead>
+          <tbody>
+            ${matched.map(r => `
+              <tr>
+                <td>${escHtml(r.alumno.nombre)}</td>
+                <td><span class="carnet-chip">${escHtml(r.carnet)}</span></td>
+              </tr>`).join('')}
+          </tbody>
+        </table>
+      </div>
+      <button class="btn btn--primary btn--sm" id="btnImpConfirm" style="width:100%">
+        ✓ Importar ${matched.length} asistencia${matched.length !== 1 ? 's' : ''} — ${fecha}
+      </button>`}
+    ${unmatched.length ? `
+      <details style="margin-top:var(--space-3)">
+        <summary class="text-sm text-muted" style="cursor:pointer">
+          ${unmatched.length} carné${unmatched.length !== 1 ? 's' : ''} del CSV no encontrado${unmatched.length !== 1 ? 's' : ''} en esta materia
+        </summary>
+        <p class="text-xs text-muted" style="margin-top:var(--space-2)">
+          ${unmatched.map(r => escHtml(r.carnet)).join(', ')}
+        </p>
+      </details>` : ''}
+  `;
+
+  document.getElementById('btnImpConfirm')?.addEventListener('click', async function () {
+    this.disabled    = true;
+    this.textContent = 'Importando…';
+    try {
+      await Promise.all(
+        matched
+          .filter(r => r.alumno)
+          .map(r => addAsistencia(r.alumno.id, _materiaId, { fecha, estado: 'presente' }))
+      );
+      closeModal();
+      showToast(`${matched.length} asistencia${matched.length !== 1 ? 's' : ''} importada${matched.length !== 1 ? 's' : ''}`);
+      await reload();
+    } catch (err) {
+      this.disabled    = false;
+      this.textContent = `✓ Importar ${matched.length} asistencias — ${fecha}`;
+      showToast('Error al importar. Intentá de nuevo.', 'error');
+      console.error('[AcadVet] Error importando asistencias:', err);
+    }
+  });
+}
+
+function parseQRCsv(text) {
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+
+  const delim = lines[0].split(';').length > lines[0].split(',').length ? ';' : ',';
+
+  const normalize = s => s.toLowerCase().trim()
+    .replace(/[áä]/g,'a').replace(/[éë]/g,'e').replace(/[íï]/g,'i')
+    .replace(/[óö]/g,'o').replace(/[úü]/g,'u').replace(/ñ/g,'n')
+    .replace(/\s+/g,'');
+
+  const headers = csvSplitLine(lines[0], delim).map(normalize);
+
+  return lines.slice(1).map(line => {
+    const vals = csvSplitLine(line, delim);
+    const obj  = {};
+    headers.forEach((h, i) => { obj[h] = (vals[i] ?? '').trim(); });
+    return obj;
+  });
+}
+
+function csvSplitLine(line, delim) {
+  const result = [];
+  let cur = '';
+  let inQ = false;
+  for (const ch of line) {
+    if (ch === '"') { inQ = !inQ; continue; }
+    if (ch === delim && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  result.push(cur);
+  return result;
 }

@@ -105,6 +105,7 @@ function buildOverlay(materia) {
 
       <div style="display:flex;flex-direction:column;gap:var(--space-2);margin-top:auto">
         <button class="btn btn--secondary btn--sm" id="qrRotate">⟳ Rotar token ahora</button>
+        <button class="btn btn--secondary btn--sm" id="qrProyect">📽 Abrir proyector</button>
         <button class="btn btn--sm" id="qrStop"
           style="background:var(--color-danger);color:#fff;border-color:transparent">
           ■ Detener sesión
@@ -136,6 +137,10 @@ function wireEvents() {
   document.getElementById('qrClose')?.addEventListener('click', confirmStop);
   document.getElementById('qrStop')?.addEventListener('click', confirmStop);
   document.getElementById('qrRotate')?.addEventListener('click', () => rotateToken());
+  document.getElementById('qrProyect')?.addEventListener('click', () => {
+    const base = window.location.origin + window.location.pathname.replace(/[^/]*$/, '');
+    window.open(`${base}proyector.html?s=${_s.id}`, '_blank');
+  });
 
   document.querySelectorAll('.qr-duration-btn').forEach(btn => {
     btn.addEventListener('click', () => {
