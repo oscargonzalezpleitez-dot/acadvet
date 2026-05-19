@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AcadVet USAM — Panel del Profesor">
+  <title>AcadVet USAM — Panel</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/views.css">
+</head>
+
+<body>
+<div class="app-layout">
+
+  <!-- =====================================================================
+       SIDEBAR
+       ===================================================================== -->
+  <aside class="sidebar" id="sidebar" aria-label="Navegación principal">
+
+    <!-- Header: logo + nombre -->
+    <div class="sidebar-header">
+      <div class="sidebar-logo" aria-hidden="true">🐾</div>
+      <div class="sidebar-brand">
+        <span class="sidebar-brand-name">AcadVet</span>
+        <span class="sidebar-brand-tag">USAM</span>
+      </div>
+      <button class="sidebar-close-btn" id="sidebarClose" aria-label="Cerrar menú">
+        <svg viewBox="0 0 24 24" width="18" height="18" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Navegación -->
+    <nav class="sidebar-nav">
+
+      <span class="nav-section-label">Panel</span>
+
+      <a href="#/" class="nav-item" data-route="/" aria-label="Dashboard">
+        <span class="nav-icon-wrap">
+          <!-- Grid icon -->
+          <svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        </span>
+        <span>Dashboard</span>
+      </a>
+
+      <span class="nav-section-label">Académico</span>
+
+      <a href="#/materias" class="nav-item" data-route="/materias" aria-label="Materias">
+        <span class="nav-icon-wrap">
+          <!-- Book icon -->
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>
+        </span>
+        <span>Materias</span>
+      </a>
+
+    </nav>
+
+    <!-- Footer: usuario + logout -->
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar" aria-hidden="true">OG</div>
+        <div class="user-info">
+          <span class="user-name">Óscar González</span>
+          <span class="user-role">Profesor · USAM</span>
+        </div>
+      </div>
+      <button class="btn-logout" id="btnLogout" type="button">
+        Cerrar sesión →
+      </button>
+    </div>
+
+  </aside>
+
+  <!-- Overlay para mobile -->
+  <div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
+  <!-- =====================================================================
+       MAIN WRAPPER
+       ===================================================================== -->
+  <div class="main-wrapper">
+
+    <!-- Topbar -->
+    <header class="topbar" role="banner">
+      <button class="menu-toggle btn btn--icon" id="menuToggle" aria-label="Abrir menú" aria-expanded="false">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round">
+          <line x1="3" y1="6"  x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+
+      <div class="topbar-title" id="topbarTitle">Dashboard</div>
+
+      <div class="topbar-actions" id="topbarActions"></div>
+    </header>
+
+    <!-- Contenido principal — las vistas se renderizan aquí -->
+    <main class="main-content" id="mainContent" role="main">
+      <!-- Router inyecta el contenido aquí -->
+    </main>
+
+  </div><!-- /main-wrapper -->
+
+</div><!-- /app-layout -->
+
+<!-- Scripts -->
+<script type="module" src="js/app.js"></script>
+
+</body>
+</html>

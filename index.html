@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AcadVet USAM — Sistema de Gestión Académica Veterinaria">
+  <title>AcadVet USAM</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/views.css">
+</head>
+
+<body class="login-page">
+
+  <!-- Blobs decorativos de fondo -->
+  <div class="bg-blob bg-blob--purple" aria-hidden="true"></div>
+  <div class="bg-blob bg-blob--cyan"   aria-hidden="true"></div>
+  <div class="bg-blob bg-blob--coral"  aria-hidden="true"></div>
+
+  <!-- Card de login -->
+  <main class="login-card" role="main">
+
+    <!-- Branding -->
+    <div class="login-brand">
+      <div class="login-logo" aria-hidden="true">🐾</div>
+
+      <div>
+        <h1 class="login-title">
+          Acad<span class="title-highlight">Vet</span>
+          <span class="title-highlight">USAM</span>
+        </h1>
+        <p class="login-subtitle">
+          Facultad de Medicina Veterinaria
+        </p>
+      </div>
+    </div>
+
+    <!-- Formulario PIN -->
+    <section class="login-form" aria-label="Formulario de acceso">
+
+      <p class="pin-label" id="pinInstructions">
+        Ingresá tu PIN de acceso
+      </p>
+
+      <!-- Dots visuales del PIN -->
+      <div
+        class="pin-dots"
+        id="pinDots"
+        role="group"
+        aria-labelledby="pinInstructions"
+        aria-describedby="pinError"
+      >
+        <span class="pin-dot" aria-hidden="true"></span>
+        <span class="pin-dot" aria-hidden="true"></span>
+        <span class="pin-dot" aria-hidden="true"></span>
+        <span class="pin-dot" aria-hidden="true"></span>
+        <span class="pin-dot" aria-hidden="true"></span>
+        <span class="pin-dot" aria-hidden="true"></span>
+      </div>
+
+      <!-- Input real (invisible, captura el teclado) -->
+      <input
+        type="password"
+        id="pinInput"
+        class="pin-input-real"
+        inputmode="numeric"
+        pattern="[0-9]*"
+        maxlength="6"
+        autocomplete="off"
+        aria-label="PIN de acceso"
+        aria-describedby="pinError"
+      >
+
+      <!-- Mensaje de error -->
+      <p class="pin-error" id="pinError" role="alert" aria-live="assertive"></p>
+
+      <!-- Botón ingresar -->
+      <button
+        class="btn btn--primary btn--full login-btn"
+        id="btnLogin"
+        disabled
+        type="button"
+      >
+        <span class="btn-text">Ingresar</span>
+        <span aria-hidden="true">→</span>
+      </button>
+
+    </section>
+
+    <!-- Footer -->
+    <p class="login-footer">
+      Prof. Óscar González &nbsp;·&nbsp; USAM
+    </p>
+
+  </main>
+
+  <!-- Scripts (type="module" para ES imports) -->
+  <script type="module" src="js/auth.js"></script>
+
+</body>
+</html>
