@@ -35,7 +35,7 @@ init();
 
 async function init() {
   show('stLoading');
-  if (!sessionId) return showError('URL inválida. Pedile al profesor un nuevo QR.');
+  if (!sessionId) return showError('URL inválida. Pedile al docente un nuevo QR.');
 
   try {
     const snap = await get(ref(db, `qr_sessions/${sessionId}`));
@@ -196,7 +196,7 @@ async function handleStep1() {
     // Recargar sesión para verificar token vigente
     const snap = await get(ref(db, `qr_sessions/${sessionId}`));
     if (!snap.exists() || !snap.val().active) {
-      return globalErr('La sesión ya no está activa. El profesor la ha finalizado.');
+      return globalErr('La sesión ya no está activa. El docente la ha finalizado.');
     }
     const currentToken = (snap.val().token ?? '').toUpperCase();
     if (token !== currentToken) {
@@ -476,7 +476,7 @@ function showSuccess(nombre, carnet, matched, estado) {
     ? (isTardio
         ? 'Tu asistencia fue registrada como tardío y aplicada a tu expediente.'
         : 'Tu asistencia fue registrada y aplicada a tu expediente.')
-    : 'Tu asistencia fue registrada. El profesor verificará tu expediente manualmente.';
+    : 'Tu asistencia fue registrada. El docente verificará tu expediente manualmente.';
 
   document.getElementById('successCard').innerHTML = `
     <div style="display:grid;gap:var(--space-2)">

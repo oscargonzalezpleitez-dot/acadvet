@@ -1098,7 +1098,7 @@
 }
 
 /* =============================================================================
-   SESIÓN QR — Overlay del profesor (T20)
+   SESIÓN QR — Overlay del docente (T20)
    ============================================================================= */
 
 .qr-overlay {
@@ -1453,7 +1453,7 @@
    INICIO / FIN DE CLASE — estilos compartidos
    ============================================================================= */
 
-/* ── Selector en el overlay del profesor ─────────────────────────── */
+/* ── Selector en el overlay del docente ─────────────────────────── */
 .qr-checktype-btns {
   display: flex;
   gap: var(--space-2);
