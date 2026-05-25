@@ -8,7 +8,8 @@ import { renderDashboard }          from './views/dashboard.js';
 import { renderMaterias }           from './views/materias.js';
 import { renderAlumnos }            from './views/alumnos.js';
 import { renderExpediente }         from './views/expediente.js';
-import { getMaterias, getAlumnos, alumnosByMateria } from './db.js';
+import { renderSolicitudes }        from './views/solicitudes.js';
+import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
 
 // --- Guard de sesión ---
 if (sessionStorage.getItem('acadvet_auth') !== 'true') {
@@ -129,6 +130,31 @@ on('/alumno/:id', ({ params, query }) => {
   const materiaId = query.materia ?? '';
   renderExpediente(mainContent, params.id, materiaId);
 });
+
+on('/solicitudes', () => {
+  renderSolicitudes(mainContent);
+});
+
+// ---------------------------------------------------------------------------
+// Badge de solicitudes pendientes
+// ---------------------------------------------------------------------------
+
+async function refreshSolicitudesBadge() {
+  try {
+    const todas = await getSolicitudes();
+    const count = todas.filter(s => s.estado === 'pendiente').length;
+    const badge = document.getElementById('solicitudesBadge');
+    if (!badge) return;
+    if (count > 0) {
+      badge.textContent = count > 9 ? '9+' : count;
+      badge.classList.remove('hidden');
+    } else {
+      badge.classList.add('hidden');
+    }
+  } catch (_) {}
+}
+
+refreshSolicitudesBadge();
 
 // ---------------------------------------------------------------------------
 // Init

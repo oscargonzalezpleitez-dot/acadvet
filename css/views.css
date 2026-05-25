@@ -1532,3 +1532,61 @@
 .asist-combined-badge { font-size: .68rem; padding: 2px 8px; }
 .asist-combined--full    { background: rgba(0,184,148,.12) !important; color: #00B894 !important; }
 .asist-combined--partial { background: rgba(253,203,110,.12) !important; color: #9A7D0A !important; }
+
+/* ============================================================
+   SOLICITUDES DE INSCRIPCIÓN
+   ============================================================ */
+
+.sol-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: var(--space-4);
+}
+
+.sol-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  transition: box-shadow var(--transition-fast);
+}
+.sol-card:hover { box-shadow: 0 4px 16px rgba(108,99,255,0.10); }
+
+.sol-card-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.sol-avatar {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.sol-avatar--initials {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 1rem;
+  color: #fff;
+}
+.sol-avatar--photo { object-fit: cover; }
+
+.sol-info { flex: 1; min-width: 0; }
+.sol-nombre { font-weight: 600; font-size: var(--text-sm); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sol-carnet { color: var(--color-text-muted); font-size: var(--text-xs); }
+
+.sol-details { display: flex; flex-direction: column; gap: 4px; }
+.sol-detail  { display: flex; align-items: center; gap: var(--space-2); font-size: var(--text-xs); color: var(--color-text-secondary); }
+
+.sol-materias { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+
+.sol-actions { display: flex; gap: var(--space-2); margin-top: var(--space-1); }
+.sol-actions .btn { flex: 1; justify-content: center; }

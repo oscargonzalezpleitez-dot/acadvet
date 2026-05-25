@@ -84,11 +84,14 @@ export function alumnosByMateria(todosAlumnos, materiaId) {
   return todosAlumnos.filter(a => a.inscripciones?.[materiaId] !== undefined);
 }
 
-export async function createAlumno({ nombre, carnet }) {
+export async function createAlumno({ nombre, carnet, email = null, telefono = null, fotoUrl = null }) {
   const newRef = push(ref(db, 'alumnos'));
   await set(newRef, {
     nombre,
     carnet,
+    email,
+    telefono,
+    fotoUrl,
     creado_en: Date.now(),
   });
   return newRef.key;
@@ -308,6 +311,97 @@ export async function addTarea(alumnoId, materiaId, { nombre, archivoNombre, url
   const newRef = push(ref(db, `${inscRef(alumnoId, materiaId)}/tareas`));
   await set(newRef, { nombre, archivoNombre, url, storagePath, comentario, fecha, subidoEn: Date.now() });
   return newRef.key;
+}
+
+// ---------------------------------------------------------------------------
+// SOLICITUDES DE AUTO-INSCRIPCIÓN
+// ---------------------------------------------------------------------------
+
+export async function createSolicitud({ nombre, carnet, email, telefono, fotoUrl, storagePath, materias, fecha }) {
+  // Evitar duplicados: buscar solicitud pendiente o alumno con mismo carné
+  const [solSnap, alSnap] = await Promise.all([
+    get(ref(db, 'solicitudes_registro')),
+    get(ref(db, 'alumnos')),
+  ]);
+
+  const carnetNorm = (carnet ?? '').toLowerCase().trim();
+
+  if (solSnap.exists()) {
+    const dup = Object.values(solSnap.val()).find(s =>
+      (s.carnet ?? '').toLowerCase().trim() === carnetNorm && s.estado === 'pendiente'
+    );
+    if (dup) throw new Error('DUPLICADO_PENDIENTE');
+  }
+
+  if (alSnap.exists()) {
+    const exists = Object.values(alSnap.val()).find(a =>
+      (a.carnet ?? '').toLowerCase().trim() === carnetNorm
+    );
+    if (exists) throw new Error('YA_REGISTRADO');
+  }
+
+  const newRef = push(ref(db, 'solicitudes_registro'));
+  await set(newRef, {
+    nombre,
+    carnet,
+    email:       email       || null,
+    telefono:    telefono    || null,
+    fotoUrl:     fotoUrl     || null,
+    storagePath: storagePath || null,
+    materias,
+    estado:      'pendiente',
+    solicitadoEn: Date.now(),
+    fecha,
+  });
+  return newRef.key;
+}
+
+export async function getSolicitudes() {
+  const s = await get(ref(db, 'solicitudes_registro'));
+  return snapToArray(s);
+}
+
+export async function aprobarSolicitud(solicitudId) {
+  const s = await get(ref(db, `solicitudes_registro/${solicitudId}`));
+  if (!s.exists()) throw new Error('Solicitud no encontrada');
+  const sol = s.val();
+
+  const alumnoRef = push(ref(db, 'alumnos'));
+  await set(alumnoRef, {
+    nombre:    sol.nombre,
+    carnet:    sol.carnet,
+    email:     sol.email     || null,
+    telefono:  sol.telefono  || null,
+    fotoUrl:   sol.fotoUrl   || null,
+    creado_en: Date.now(),
+  });
+  const alumnoId = alumnoRef.key;
+
+  const materias = sol.materias || {};
+  await Promise.all(
+    Object.keys(materias).map(materiaId =>
+      set(ref(db, `alumnos/${alumnoId}/inscripciones/${materiaId}`), {
+        inscrito_en: Date.now(),
+        parciales: { parcial_1: null, parcial_2: null, parcial_3: null },
+        observaciones: '',
+      })
+    )
+  );
+
+  await update(ref(db, `solicitudes_registro/${solicitudId}`), {
+    estado: 'aprobado',
+    alumnoId,
+    procesadoEn: Date.now(),
+  });
+
+  return alumnoId;
+}
+
+export async function rechazarSolicitud(solicitudId) {
+  await update(ref(db, `solicitudes_registro/${solicitudId}`), {
+    estado:      'rechazado',
+    procesadoEn: Date.now(),
+  });
 }
 
 export async function deleteTarea(alumnoId, materiaId, tareaId, storagePath = null) {

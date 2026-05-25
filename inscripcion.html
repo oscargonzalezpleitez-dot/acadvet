@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AcadVet USAM — Portal de inscripción para alumnos">
+  <title>Inscripción — AcadVet USAM</title>
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/main.css">
+  <link rel="stylesheet" href="css/components.css">
+  <link rel="stylesheet" href="css/views.css">
+
+  <style>
+    /* -----------------------------------------------------------------------
+       Inscripción portal — estilos locales
+       ----------------------------------------------------------------------- */
+    .inscripcion-page {
+      background: linear-gradient(145deg, #EEF0FF 0%, #E8E4FF 40%, #DCF9F9 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: flex-start;
+      justify-content: center;
+      padding: var(--space-8) var(--space-5);
+      position: relative;
+      overflow-x: hidden;
+    }
+
+    .bg-blob { position:absolute; border-radius:50%; filter:blur(90px); opacity:0.4; pointer-events:none; z-index:0; }
+    .bg-blob--purple { width:500px; height:500px; background:var(--color-primary-light); top:-160px; right:-100px; }
+    .bg-blob--cyan   { width:420px; height:420px; background:var(--color-accent-light);  bottom:-120px; left:-100px; }
+
+    .inscripcion-card {
+      position: relative;
+      z-index: 1;
+      background: var(--color-surface);
+      border-radius: var(--radius-xl);
+      box-shadow: 0 8px 40px rgba(0,0,0,.10);
+      padding: var(--space-8) var(--space-8);
+      width: 100%;
+      max-width: 560px;
+    }
+
+    @media (max-width: 600px) {
+      .inscripcion-card { padding: var(--space-6) var(--space-5); }
+      .inscripcion-page  { padding: var(--space-5) var(--space-4); }
+    }
+
+    .inscripcion-brand {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-6);
+    }
+    .inscripcion-brand-logo { font-size: 2rem; line-height: 1; }
+    .inscripcion-brand-name { font-size: var(--text-xl); font-weight: 700; color: var(--color-text); }
+    .inscripcion-brand-tag  { font-size: var(--text-xs); color: var(--color-text-muted); font-weight: 500; letter-spacing: .04em; }
+
+    .inscripcion-title {
+      font-size: var(--text-2xl);
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: var(--space-1);
+    }
+    .inscripcion-subtitle {
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-7);
+    }
+
+    /* Section headers inside form */
+    .form-section-title {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--color-primary);
+      margin: var(--space-6) 0 var(--space-3);
+    }
+    .form-section-title:first-of-type { margin-top: 0; }
+
+    /* Photo upload */
+    .foto-upload-area {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-4);
+      border: 2px dashed var(--color-border);
+      border-radius: var(--radius-lg);
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+    }
+    .foto-upload-area:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+
+    .foto-preview-wrap { flex-shrink: 0; }
+    #fotoPreview {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid var(--color-border);
+    }
+    #fotoPreview.hidden { display: none; }
+
+    .foto-placeholder {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--color-primary-light);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+    }
+
+    .foto-info { flex: 1; min-width: 0; }
+    .foto-info label { cursor: pointer; }
+    .foto-info-title { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); display: block; margin-bottom: 2px; }
+    .foto-info-sub   { font-size: var(--text-xs); color: var(--color-text-muted); display: block; margin-bottom: var(--space-2); }
+    #fotoNombre      { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    /* Materias checklist */
+    .materias-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      max-height: 260px;
+      overflow-y: auto;
+      padding-right: var(--space-1);
+    }
+
+    .materia-check {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-3) var(--space-4);
+      border: 1.5px solid var(--color-border);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      user-select: none;
+    }
+    .materia-check:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
+    .materia-check input[type="checkbox"] {
+      width: 16px; height: 16px;
+      accent-color: var(--color-primary);
+      flex-shrink: 0;
+    }
+    .materia-check-label { display: flex; flex-direction: column; gap: 2px; }
+    .materia-check-nombre { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
+    .materia-check-ciclo  { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    /* Progress bar */
+    .progress-wrap {
+      margin-top: var(--space-3);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-1);
+    }
+    .progress-wrap.hidden { display: none; }
+    .progress-bar-track {
+      width: 100%;
+      height: 6px;
+      background: var(--color-border);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: var(--color-primary);
+      border-radius: 99px;
+      width: 0%;
+      transition: width .2s;
+    }
+    #progressText { font-size: var(--text-xs); color: var(--color-text-muted); }
+
+    /* Success state */
+    .step-ok {
+      text-align: center;
+      padding: var(--space-8) 0;
+    }
+    .step-ok.hidden { display: none; }
+    .step-ok-icon { font-size: 3.5rem; margin-bottom: var(--space-4); }
+    .step-ok-title { font-size: var(--text-xl); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-2); }
+    .step-ok-name  { color: var(--color-primary); }
+    .step-ok-text  { font-size: var(--text-sm); color: var(--color-text-muted); max-width: 340px; margin: 0 auto; }
+
+    /* Error messages */
+    .field-error {
+      font-size: var(--text-xs);
+      color: var(--color-danger);
+      margin-top: var(--space-1);
+      display: block;
+    }
+    .field-error.hidden { display: none; }
+
+    .err-global {
+      padding: var(--space-3) var(--space-4);
+      background: #FEF2F2;
+      border: 1px solid #FCA5A5;
+      border-radius: var(--radius-md);
+      font-size: var(--text-sm);
+      color: var(--color-danger);
+      margin-top: var(--space-4);
+    }
+    .err-global.hidden { display: none; }
+
+    /* Submit button full-width override */
+    #btnRegistrarse { width: 100%; margin-top: var(--space-5); }
+  </style>
+</head>
+
+<body class="inscripcion-page">
+
+  <div class="bg-blob bg-blob--purple" aria-hidden="true"></div>
+  <div class="bg-blob bg-blob--cyan"   aria-hidden="true"></div>
+
+  <div class="inscripcion-card">
+
+    <!-- Brand -->
+    <div class="inscripcion-brand">
+      <span class="inscripcion-brand-logo" aria-hidden="true">🐾</span>
+      <div>
+        <div class="inscripcion-brand-name">AcadVet</div>
+        <div class="inscripcion-brand-tag">USAM · Facultad de Medicina Veterinaria</div>
+      </div>
+    </div>
+
+    <!-- Formulario principal -->
+    <div id="formStep">
+
+      <h1 class="inscripcion-title">Solicitud de inscripción</h1>
+      <p class="inscripcion-subtitle">
+        Completá tus datos y seleccioná las materias. El docente revisará tu solicitud y te confirmará el acceso.
+      </p>
+
+      <!-- ── Datos personales ── -->
+      <p class="form-section-title">Datos personales</p>
+
+      <div class="form-group">
+        <label class="form-label" for="fNombre">Nombre completo <span aria-hidden="true" style="color:var(--color-danger)">*</span></label>
+        <input class="form-input" type="text" id="fNombre" name="nombre" placeholder="Ej. María López" autocomplete="name" maxlength="120">
+        <span class="field-error hidden" id="errNombre" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="fCarnet">Carné / Código de alumno <span aria-hidden="true" style="color:var(--color-danger)">*</span></label>
+        <input class="form-input" type="text" id="fCarnet" name="carnet" placeholder="Ej. 2023-0001" autocomplete="off" maxlength="30">
+        <span class="field-error hidden" id="errCarnet" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="fEmail">Correo electrónico <span aria-hidden="true" style="color:var(--color-danger)">*</span></label>
+        <input class="form-input" type="email" id="fEmail" name="email" placeholder="correo@ejemplo.com" autocomplete="email" maxlength="120">
+        <span class="field-error hidden" id="errEmail" role="alert"></span>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="fTelefono">Teléfono / WhatsApp <span class="text-muted text-xs">(opcional)</span></label>
+        <input class="form-input" type="tel" id="fTelefono" name="telefono" placeholder="Ej. 7800-0000" autocomplete="tel" maxlength="30">
+        <span class="field-error hidden" id="errTelefono" role="alert"></span>
+      </div>
+
+      <!-- ── Foto de perfil ── -->
+      <p class="form-section-title">Foto de perfil <span class="text-muted text-xs">(opcional)</span></p>
+
+      <div class="foto-upload-area" onclick="document.getElementById('fFoto').click()">
+        <div class="foto-preview-wrap">
+          <img src="" alt="Vista previa" id="fotoPreview" class="hidden">
+          <div class="foto-placeholder" id="fotoPlaceholder" aria-hidden="true">📷</div>
+        </div>
+        <div class="foto-info">
+          <label for="fFoto">
+            <span class="foto-info-title">Subir foto</span>
+            <span class="foto-info-sub">JPG, PNG o WEBP · máx. 5 MB</span>
+          </label>
+          <span id="fotoNombre">Ninguna foto seleccionada</span>
+        </div>
+        <input type="file" id="fFoto" name="foto" accept="image/*" class="hidden" aria-label="Foto de perfil">
+      </div>
+      <span class="field-error hidden" id="errFoto" role="alert"></span>
+
+      <!-- ── Materias ── -->
+      <p class="form-section-title">Materias a inscribir <span aria-hidden="true" style="color:var(--color-danger)">*</span></p>
+
+      <div class="materias-list" id="materiasList" role="group" aria-label="Selección de materias">
+        <!-- Se cargan dinámicamente -->
+        <div class="loading-state" style="padding:var(--space-6)">
+          <div class="loading-spinner" style="width:24px;height:24px;border-width:3px"></div>
+          <p style="font-size:var(--text-sm)">Cargando materias…</p>
+        </div>
+      </div>
+      <span class="field-error hidden" id="errMaterias" role="alert"></span>
+
+      <!-- ── Progreso de subida ── -->
+      <div class="progress-wrap hidden" id="progressWrap" aria-live="polite">
+        <div class="progress-bar-track">
+          <div class="progress-bar-fill" id="progressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
+        </div>
+        <span id="progressText">Subiendo foto…</span>
+      </div>
+
+      <!-- ── Error global ── -->
+      <div class="err-global hidden" id="errGlobal" role="alert"></div>
+
+      <!-- ── Botón enviar ── -->
+      <button class="btn btn--primary" id="btnRegistrarse" type="button">
+        Enviar solicitud
+      </button>
+
+    </div><!-- /formStep -->
+
+    <!-- Estado de éxito -->
+    <div class="step-ok hidden" id="stepOk" role="status" aria-live="polite">
+      <div class="step-ok-icon" aria-hidden="true">🎉</div>
+      <div class="step-ok-title">
+        ¡Solicitud enviada, <span class="step-ok-name" id="okNombre"></span>!
+      </div>
+      <p class="step-ok-text" id="okDetalle">
+        El docente revisará tu registro y recibirás confirmación.
+      </p>
+    </div>
+
+  </div><!-- /inscripcion-card -->
+
+  <script type="module" src="js/inscripcion-portal.js"></script>
+</body>
+</html>

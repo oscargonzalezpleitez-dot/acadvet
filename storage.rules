@@ -1,8 +1,10 @@
 rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
-    // Alumnos pueden subir y leer archivos de tareas
     match /tareas/{allPaths=**} {
+      allow read, write: if true;
+    }
+    match /perfiles/{allPaths=**} {
       allow read, write: if true;
     }
   }
