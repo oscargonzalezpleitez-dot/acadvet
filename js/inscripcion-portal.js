@@ -154,20 +154,27 @@ async function enviarSolicitud() {
       storagePath    = `perfiles/solicitudes/${ts}_${safeName}`;
       const fileRef  = sRef(storage, storagePath);
 
-      const uploadTask = uploadBytesResumable(fileRef, _fotoFile, { contentType: _fotoFile.type });
+      try {
+        const uploadTask = uploadBytesResumable(fileRef, _fotoFile, { contentType: _fotoFile.type });
 
-      await new Promise((resolve, reject) => {
-        uploadTask.on('state_changed',
-          snap => {
-            const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-            updateProgress(pct);
-          },
-          reject,
-          resolve,
-        );
-      });
+        await new Promise((resolve, reject) => {
+          uploadTask.on('state_changed',
+            snap => {
+              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+              updateProgress(pct);
+            },
+            reject,
+            resolve,
+          );
+        });
 
-      fotoUrl = await getDownloadURL(fileRef);
+        fotoUrl = await getDownloadURL(fileRef);
+      } catch (uploadErr) {
+        console.error('[Inscripción] Error subiendo foto:', uploadErr);
+        showErr(document.getElementById('errFoto'), 'No se pudo subir la foto. Podés continuar sin foto o intentar de nuevo.');
+        setLoading(false);
+        return;
+      }
     }
 
     // Construir objeto de materias { id: nombre }

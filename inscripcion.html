@@ -269,20 +269,18 @@
       <!-- ── Foto de perfil ── -->
       <p class="form-section-title">Foto de perfil <span class="text-muted text-xs">(opcional)</span></p>
 
-      <div class="foto-upload-area" onclick="document.getElementById('fFoto').click()">
+      <label class="foto-upload-area" for="fFoto">
         <div class="foto-preview-wrap">
           <img src="" alt="Vista previa" id="fotoPreview" class="hidden">
           <div class="foto-placeholder" id="fotoPlaceholder" aria-hidden="true">📷</div>
         </div>
         <div class="foto-info">
-          <label for="fFoto">
-            <span class="foto-info-title">Subir foto</span>
-            <span class="foto-info-sub">JPG, PNG o WEBP · máx. 5 MB</span>
-          </label>
+          <span class="foto-info-title">Subir foto</span>
+          <span class="foto-info-sub">JPG, PNG o WEBP · máx. 5 MB</span>
           <span id="fotoNombre">Ninguna foto seleccionada</span>
         </div>
-        <input type="file" id="fFoto" name="foto" accept="image/*" class="hidden" aria-label="Foto de perfil">
-      </div>
+      </label>
+      <input type="file" id="fFoto" name="foto" accept="image/*" style="display:none" aria-label="Foto de perfil">
       <span class="field-error hidden" id="errFoto" role="alert"></span>
 
       <!-- ── Materias ── -->
