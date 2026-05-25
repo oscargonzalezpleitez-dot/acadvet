@@ -1,1 +1,16 @@
+# Claude Code
 .claude/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Logs
+*.log

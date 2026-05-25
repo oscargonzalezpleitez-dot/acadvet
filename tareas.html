@@ -1,0 +1,486 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Entrega de Tareas — AcadVet USAM</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:   #6C63FF;
+      --accent:    #00D2D3;
+      --danger:    #FF6B6B;
+      --success:   #00B894;
+      --warning:   #FDCB6E;
+      --bg:        #0B0D1A;
+      --surface:   #12152A;
+      --surface2:  #1A1E35;
+      --border:    rgba(108, 99, 255, 0.2);
+      --text:      #F0F2FF;
+      --muted:     #8888AA;
+      --font-d:    'Poppins', sans-serif;
+      --font-b:    'Inter', sans-serif;
+    }
+
+    body {
+      font-family: var(--font-b);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 16px 64px;
+    }
+
+    /* Background blobs */
+    .blob {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.12;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .blob--purple { width: 420px; height: 420px; background: #6C63FF; top: -80px; right: -80px; }
+    .blob--cyan   { width: 320px; height: 320px; background: #00D2D3; bottom: -60px; left: -60px; }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 32px;
+      position: relative;
+      z-index: 1;
+    }
+    .header-logo {
+      font-family: var(--font-d);
+      font-weight: 800;
+      font-size: 1.5rem;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 4px;
+    }
+    .header-sub {
+      color: var(--muted);
+      font-size: 0.875rem;
+    }
+
+    /* Card */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 520px;
+      position: relative;
+      z-index: 1;
+    }
+
+    .card-title {
+      font-family: var(--font-d);
+      font-weight: 700;
+      font-size: 1.25rem;
+      margin-bottom: 24px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .card-title svg { color: var(--primary); }
+
+    /* Form */
+    .form-group { margin-bottom: 18px; }
+    .form-label {
+      display: block;
+      font-size: 0.8125rem;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--font-b);
+      font-size: 0.9375rem;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-input:focus { border-color: var(--primary); }
+    .form-input.input-error { border-color: var(--danger); }
+    .form-input::placeholder { color: var(--muted); }
+
+    textarea.form-input { resize: vertical; min-height: 80px; }
+
+    select.form-input { cursor: pointer; }
+    select.form-input option { background: #1A1E35; color: var(--text); }
+
+    .form-error {
+      color: var(--danger);
+      font-size: 0.8rem;
+      margin-top: 5px;
+    }
+    .hidden { display: none !important; }
+
+    /* Row: input + button */
+    .input-row {
+      display: flex;
+      gap: 10px;
+    }
+    .input-row .form-input { flex: 1; }
+
+    /* Botones */
+    .btn {
+      font-family: var(--font-b);
+      font-weight: 600;
+      font-size: 0.9rem;
+      border-radius: 10px;
+      padding: 11px 20px;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.15s, transform 0.1s;
+      white-space: nowrap;
+    }
+    .btn:disabled { opacity: 0.55; cursor: not-allowed; }
+    .btn--primary {
+      background: linear-gradient(135deg, var(--primary), #5A52E0);
+      color: #fff;
+      width: 100%;
+      padding: 13px;
+      font-size: 1rem;
+      margin-top: 8px;
+    }
+    .btn--secondary {
+      background: var(--surface2);
+      color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn:not(:disabled):hover { opacity: 0.88; }
+    .btn:not(:disabled):active { transform: scale(0.98); }
+
+    /* File input custom */
+    .file-label {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface2);
+      border: 1.5px dashed var(--border);
+      border-radius: 10px;
+      padding: 12px 14px;
+      cursor: pointer;
+      transition: border-color 0.15s;
+    }
+    .file-label:hover { border-color: var(--primary); }
+    .file-label svg { color: var(--muted); flex-shrink: 0; }
+    .file-label input[type="file"] { display: none; }
+    .file-name {
+      font-size: 0.875rem;
+      color: var(--muted);
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .file-name.selected { color: var(--accent); font-weight: 600; }
+
+    /* Progreso */
+    .progress-wrap {
+      margin-top: 14px;
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 8px;
+      overflow: hidden;
+      position: relative;
+    }
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 99px;
+      width: 0%;
+      transition: width 0.3s;
+    }
+    .progress-text {
+      text-align: center;
+      font-size: 0.8rem;
+      color: var(--muted);
+      margin-top: 6px;
+    }
+
+    /* Alumno badge */
+    .alumno-badge {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: rgba(108, 99, 255, 0.1);
+      border: 1px solid rgba(108, 99, 255, 0.25);
+      border-radius: 10px;
+      padding: 12px 16px;
+      margin-bottom: 20px;
+    }
+    .alumno-avatar {
+      width: 38px;
+      height: 38px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-d);
+      font-weight: 700;
+      font-size: 0.9rem;
+      color: #fff;
+      flex-shrink: 0;
+    }
+    .alumno-info-nombre {
+      font-weight: 600;
+      font-size: 0.9375rem;
+    }
+    .alumno-info-sub {
+      color: var(--muted);
+      font-size: 0.8rem;
+    }
+
+    /* Hint materia preseleccionada */
+    .materia-hint {
+      background: rgba(0, 210, 211, 0.08);
+      border: 1px solid rgba(0, 210, 211, 0.25);
+      border-radius: 8px;
+      padding: 8px 12px;
+      font-size: 0.8125rem;
+      color: var(--accent);
+      margin-bottom: 16px;
+      text-align: center;
+    }
+
+    /* Success */
+    .success-card {
+      text-align: center;
+      padding: 12px 0;
+    }
+    .success-icon {
+      font-size: 3rem;
+      margin-bottom: 12px;
+    }
+    .success-title {
+      font-family: var(--font-d);
+      font-weight: 700;
+      font-size: 1.3rem;
+      color: var(--success);
+      margin-bottom: 8px;
+    }
+    .success-text {
+      color: var(--muted);
+      font-size: 0.875rem;
+      line-height: 1.5;
+    }
+    .success-btn {
+      display: inline-block;
+      margin-top: 20px;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 22px;
+      color: var(--text);
+      font-weight: 600;
+      cursor: pointer;
+      font-family: var(--font-b);
+      font-size: 0.9rem;
+    }
+    .success-btn:hover { border-color: var(--primary); }
+
+    /* Divider */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 20px 0;
+    }
+
+    /* Note */
+    .note {
+      font-size: 0.78rem;
+      color: var(--muted);
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob--purple" aria-hidden="true"></div>
+  <div class="blob blob--cyan"   aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-logo">AcadVet USAM</div>
+    <div class="header-sub">Portal de Entrega de Tareas — Facultad de Medicina Veterinaria</div>
+  </header>
+
+  <!-- Card -->
+  <div class="card">
+
+    <!-- Paso 1: Buscar por carné -->
+    <div id="step1">
+      <h2 class="card-title">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        Identifícate
+      </h2>
+
+      <!-- Hint si hay materia preseleccionada en URL -->
+      <div class="materia-hint hidden" id="materiaHint"></div>
+
+      <div class="form-group">
+        <label class="form-label" for="fCarnet">Número de carné</label>
+        <div class="input-row">
+          <input
+            class="form-input"
+            id="fCarnet"
+            type="text"
+            placeholder="Ej. 2023001"
+            maxlength="30"
+            autocomplete="off"
+            autocorrect="off"
+          >
+          <button class="btn btn--secondary" id="btnBuscar">Buscar</button>
+        </div>
+        <div class="form-error hidden" id="errCarnet"></div>
+      </div>
+    </div>
+
+    <!-- Paso 2: Formulario de entrega -->
+    <div id="step2" class="hidden">
+
+      <!-- Alumno identificado -->
+      <div class="alumno-badge">
+        <div class="alumno-avatar" id="alumnoAvatar">?</div>
+        <div>
+          <div class="alumno-info-nombre" id="alumnoNombre">—</div>
+          <div class="alumno-info-sub">Alumno identificado</div>
+        </div>
+      </div>
+
+      <hr class="divider">
+
+      <h2 class="card-title">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+        Entregá tu tarea
+      </h2>
+
+      <!-- Materia -->
+      <div class="form-group">
+        <label class="form-label" for="fMateria">Materia</label>
+        <select class="form-input" id="fMateria">
+          <option value="">— Seleccioná la materia —</option>
+        </select>
+        <div class="form-error hidden" id="errMateria"></div>
+      </div>
+
+      <!-- Nombre de la tarea -->
+      <div class="form-group">
+        <label class="form-label" for="fNombreTarea">Nombre de la tarea *</label>
+        <input
+          class="form-input"
+          id="fNombreTarea"
+          type="text"
+          placeholder="Ej. Tarea 1 — Anatomía comparada"
+          maxlength="150"
+          autocomplete="off"
+        >
+        <div class="form-error hidden" id="errNombre"></div>
+      </div>
+
+      <!-- Comentario opcional -->
+      <div class="form-group">
+        <label class="form-label" for="fComentario">Comentario <span style="font-weight:400;text-transform:none;letter-spacing:0">(opcional)</span></label>
+        <textarea
+          class="form-input"
+          id="fComentario"
+          placeholder="Cualquier nota para el docente…"
+          maxlength="500"
+          rows="3"
+        ></textarea>
+      </div>
+
+      <!-- Archivo PDF -->
+      <div class="form-group">
+        <label class="form-label">Archivo PDF * <span style="font-weight:400;text-transform:none;letter-spacing:0">(máx. 20 MB)</span></label>
+        <label class="file-label" for="fArchivo">
+          <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+            <polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+          </svg>
+          <span class="file-name" id="archivoNombre">Seleccioná un archivo PDF…</span>
+          <input type="file" id="fArchivo" accept=".pdf,application/pdf">
+        </label>
+        <div class="form-error hidden" id="errArchivo"></div>
+      </div>
+
+      <!-- Progreso de subida -->
+      <div id="progressWrap" class="hidden">
+        <div class="progress-wrap">
+          <div class="progress-bar" id="progressBar"></div>
+        </div>
+        <div class="progress-text" id="progressText">0%</div>
+      </div>
+
+      <button class="btn btn--primary" id="btnEntregar">Entregar tarea</button>
+    </div>
+
+    <!-- Paso 3: Éxito -->
+    <div id="stepOk" class="hidden">
+      <div class="success-card">
+        <div class="success-icon">✅</div>
+        <div class="success-title">¡Tarea entregada!</div>
+        <div class="success-text" id="okDetalle">Tu tarea fue recibida correctamente.</div>
+        <button class="success-btn" onclick="location.reload()">Entregar otra tarea</button>
+      </div>
+    </div>
+
+  </div><!-- /card -->
+
+  <p class="note">
+    ¿Tenés problemas? Contactá a tu docente directamente.
+  </p>
+
+  <script type="module">
+    // El avatar se actualiza cuando el alumno es identificado
+    // (lo hace tareas-portal.js mediante alumnoNombre listener)
+    import('./js/tareas-portal.js').then(m => {
+      // Actualizar avatar cuando se muestre el nombre
+      const observer = new MutationObserver(() => {
+        const nombre = document.getElementById('alumnoNombre')?.textContent ?? '';
+        const parts  = nombre.trim().split(/\s+/);
+        const ini    = parts.length >= 2
+          ? (parts[0][0] + parts[1][0]).toUpperCase()
+          : (parts[0]?.[0] ?? '?').toUpperCase();
+        const av = document.getElementById('alumnoAvatar');
+        if (av) av.textContent = ini;
+
+        // Marcar nombre del archivo seleccionado como resaltado
+        const fn = document.getElementById('archivoNombre');
+        if (fn && fn.textContent !== 'Seleccioná un archivo PDF…' && !fn.textContent.includes('inválido') && !fn.textContent.includes('grande')) {
+          fn.classList.add('selected');
+        }
+      });
+      observer.observe(document.body, { childList: true, subtree: true, characterData: true });
+    });
+  </script>
+
+</body>
+</html>

@@ -5,9 +5,12 @@
 
 import { getDatabase, ref, get, set, push, update, remove, onValue }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+import { getStorage, ref as sRef, deleteObject }
+  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 import { app } from './firebase-config.js';
 
-const db = getDatabase(app);
+const db      = getDatabase(app);
+const storage = getStorage(app);
 
 // ---------------------------------------------------------------------------
 // Helpers internos
@@ -290,4 +293,26 @@ export function listenQRAsistentes(sessionId, callback) {
       Object.entries(snapshot.val()).map(([id, d]) => ({ id, ...d }));
     callback(arr);
   });
+}
+
+// ---------------------------------------------------------------------------
+// TAREAS (PDFs subidos por alumnos)
+// ---------------------------------------------------------------------------
+
+export async function getTareas(alumnoId, materiaId) {
+  const s = await get(ref(db, `${inscRef(alumnoId, materiaId)}/tareas`));
+  return snapToArray(s);
+}
+
+export async function addTarea(alumnoId, materiaId, { nombre, archivoNombre, url, storagePath, comentario = '', fecha }) {
+  const newRef = push(ref(db, `${inscRef(alumnoId, materiaId)}/tareas`));
+  await set(newRef, { nombre, archivoNombre, url, storagePath, comentario, fecha, subidoEn: Date.now() });
+  return newRef.key;
+}
+
+export async function deleteTarea(alumnoId, materiaId, tareaId, storagePath = null) {
+  if (storagePath) {
+    try { await deleteObject(sRef(storage, storagePath)); } catch (_) { /* archivo ya eliminado */ }
+  }
+  await remove(ref(db, `${inscRef(alumnoId, materiaId)}/tareas/${tareaId}`));
 }

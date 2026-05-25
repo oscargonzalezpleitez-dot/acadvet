@@ -10,6 +10,7 @@ import {
   addQuiz, updateQuiz, deleteQuiz,
   addExposicion, updateExposicion, deleteExposicion,
   updateParciales, updateObservaciones,
+  getTareas, deleteTarea,
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
@@ -32,6 +33,7 @@ const TABS = [
   { id: 'parciales',    label: 'Parciales',        icon: '📊' },
   { id: 'exposiciones', label: 'Exposiciones',     icon: '🎤' },
   { id: 'observaciones',label: 'Observaciones',    icon: '📌' },
+  { id: 'tareas',       label: 'Tareas',           icon: '📋' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -241,6 +243,7 @@ function paintTabContent() {
     case 'parciales':     paintParciales(el);     break;
     case 'exposiciones':  paintExposiciones(el);  break;
     case 'observaciones': paintObservaciones(el); break;
+    case 'tareas':        paintTareas(el);        break;
   }
 }
 
@@ -801,6 +804,144 @@ function confirmDeleteNota(type, item) {
         paintTabContent();
       } catch (err) {
         showToast('Error al eliminar', 'error');
+        console.error(err);
+      }
+    },
+  });
+}
+
+// ---------------------------------------------------------------------------
+// TAB: TAREAS (PDFs entregados por alumnos)
+// ---------------------------------------------------------------------------
+
+async function paintTareas(el) {
+  el.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div><p>Cargando tareas…</p></div>`;
+
+  let tareas = [];
+  try {
+    tareas = await getTareas(_alumnoId, _materiaId);
+  } catch (err) {
+    console.error('[AcadVet] Error cargando tareas:', err);
+    el.innerHTML = emptyTabState('⚠️', 'Error al cargar', 'Verificá tu conexión e intentá de nuevo.');
+    return;
+  }
+
+  tareas.sort((a, b) => (b.subidoEn ?? 0) - (a.subidoEn ?? 0));
+
+  const portalUrl = `${location.origin}${location.pathname.replace('index.html', '')}tareas.html?materia=${_materiaId}`;
+
+  el.innerHTML = `
+    <div class="tab-section">
+      <div class="tab-toolbar">
+        <span class="text-muted text-sm">
+          ${tareas.length} tarea${tareas.length !== 1 ? 's' : ''} entregada${tareas.length !== 1 ? 's' : ''}
+        </span>
+        <button class="btn btn--secondary btn--sm" id="btnCopyTareasLink" title="Copiar enlace para alumnos">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+          </svg>
+          Copiar enlace
+        </button>
+      </div>
+
+      ${tareas.length === 0
+        ? `<div class="empty-state" style="padding:var(--space-10)">
+             <div class="empty-state__icon">📋</div>
+             <h3 class="empty-state__title">Sin tareas entregadas</h3>
+             <p class="empty-state__text">
+               Los alumnos pueden entregar sus tareas en:<br>
+               <code style="font-size:var(--text-xs);word-break:break-all">${escHtml(portalUrl)}</code>
+             </p>
+           </div>`
+        : `<div class="tareas-list">${tareas.map(t => tareaRowHTML(t)).join('')}</div>`
+      }
+    </div>
+  `;
+
+  document.getElementById('btnCopyTareasLink')?.addEventListener('click', async (btn) => {
+    try {
+      await navigator.clipboard.writeText(portalUrl);
+      showToast('Enlace copiado al portapapeles');
+    } catch (_) {
+      showToast('No se pudo copiar — copiá manualmente: ' + portalUrl, 'error');
+    }
+  });
+
+  el.querySelectorAll('[data-tarea-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const { tareaAction: action, tareaId: id } = btn.dataset;
+      const tarea = tareas.find(t => t.id === id);
+      if (!tarea) return;
+      if (action === 'ver')    window.open(tarea.url, '_blank');
+      if (action === 'delete') confirmDeleteTarea(tarea);
+    });
+  });
+}
+
+function tareaRowHTML(t) {
+  const fecha     = t.fecha ? formatFecha(t.fecha) : '—';
+  const subida    = t.subidoEn ? new Date(t.subidoEn).toLocaleString('es-SV', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+  const comentario = t.comentario ? `<span class="text-muted text-xs" style="display:block;margin-top:2px">${escHtml(t.comentario)}</span>` : '';
+
+  return `
+    <div class="nota-row" style="align-items:flex-start;padding:var(--space-3) var(--space-4)">
+      <div style="display:flex;align-items:center;gap:var(--space-2);flex-shrink:0;color:var(--color-danger)">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+          <polyline points="14 2 14 8 20 8"/>
+        </svg>
+      </div>
+      <div class="nota-row__info" style="flex:1;min-width:0">
+        <span class="nota-row__nombre">${escHtml(t.nombre)}</span>
+        <span class="text-muted text-xs" style="display:block">${escHtml(t.archivoNombre)}</span>
+        ${comentario}
+      </div>
+      <div style="text-align:right;flex-shrink:0">
+        <span class="text-muted text-xs" style="display:block">${subida}</span>
+      </div>
+      <div class="nota-row__actions">
+        <button class="btn btn--secondary btn--sm"
+          data-tarea-action="ver" data-tarea-id="${escHtml(t.id)}"
+          title="Ver PDF">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+          Ver
+        </button>
+        <button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
+          data-tarea-action="delete" data-tarea-id="${escHtml(t.id)}"
+          aria-label="Eliminar tarea">
+          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+            <path d="M9 6V4h6v2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+  `;
+}
+
+function confirmDeleteTarea(tarea) {
+  openModal({
+    title: 'Eliminar tarea',
+    size: 'sm',
+    body: `<p class="text-secondary">
+      ¿Eliminar <strong>${escHtml(tarea.nombre)}</strong>?<br>
+      <span class="text-muted text-xs">El archivo PDF también se eliminará del servidor.</span>
+    </p>`,
+    confirmLabel: 'Eliminar',
+    confirmVariant: 'danger',
+    async onConfirm() {
+      try {
+        await deleteTarea(_alumnoId, _materiaId, tarea.id, tarea.storagePath ?? null);
+        closeModal();
+        showToast('Tarea eliminada');
+        const el = document.getElementById('tabContent');
+        if (el) paintTareas(el);
+      } catch (err) {
+        showToast('Error al eliminar la tarea', 'error');
         console.error(err);
       }
     },
