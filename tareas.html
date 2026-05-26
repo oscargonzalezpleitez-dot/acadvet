@@ -419,7 +419,7 @@
 
       <!-- Archivo PDF -->
       <div class="form-group">
-        <label class="form-label">Archivo PDF * <span style="font-weight:400;text-transform:none;letter-spacing:0">(máx. 20 MB)</span></label>
+        <label class="form-label">Archivo PDF * <span style="font-weight:400;text-transform:none;letter-spacing:0">(máx. 200 MB)</span></label>
         <label class="file-label" for="fArchivo">
           <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -433,10 +433,20 @@
 
       <!-- Progreso de subida -->
       <div id="progressWrap" class="hidden">
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-bottom:6px">
+          <span id="progressInfo" style="font-size:0.78rem;color:var(--muted)">Iniciando…</span>
+          <span id="progressPct"  style="font-size:0.85rem;font-weight:700;color:var(--primary)">0%</span>
+        </div>
         <div class="progress-wrap">
           <div class="progress-bar" id="progressBar"></div>
         </div>
-        <div class="progress-text" id="progressText">0%</div>
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-top:8px">
+          <span id="progressText" style="font-size:0.78rem;color:var(--muted)">0 MB / 0 MB</span>
+          <button class="btn btn--secondary" id="btnPauseResume" type="button"
+            style="padding:5px 14px;font-size:0.8rem;margin-top:0">
+            ⏸ Pausar
+          </button>
+        </div>
       </div>
 
       <button class="btn btn--primary" id="btnEntregar">Entregar tarea</button>

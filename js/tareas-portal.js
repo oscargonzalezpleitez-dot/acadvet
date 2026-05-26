@@ -11,14 +11,20 @@ import { app } from './firebase-config.js';
 const db      = getDatabase(app);
 const storage = getStorage(app);
 
-const MAX_SIZE_BYTES = 20 * 1024 * 1024; // 20 MB
+const MAX_MB         = 200;
+const MAX_SIZE_BYTES = MAX_MB * 1024 * 1024;
 
 // ---------------------------------------------------------------------------
 // Estado
 // ---------------------------------------------------------------------------
-let _alumno   = null;  // { id, nombre, carnet, inscripciones }
-let _materias = [];    // [{ id, nombre, ciclo }] de las que el alumno está inscrito
-let _materiaId = null; // pre-seleccionada desde URL ?materia=
+let _alumno    = null;   // { id, nombre, carnet, inscripciones }
+let _materias  = [];     // [{ id, nombre, ciclo }]
+let _materiaId = null;   // pre-seleccionada desde URL ?materia=
+let _uploadTask   = null;
+let _paused       = false;
+let _startTime    = 0;
+let _startBytes   = 0;
+let _latestSnap   = null;
 
 // ---------------------------------------------------------------------------
 // Inicio
@@ -187,13 +193,14 @@ function bindFileInput() {
     }
 
     if (file.size > MAX_SIZE_BYTES) {
-      if (labelEl) labelEl.textContent = 'Archivo muy grande';
-      showError(null, errEl, `El archivo supera el límite de 20 MB (${(file.size / 1024 / 1024).toFixed(1)} MB).`);
+      if (labelEl) { labelEl.textContent = 'Archivo muy grande'; labelEl.classList.remove('selected'); }
+      showError(null, errEl, `El archivo supera el límite de ${MAX_MB} MB (${(file.size / 1048576).toFixed(0)} MB).`);
       e.target.value = '';
       return;
     }
 
-    if (labelEl) labelEl.textContent = file.name;
+    const sizeMB = (file.size / 1048576).toFixed(file.size < 1048576 ? 2 : 1);
+    if (labelEl) labelEl.textContent = `${file.name}  (${sizeMB} MB)`;
   });
 }
 
@@ -242,6 +249,25 @@ async function subirTarea() {
   }
 
   setEntregarLoading(true);
+  _paused     = false;
+  _startTime  = Date.now();
+  _startBytes = 0;
+  _latestSnap = null;
+
+  // Botón pausa/reanudar
+  const pauseBtn = document.getElementById('btnPauseResume');
+  if (pauseBtn) {
+    pauseBtn.onclick = () => {
+      if (!_uploadTask) return;
+      if (_paused) {
+        _startTime  = Date.now();
+        _startBytes = _latestSnap?.bytesTransferred ?? 0;
+        _uploadTask.resume();
+      } else {
+        _uploadTask.pause();
+      }
+    };
+  }
 
   try {
     const fecha       = new Date().toISOString().slice(0, 10);
@@ -249,26 +275,29 @@ async function subirTarea() {
     const safeName    = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
     const storagePath = `tareas/${_alumno.id}/${materiaId}/${timestamp}_${safeName}`;
 
-    // Upload con progreso
-    const fileRef  = sRef(storage, storagePath);
-    const uploadTask = uploadBytesResumable(fileRef, file, { contentType: 'application/pdf' });
+    const fileRef = sRef(storage, storagePath);
+    _uploadTask   = uploadBytesResumable(fileRef, file, { contentType: 'application/pdf' });
 
     await new Promise((resolve, reject) => {
-      uploadTask.on('state_changed',
+      _uploadTask.on('state_changed',
         snap => {
-          const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-          updateProgress(pct);
+          _latestSnap = snap;
+          if (snap.state === 'paused') {
+            _paused = true;
+            if (pauseBtn) pauseBtn.textContent = '▶ Reanudar';
+          } else if (snap.state === 'running') {
+            _paused = false;
+            if (pauseBtn) pauseBtn.textContent = '⏸ Pausar';
+          }
+          updateProgress(snap);
         },
         reject,
         resolve,
       );
     });
 
-    updateProgress(100);
-
     const url = await getDownloadURL(fileRef);
 
-    // Guardar metadatos en RTDB
     const newRef = push(ref(db, `alumnos/${_alumno.id}/inscripciones/${materiaId}/tareas`));
     await set(newRef, {
       nombre,
@@ -286,7 +315,10 @@ async function subirTarea() {
     console.error('[Tareas] Error subiendo tarea:', err);
     setEntregarLoading(false);
     const errArchivo2 = document.getElementById('errArchivo');
-    showError(null, errArchivo2, 'Error al subir el archivo. Verificá tu conexión e intentá de nuevo.');
+    const msg = err?.code === 'storage/retry-limit-exceeded'
+      ? 'La conexión es inestable. Revisá tu internet y volvé a intentarlo.'
+      : 'Error al subir el archivo. Verificá tu conexión e intentá de nuevo.';
+    showError(null, errArchivo2, msg);
   }
 }
 
@@ -302,17 +334,51 @@ function setBuscarLoading(on) {
 }
 
 function setEntregarLoading(on) {
-  const btn  = document.getElementById('btnEntregar');
-  const prog = document.getElementById('progressWrap');
-  if (btn)  { btn.disabled = on; btn.textContent = on ? 'Subiendo…' : 'Entregar tarea'; }
-  if (prog) prog.classList.toggle('hidden', !on);
+  const btn      = document.getElementById('btnEntregar');
+  const prog     = document.getElementById('progressWrap');
+  const pauseBtn = document.getElementById('btnPauseResume');
+  if (btn)      { btn.disabled = on; btn.textContent = on ? 'Subiendo…' : 'Entregar tarea'; }
+  if (prog)     prog.classList.toggle('hidden', !on);
+  if (pauseBtn) pauseBtn.textContent = '⏸ Pausar';
+  if (!on) { _uploadTask = null; _paused = false; }
 }
 
-function updateProgress(pct) {
-  const bar  = document.getElementById('progressBar');
-  const text = document.getElementById('progressText');
-  if (bar)  bar.style.width = `${pct}%`;
-  if (text) text.textContent = `${pct}%`;
+function updateProgress(snap) {
+  const pct   = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
+  const txMB  = (snap.bytesTransferred / 1048576).toFixed(1);
+  const totMB = (snap.totalBytes / 1048576).toFixed(1);
+
+  const bar    = document.getElementById('progressBar');
+  const pctEl  = document.getElementById('progressPct');
+  const txtEl  = document.getElementById('progressText');
+  const infoEl = document.getElementById('progressInfo');
+
+  if (bar)   bar.style.width = `${pct}%`;
+  if (pctEl) pctEl.textContent = `${pct}%`;
+  if (txtEl) txtEl.textContent = `${txMB} MB / ${totMB} MB`;
+
+  if (!infoEl) return;
+  if (_paused) { infoEl.textContent = 'Pausado'; return; }
+
+  const elapsed  = (Date.now() - _startTime) / 1000;
+  const deltaB   = snap.bytesTransferred - _startBytes;
+  const speedBps = elapsed > 1 ? deltaB / elapsed : 0;
+
+  if (speedBps > 10240) {
+    const speedLabel = speedBps >= 1048576
+      ? `${(speedBps / 1048576).toFixed(1)} MB/s`
+      : `${(speedBps / 1024).toFixed(0)} KB/s`;
+    const remSecs = (snap.totalBytes - snap.bytesTransferred) / speedBps;
+    infoEl.textContent = `${speedLabel} · ~${fmtSecs(remSecs)} restante`;
+  } else {
+    infoEl.textContent = 'Subiendo…';
+  }
+}
+
+function fmtSecs(secs) {
+  if (secs >= 3600) return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
+  if (secs >= 60)   return `${Math.round(secs / 60)} min`;
+  return `${Math.round(secs)} seg`;
 }
 
 function showSuccess(nombre, archivoNombre) {
