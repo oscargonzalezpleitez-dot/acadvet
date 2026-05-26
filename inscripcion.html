@@ -117,13 +117,46 @@
     .foto-cam-active, .foto-cam-preview { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
     .foto-cam-active.hidden, .foto-cam-preview.hidden { display: none; }
 
-    #fotoVideo {
+    /* Video + oval overlay */
+    .foto-video-wrap {
+      position: relative;
       width: 100%; max-width: 320px;
+      align-self: center;
+    }
+    #fotoVideo {
+      display: block;
+      width: 100%;
       border-radius: var(--radius-md);
       background: #000;
       aspect-ratio: 1/1;
       object-fit: cover;
     }
+    .foto-face-oval {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      border-radius: var(--radius-md);
+    }
+    .foto-face-oval svg { width: 100%; height: 100%; }
+    .foto-face-oval ellipse {
+      transition: stroke 0.35s, filter 0.35s;
+    }
+    .foto-face-oval--detected ellipse {
+      stroke: #00B894 !important;
+      stroke-dasharray: none !important;
+      filter: drop-shadow(0 0 5px #00B894);
+    }
+
+    /* Hint debajo de la cámara */
+    .foto-cam-live-hint {
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      text-align: center;
+      min-height: 1.5em;
+      transition: color 0.3s;
+    }
+    .foto-cam-live-hint--ok { color: #00B894; font-weight: 600; }
+
     #fotoPreviewFull {
       width: 160px; height: 160px;
       border-radius: 50%;
@@ -272,11 +305,27 @@
 
         <!-- Cámara activa -->
         <div class="foto-cam-active hidden" id="fotoCamActive">
-          <video id="fotoVideo" autoplay playsinline muted aria-label="Cámara frontal"></video>
+
+          <!-- Video + óvalo de guía -->
+          <div class="foto-video-wrap">
+            <video id="fotoVideo" autoplay playsinline muted aria-label="Cámara frontal"></video>
+            <div class="foto-face-oval" id="fotoFaceOval" aria-hidden="true">
+              <svg viewBox="0 0 320 320" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <ellipse cx="160" cy="148" rx="88" ry="112"
+                  stroke="rgba(255,255,255,0.65)" stroke-width="2.5" stroke-dasharray="8 5"/>
+              </svg>
+            </div>
+          </div>
+
           <canvas id="fotoCanvas" style="display:none"></canvas>
+
+          <!-- Indicador en tiempo real -->
+          <p class="foto-cam-live-hint" id="fotoCamHint">Posicioná tu cara en el óvalo…</p>
+
           <p id="fotoCamError" class="field-error hidden" role="alert"></p>
+
           <div class="foto-cam-actions">
-            <button class="btn btn--primary" id="btnCapturarFoto" type="button">📷 Capturar</button>
+            <button class="btn btn--primary" id="btnCapturarFoto" type="button" disabled>📷 Capturar</button>
             <button class="btn btn--secondary btn--sm" id="btnCancelarCamara" type="button">Cancelar</button>
           </div>
         </div>
