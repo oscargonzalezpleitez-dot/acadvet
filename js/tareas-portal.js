@@ -165,8 +165,8 @@ async function registrarEntrega() {
   if (!materiaId) { showError('fMateria',    errMateria, 'Seleccioná la materia.');                       ok = false; }
   if (!nombre)    { showError('fNombreTarea', errNombre,  'El nombre de la tarea es obligatorio.');        ok = false; }
   if (!linkTeams) { showError('fLinkTeams',   errLink,    'Pegá el link de Teams de tu archivo.');         ok = false; }
-  else if (!isHttpsUrl(linkTeams)) {
-                    showError('fLinkTeams',   errLink,    'El link no es válido. Debe comenzar con https://'); ok = false; }
+  else if (!isTeamsUrl(linkTeams)) {
+                    showError('fLinkTeams',   errLink,    'El link debe ser de Teams, SharePoint o OneDrive (https://teams.microsoft.com, *.sharepoint.com, 1drv.ms).'); ok = false; }
 
   if (!ok) return;
 
@@ -177,6 +177,20 @@ async function registrarEntrega() {
 
   setLoading(true);
   try {
+    // Verificar que no exista ya una tarea con el mismo nombre
+    const existSnap = await get(ref(db, `alumnos/${_alumno.id}/inscripciones/${materiaId}/tareas`));
+    if (existSnap.exists()) {
+      const nombreNorm = nombre.toLowerCase().trim();
+      const dup = Object.values(existSnap.val()).find(t =>
+        (t.nombre ?? '').toLowerCase().trim() === nombreNorm
+      );
+      if (dup) {
+        showError('fNombreTarea', errNombre, 'Ya entregaste una tarea con ese nombre en esta materia. Usá un nombre diferente.');
+        setLoading(false);
+        return;
+      }
+    }
+
     const fecha     = new Date().toISOString().slice(0, 10);
     const timestamp = Date.now();
     const newRef    = push(ref(db, `alumnos/${_alumno.id}/inscripciones/${materiaId}/tareas`));
@@ -233,8 +247,20 @@ function clearError(inputId, errEl) {
   if (errEl)   errEl.classList.add('hidden');
 }
 
-function isHttpsUrl(str) {
-  try { return new URL(str).protocol === 'https:'; } catch { return false; }
+function isTeamsUrl(str) {
+  try {
+    const url  = new URL(str);
+    if (url.protocol !== 'https:') return false;
+    const host = url.hostname.toLowerCase();
+    return (
+      host === 'teams.microsoft.com'           ||
+      host.endsWith('.teams.microsoft.com')    ||
+      host.endsWith('.sharepoint.com')         ||
+      host === 'onedrive.live.com'             ||
+      host.endsWith('.onedrive.live.com')      ||
+      host === '1drv.ms'
+    );
+  } catch { return false; }
 }
 
 function escHtml(str) {

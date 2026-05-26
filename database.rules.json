@@ -1,6 +1,59 @@
 {
   "rules": {
-    ".read": true,
-    ".write": true
+
+    "config": {
+      ".read": true,
+      ".write": false
+    },
+
+    "materias": {
+      ".read": true,
+      ".write": true,
+      "$materiaId": {
+        ".validate": "newData.hasChildren(['nombre', 'ciclo', 'estado'])"
+      }
+    },
+
+    "alumnos": {
+      ".read": true,
+      ".write": true,
+      "$alumnoId": {
+        "inscripciones": {
+          "$materiaId": {
+            "asistencias": {
+              "$asistId": {
+                ".validate": "newData.hasChildren(['fecha', 'estado'])"
+              }
+            },
+            "tareas": {
+              "$tareaId": {
+                ".validate": "newData.hasChildren(['nombre', 'subidoEn'])"
+              }
+            }
+          }
+        }
+      }
+    },
+
+    "qr_sessions": {
+      ".read": true,
+      ".write": true,
+      "$sessionId": {
+        "asistentes": {
+          "$asistenteId": {
+            ".validate": "newData.hasChildren(['nombre', 'carnet', 'ts'])"
+          }
+        }
+      }
+    },
+
+    "solicitudes_registro": {
+      ".read": true,
+      ".write": true,
+      "$solicitudId": {
+        ".validate": "newData.hasChildren(['nombre', 'carnet', 'email', 'materias'])"
+      }
+    }
+
   }
 }

@@ -53,10 +53,38 @@ pinInput.addEventListener('keydown', e => {
 
 btnLogin.addEventListener('click', attemptLogin);
 
+// --- Protección contra fuerza bruta ---
+const MAX_ATTEMPTS  = 5;
+const BASE_LOCK_MS  = 30_000; // 30 s para el primer bloqueo; se duplica por bloque de 5
+
+function getLock() {
+  try { return JSON.parse(localStorage.getItem('acadvet_pin_lock') ?? 'null') ?? { attempts: 0, lockedUntil: 0 }; }
+  catch { return { attempts: 0, lockedUntil: 0 }; }
+}
+function saveLock(s) { localStorage.setItem('acadvet_pin_lock', JSON.stringify(s)); }
+function clearLock() { localStorage.removeItem('acadvet_pin_lock'); }
+
+function checkLockout() {
+  const lock = getLock();
+  const now  = Date.now();
+  if (lock.lockedUntil > now) {
+    const secs = Math.ceil((lock.lockedUntil - now) / 1000);
+    showError(`Demasiados intentos. Esperá ${secs} s e intentá de nuevo.`);
+    btnLogin.disabled = true;
+    setTimeout(() => { btnLogin.disabled = (pinInput.value.length < 4); clearError(); }, (lock.lockedUntil - now) + 200);
+    return true;
+  }
+  return false;
+}
+
+// Verificar bloqueo al cargar la página
+checkLockout();
+
 // --- Lógica de login ---
 async function attemptLogin() {
   const pin = pinInput.value.trim();
   if (pin.length < 4) return;
+  if (checkLockout()) return;
 
   setLoading(true);
 
@@ -70,12 +98,29 @@ async function attemptLogin() {
     }
 
     if (snapshot.val() === enteredHash) {
+      clearLock();
       sessionStorage.setItem('acadvet_auth', 'true');
       window.location.replace('app.html');
     } else {
-      showError('PIN incorrecto. Intentá de nuevo.');
+      const lock     = getLock();
+      const attempts = lock.attempts + 1;
+      const block    = Math.floor(attempts / MAX_ATTEMPTS);
+      const lockedUntil = attempts % MAX_ATTEMPTS === 0
+        ? Date.now() + BASE_LOCK_MS * Math.pow(2, block - 1)
+        : 0;
+      saveLock({ attempts, lockedUntil });
+
+      if (lockedUntil > 0) {
+        showError(`PIN incorrecto. Cuenta bloqueada por ${Math.ceil(BASE_LOCK_MS * Math.pow(2, block - 1) / 1000)} s.`);
+        btnLogin.disabled = true;
+        setTimeout(() => { btnLogin.disabled = (pinInput.value.length < 4); clearError(); }, BASE_LOCK_MS * Math.pow(2, block - 1) + 200);
+      } else {
+        const restantes = MAX_ATTEMPTS - (attempts % MAX_ATTEMPTS);
+        showError(`PIN incorrecto. ${restantes} intento${restantes !== 1 ? 's' : ''} restante${restantes !== 1 ? 's' : ''} antes del bloqueo.`);
+      }
       pinInput.value = '';
       pinDots.forEach(d => d.classList.remove('filled'));
+      btnLogin.disabled = true;
       pinInput.focus();
     }
   } catch (err) {

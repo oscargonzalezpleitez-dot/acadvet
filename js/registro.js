@@ -27,6 +27,7 @@ let _selfieB64 = null;       // base64 JPEG sin el prefijo "data:..."
 let _gpsCoords = null;       // { lat, lng }
 let _deviceId  = null;
 let _stream    = null;       // MediaStream de la cámara
+let _lastSubmitTs = 0;       // timestamp del último envío (anti-spam)
 
 // ---------------------------------------------------------------------------
 // Init
@@ -194,6 +195,12 @@ async function handleStep1() {
 
   clearErrors();
 
+  // Anti-spam: mínimo 5 s entre intentos de envío
+  const now = Date.now();
+  if (now - _lastSubmitTs < 5_000) {
+    return globalErr('Esperá unos segundos antes de intentar de nuevo.');
+  }
+
   let ok = true;
   if (!nombre) { fieldErr('rNombre', 'rNombreErr', 'El nombre es obligatorio.');          ok = false; }
   if (!carnet) { fieldErr('rCarnet', 'rCarnetErr', 'El carné es obligatorio.');           ok = false; }
@@ -221,6 +228,7 @@ async function handleStep1() {
     }
   }
 
+  _lastSubmitTs = Date.now();
   setLoading(true);
   try {
     // Recargar sesión para verificar token vigente
