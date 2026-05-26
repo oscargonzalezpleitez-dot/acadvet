@@ -1,21 +1,18 @@
 // =============================================================================
 // AcadVet USAM — Portal de auto-inscripción del alumno
+// Foto de perfil: captura con cámara → base64 JPEG → Firebase RTDB (sin Storage)
 // =============================================================================
 
 import { getDatabase, ref, get }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL }
-  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 import { app } from './firebase-config.js';
 import { createSolicitud } from './db.js';
 
-const db      = getDatabase(app);
-const storage = getStorage(app);
-
-const MAX_FOTO_BYTES = 5 * 1024 * 1024; // 5 MB para foto de perfil
+const db = getDatabase(app);
 
 let _materias = [];
-let _fotoFile = null;
+let _fotoB64  = null;   // base64 JPEG sin prefijo data:
+let _stream   = null;   // MediaStream de la cámara
 
 // ---------------------------------------------------------------------------
 // Init
@@ -24,7 +21,7 @@ let _fotoFile = null;
 document.addEventListener('DOMContentLoaded', async () => {
   await cargarMaterias();
   bindForm();
-  bindFoto();
+  bindCamara();
 });
 
 // ---------------------------------------------------------------------------
@@ -63,54 +60,124 @@ async function cargarMaterias() {
     `).join('');
   } catch (err) {
     console.error('[Inscripción] Error cargando materias:', err);
-    listEl.innerHTML = `<p class="text-muted text-sm" style="color:var(--danger)">Error al cargar materias. Recargá la página.</p>`;
+    listEl.innerHTML = `<p class="text-muted text-sm" style="color:var(--color-danger)">Error al cargar materias. Recargá la página.</p>`;
   }
 }
 
 // ---------------------------------------------------------------------------
-// Foto de perfil
+// Cámara — captura de foto de perfil
 // ---------------------------------------------------------------------------
 
-function bindFoto() {
-  document.getElementById('fFoto')?.addEventListener('change', e => {
-    const file   = e.target.files?.[0];
-    const preview = document.getElementById('fotoPreview');
-    const nombre  = document.getElementById('fotoNombre');
-    const errEl   = document.getElementById('errFoto');
-    clearErr(errEl);
+function bindCamara() {
+  document.getElementById('btnAbrirCamara')?.addEventListener('click',    abrirCamara);
+  document.getElementById('btnCancelarCamara')?.addEventListener('click', cerrarCamara);
+  document.getElementById('btnCapturarFoto')?.addEventListener('click',   capturarFoto);
+  document.getElementById('btnUsarFoto')?.addEventListener('click',       usarFoto);
+  document.getElementById('btnRepetirFoto')?.addEventListener('click',    repetirFoto);
+}
 
-    const placeholder = document.getElementById('fotoPlaceholder');
+async function abrirCamara() {
+  showCamState('active');
+  const video  = document.getElementById('fotoVideo');
+  const errEl  = document.getElementById('fotoCamError');
+  if (errEl) errEl.classList.add('hidden');
 
-    if (!file) {
-      _fotoFile = null;
-      if (preview)     { preview.src = ''; preview.classList.add('hidden'); }
-      if (placeholder) placeholder.classList.remove('hidden');
-      if (nombre)      nombre.textContent = 'Ninguna foto seleccionada';
-      return;
+  try {
+    _stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
+      audio: false,
+    });
+    if (video) { video.srcObject = _stream; await video.play(); }
+  } catch {
+    if (errEl) {
+      errEl.textContent = '⚠️ No se pudo acceder a la cámara. Verificá los permisos del navegador.';
+      errEl.classList.remove('hidden');
     }
+    document.getElementById('btnCapturarFoto')?.setAttribute('disabled', '');
+  }
+}
 
-    if (!file.type.startsWith('image/')) {
-      showErr(errEl, 'Solo se aceptan imágenes (JPG, PNG, etc.).');
-      e.target.value = '';
-      return;
-    }
+function cerrarCamara() {
+  pararCamara();
+  showCamState('idle');
+}
 
-    if (file.size > MAX_FOTO_BYTES) {
-      showErr(errEl, `La imagen supera el límite de 5 MB (${(file.size/1024/1024).toFixed(1)} MB).`);
-      e.target.value = '';
-      return;
-    }
+function pararCamara() {
+  _stream?.getTracks().forEach(t => t.stop());
+  _stream = null;
+  const video = document.getElementById('fotoVideo');
+  if (video) video.srcObject = null;
+}
 
-    _fotoFile = file;
-    if (nombre)      nombre.textContent = file.name;
-    if (placeholder) placeholder.classList.add('hidden');
+function capturarFoto() {
+  const video   = document.getElementById('fotoVideo');
+  const canvas  = document.getElementById('fotoCanvas');
+  const preview = document.getElementById('fotoPreviewFull');
+  if (!video || !canvas) return;
 
-    const reader = new FileReader();
-    reader.onload = ev => {
-      if (preview) { preview.src = ev.target.result; preview.classList.remove('hidden'); }
-    };
-    reader.readAsDataURL(file);
-  });
+  // Recortar cuadrado centrado
+  const side = Math.min(video.videoWidth, video.videoHeight);
+  const ox   = (video.videoWidth  - side) / 2;
+  const oy   = (video.videoHeight - side) / 2;
+  const size = 320;
+  canvas.width  = size;
+  canvas.height = size;
+  canvas.getContext('2d').drawImage(video, ox, oy, side, side, 0, 0, size, size);
+
+  const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
+
+  if (preview) { preview.src = dataUrl; }
+  pararCamara();
+  showCamState('preview');
+
+  // Guardar temporal hasta que el usuario confirme
+  _fotoB64 = dataUrl.split(',')[1];
+}
+
+function usarFoto() {
+  const preview = document.getElementById('fotoPreviewFull');
+  const circle  = document.getElementById('fotoPreviewCircle');
+  const placeholder = document.getElementById('fotoPlaceholder');
+  const hint    = document.getElementById('fotoHint');
+
+  if (circle && preview?.src) {
+    circle.src = preview.src;
+    circle.classList.remove('hidden');
+  }
+  if (placeholder) placeholder.style.display = 'none';
+  if (hint) { hint.textContent = 'Foto capturada ✓'; hint.style.color = 'var(--color-success, #00B894)'; }
+
+  showCamState('idle');
+}
+
+function repetirFoto() {
+  _fotoB64 = null;
+  showCamState('active');
+  const video = document.getElementById('fotoVideo');
+  const errEl = document.getElementById('fotoCamError');
+  if (errEl) errEl.classList.add('hidden');
+  if (video) {
+    navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
+      audio: false,
+    }).then(stream => {
+      _stream = stream;
+      video.srcObject = stream;
+      video.play();
+      document.getElementById('btnCapturarFoto')?.removeAttribute('disabled');
+    }).catch(() => {
+      if (errEl) {
+        errEl.textContent = '⚠️ No se pudo acceder a la cámara.';
+        errEl.classList.remove('hidden');
+      }
+    });
+  }
+}
+
+function showCamState(state) {
+  document.getElementById('fotoCamIdle')?.classList.toggle('hidden',    state !== 'idle');
+  document.getElementById('fotoCamActive')?.classList.toggle('hidden',  state !== 'active');
+  document.getElementById('fotoCamPreview')?.classList.toggle('hidden', state !== 'preview');
 }
 
 // ---------------------------------------------------------------------------
@@ -141,43 +208,15 @@ async function enviarSolicitud() {
 
   if (!ok) return;
 
+  // Si el alumno dejó la cámara abierta, cerrarla antes de enviar
+  pararCamara();
+  if (document.getElementById('fotoCamActive') && !document.getElementById('fotoCamActive').classList.contains('hidden')) {
+    showCamState('idle');
+  }
+
   setLoading(true);
 
   try {
-    let fotoUrl     = null;
-    let storagePath = null;
-
-    // Subir foto si se seleccionó
-    if (_fotoFile) {
-      const ts       = Date.now();
-      const safeName = _fotoFile.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-      storagePath    = `perfiles/solicitudes/${ts}_${safeName}`;
-      const fileRef  = sRef(storage, storagePath);
-
-      try {
-        const uploadTask = uploadBytesResumable(fileRef, _fotoFile, { contentType: _fotoFile.type });
-
-        await new Promise((resolve, reject) => {
-          uploadTask.on('state_changed',
-            snap => {
-              const pct = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-              updateProgress(pct);
-            },
-            reject,
-            resolve,
-          );
-        });
-
-        fotoUrl = await getDownloadURL(fileRef);
-      } catch (uploadErr) {
-        console.error('[Inscripción] Error subiendo foto:', uploadErr);
-        showErr(document.getElementById('errFoto'), 'No se pudo subir la foto. Podés continuar sin foto o intentar de nuevo.');
-        setLoading(false);
-        return;
-      }
-    }
-
-    // Construir objeto de materias { id: nombre }
     const materias = {};
     checkedMaterias.forEach(el => {
       materias[el.value] = el.dataset.nombre ?? el.value;
@@ -188,8 +227,9 @@ async function enviarSolicitud() {
       carnet,
       email,
       telefono,
-      fotoUrl,
-      storagePath,
+      fotoUrl:     null,
+      storagePath: null,
+      fotoB64:     _fotoB64 ?? null,
       materias,
       fecha: new Date().toISOString().slice(0, 10),
     });
@@ -215,17 +255,8 @@ async function enviarSolicitud() {
 // ---------------------------------------------------------------------------
 
 function setLoading(on) {
-  const btn  = document.getElementById('btnRegistrarse');
-  const prog = document.getElementById('progressWrap');
-  if (btn)  { btn.disabled = on; btn.textContent = on ? 'Enviando…' : 'Enviar solicitud'; }
-  if (prog) prog.classList.toggle('hidden', !on);
-}
-
-function updateProgress(pct) {
-  const bar  = document.getElementById('progressBar');
-  const text = document.getElementById('progressText');
-  if (bar)  bar.style.width = `${pct}%`;
-  if (text) text.textContent = `Subiendo foto… ${pct}%`;
+  const btn = document.getElementById('btnRegistrarse');
+  if (btn) { btn.disabled = on; btn.textContent = on ? 'Enviando…' : 'Enviar solicitud'; }
 }
 
 function showSuccess(nombre) {

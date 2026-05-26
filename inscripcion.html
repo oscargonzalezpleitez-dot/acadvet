@@ -84,45 +84,53 @@
     }
     .form-section-title:first-of-type { margin-top: 0; }
 
-    /* Photo upload */
-    .foto-upload-area {
+    /* Camera widget */
+    .foto-cam-wrap { display: flex; flex-direction: column; gap: var(--space-3); }
+
+    .foto-cam-idle {
       display: flex;
       align-items: center;
       gap: var(--space-4);
       padding: var(--space-4);
       border: 2px dashed var(--color-border);
       border-radius: var(--radius-lg);
-      cursor: pointer;
-      transition: border-color .15s, background .15s;
     }
-    .foto-upload-area:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
-
-    .foto-preview-wrap { flex-shrink: 0; }
-    #fotoPreview {
-      width: 64px;
-      height: 64px;
-      border-radius: 50%;
-      object-fit: cover;
-      border: 2px solid var(--color-border);
-    }
-    #fotoPreview.hidden { display: none; }
-
-    .foto-placeholder {
-      width: 64px;
-      height: 64px;
+    .foto-cam-avatar {
+      flex-shrink: 0;
+      width: 72px; height: 72px;
       border-radius: 50%;
       background: var(--color-primary-light);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.6rem;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 2rem;
+      overflow: hidden;
+      border: 2px solid var(--color-border);
     }
+    .foto-cam-avatar img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      border-radius: 50%;
+    }
+    .foto-cam-avatar img.hidden { display: none; }
+    .foto-cam-idle-info { display: flex; flex-direction: column; gap: var(--space-2); }
+    .foto-cam-hint { font-size: var(--text-xs); color: var(--color-text-muted); }
 
-    .foto-info { flex: 1; min-width: 0; }
-    .foto-info label { cursor: pointer; }
-    .foto-info-title { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); display: block; margin-bottom: 2px; }
-    .foto-info-sub   { font-size: var(--text-xs); color: var(--color-text-muted); display: block; margin-bottom: var(--space-2); }
-    #fotoNombre      { font-size: var(--text-xs); color: var(--color-text-muted); }
+    .foto-cam-active, .foto-cam-preview { display: flex; flex-direction: column; align-items: center; gap: var(--space-3); }
+    .foto-cam-active.hidden, .foto-cam-preview.hidden { display: none; }
+
+    #fotoVideo {
+      width: 100%; max-width: 320px;
+      border-radius: var(--radius-md);
+      background: #000;
+      aspect-ratio: 1/1;
+      object-fit: cover;
+    }
+    #fotoPreviewFull {
+      width: 160px; height: 160px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--color-primary);
+    }
+    .foto-cam-actions { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
 
     /* Materias checklist */
     .materias-list {
@@ -155,29 +163,8 @@
     .materia-check-nombre { font-size: var(--text-sm); font-weight: 600; color: var(--color-text); }
     .materia-check-ciclo  { font-size: var(--text-xs); color: var(--color-text-muted); }
 
-    /* Progress bar */
-    .progress-wrap {
-      margin-top: var(--space-3);
-      display: flex;
-      flex-direction: column;
-      gap: var(--space-1);
-    }
-    .progress-wrap.hidden { display: none; }
-    .progress-bar-track {
-      width: 100%;
-      height: 6px;
-      background: var(--color-border);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-    .progress-bar-fill {
-      height: 100%;
-      background: var(--color-primary);
-      border-radius: 99px;
-      width: 0%;
-      transition: width .2s;
-    }
-    #progressText { font-size: var(--text-xs); color: var(--color-text-muted); }
+    /* Progress bar (no usado actualmente, se mantiene por compatibilidad) */
+    .progress-wrap { display: none; }
 
     /* Success state */
     .step-ok {
@@ -269,18 +256,41 @@
       <!-- ── Foto de perfil ── -->
       <p class="form-section-title">Foto de perfil <span class="text-muted text-xs">(opcional)</span></p>
 
-      <label class="foto-upload-area" for="fFoto">
-        <div class="foto-preview-wrap">
-          <img src="" alt="Vista previa" id="fotoPreview" class="hidden">
-          <div class="foto-placeholder" id="fotoPlaceholder" aria-hidden="true">📷</div>
+      <div class="foto-cam-wrap">
+
+        <!-- Estado inicial: avatar + botón -->
+        <div class="foto-cam-idle" id="fotoCamIdle">
+          <div class="foto-cam-avatar" id="fotoCamAvatar">
+            <img src="" alt="Foto tomada" id="fotoPreviewCircle" class="hidden">
+            <span id="fotoPlaceholder" aria-hidden="true">👤</span>
+          </div>
+          <div class="foto-cam-idle-info">
+            <button class="btn btn--secondary btn--sm" id="btnAbrirCamara" type="button">📷 Tomar foto</button>
+            <span class="foto-cam-hint" id="fotoHint">Sin foto — opcional</span>
+          </div>
         </div>
-        <div class="foto-info">
-          <span class="foto-info-title">Subir foto</span>
-          <span class="foto-info-sub">JPG, PNG o WEBP · máx. 5 MB</span>
-          <span id="fotoNombre">Ninguna foto seleccionada</span>
+
+        <!-- Cámara activa -->
+        <div class="foto-cam-active hidden" id="fotoCamActive">
+          <video id="fotoVideo" autoplay playsinline muted aria-label="Cámara frontal"></video>
+          <canvas id="fotoCanvas" style="display:none"></canvas>
+          <p id="fotoCamError" class="field-error hidden" role="alert"></p>
+          <div class="foto-cam-actions">
+            <button class="btn btn--primary" id="btnCapturarFoto" type="button">📷 Capturar</button>
+            <button class="btn btn--secondary btn--sm" id="btnCancelarCamara" type="button">Cancelar</button>
+          </div>
         </div>
-      </label>
-      <input type="file" id="fFoto" name="foto" accept="image/*" style="display:none" aria-label="Foto de perfil">
+
+        <!-- Preview tras capturar -->
+        <div class="foto-cam-preview hidden" id="fotoCamPreview">
+          <img src="" alt="Tu foto" id="fotoPreviewFull">
+          <div class="foto-cam-actions">
+            <button class="btn btn--primary btn--sm" id="btnUsarFoto" type="button">✓ Usar esta foto</button>
+            <button class="btn btn--secondary btn--sm" id="btnRepetirFoto" type="button">↩ Repetir</button>
+          </div>
+        </div>
+
+      </div>
       <span class="field-error hidden" id="errFoto" role="alert"></span>
 
       <!-- ── Materias ── -->
@@ -294,14 +304,6 @@
         </div>
       </div>
       <span class="field-error hidden" id="errMaterias" role="alert"></span>
-
-      <!-- ── Progreso de subida ── -->
-      <div class="progress-wrap hidden" id="progressWrap" aria-live="polite">
-        <div class="progress-bar-track">
-          <div class="progress-bar-fill" id="progressBar" role="progressbar" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"></div>
-        </div>
-        <span id="progressText">Subiendo foto…</span>
-      </div>
 
       <!-- ── Error global ── -->
       <div class="err-global hidden" id="errGlobal" role="alert"></div>

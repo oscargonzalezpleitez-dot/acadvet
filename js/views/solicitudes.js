@@ -141,8 +141,13 @@ function cardHTML(s, isPending) {
 
   const materias = s.materias ? Object.values(s.materias) : [];
 
-  const avatar = s.fotoUrl
-    ? `<img src="${escHtml(s.fotoUrl)}" alt="${escHtml(s.nombre)}" class="sol-avatar sol-avatar--photo" loading="lazy">`
+  const fotoSrc = s.fotoUrl
+    ? escHtml(s.fotoUrl)
+    : s.fotoB64
+      ? `data:image/jpeg;base64,${s.fotoB64}`
+      : null;
+  const avatar = fotoSrc
+    ? `<img src="${fotoSrc}" alt="${escHtml(s.nombre)}" class="sol-avatar sol-avatar--photo" loading="lazy">`
     : `<div class="sol-avatar sol-avatar--initials">${escHtml(initials)}</div>`;
 
   const actions = isPending ? `

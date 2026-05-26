@@ -317,7 +317,7 @@ export async function addTarea(alumnoId, materiaId, { nombre, archivoNombre, url
 // SOLICITUDES DE AUTO-INSCRIPCIÓN
 // ---------------------------------------------------------------------------
 
-export async function createSolicitud({ nombre, carnet, email, telefono, fotoUrl, storagePath, materias, fecha }) {
+export async function createSolicitud({ nombre, carnet, email, telefono, fotoUrl, storagePath, fotoB64 = null, materias, fecha }) {
   // Evitar duplicados: buscar solicitud pendiente o alumno con mismo carné
   const [solSnap, alSnap] = await Promise.all([
     get(ref(db, 'solicitudes_registro')),
@@ -348,6 +348,7 @@ export async function createSolicitud({ nombre, carnet, email, telefono, fotoUrl
     telefono:    telefono    || null,
     fotoUrl:     fotoUrl     || null,
     storagePath: storagePath || null,
+    fotoB64:     fotoB64     || null,
     materias,
     estado:      'pendiente',
     solicitadoEn: Date.now(),
@@ -373,6 +374,7 @@ export async function aprobarSolicitud(solicitudId) {
     email:     sol.email     || null,
     telefono:  sol.telefono  || null,
     fotoUrl:   sol.fotoUrl   || null,
+    fotoB64:   sol.fotoB64   || null,
     creado_en: Date.now(),
   });
   const alumnoId = alumnoRef.key;
