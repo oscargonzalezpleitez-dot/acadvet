@@ -326,6 +326,9 @@ async function enviarSolicitud() {
   if (checkedMaterias.length === 0) {
     showErr(document.getElementById('errMaterias'), 'Seleccioná al menos una materia.'); ok = false;
   }
+  if (!_fotoB64) {
+    showErr(document.getElementById('errFoto'), 'La foto de perfil es obligatoria. Tocá "Tomar foto" para capturarla.'); ok = false;
+  }
   if (!ok) return;
 
   pararCamara();
