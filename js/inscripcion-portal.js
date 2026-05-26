@@ -1,6 +1,6 @@
 // =============================================================================
 // AcadVet USAM — Portal de auto-inscripción del alumno
-// Foto: cámara frontal + detección facial (face-api.js) → base64 JPEG → RTDB
+// Foto de perfil: captura con cámara → base64 JPEG → Firebase RTDB (sin Storage)
 // =============================================================================
 
 import { getDatabase, ref, get }
@@ -10,21 +10,9 @@ import { createSolicitud } from './db.js';
 
 const db = getDatabase(app);
 
-// ---------------------------------------------------------------------------
-// Estado
-// ---------------------------------------------------------------------------
 let _materias = [];
 let _fotoB64  = null;
 let _stream   = null;
-
-// face-api.js — carga diferida al abrir la cámara
-const FACEAPI_CDN = 'https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js';
-const MODELS_URL  = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
-
-let _faceReady  = false;
-let _faceError  = false;
-let _detectLoop = null;
-let _faceFound  = false;
 
 // ---------------------------------------------------------------------------
 // Init
@@ -69,89 +57,7 @@ async function cargarMaterias() {
 }
 
 // ---------------------------------------------------------------------------
-// face-api.js — carga e inicialización diferida
-// ---------------------------------------------------------------------------
-
-function loadScript(src) {
-  return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
-    const s   = document.createElement('script');
-    s.src     = src;
-    s.onload  = resolve;
-    s.onerror = () => reject(new Error(`No se pudo cargar: ${src}`));
-    document.head.appendChild(s);
-  });
-}
-
-async function initFaceApi() {
-  if (_faceReady || _faceError) return;
-  try {
-    await loadScript(FACEAPI_CDN);
-    // Deshabilitar logs internos de face-api
-    faceapi.env.monkeyPatch({ fetch: window.fetch.bind(window) });
-    await faceapi.nets.tinyFaceDetector.loadFromUri(MODELS_URL);
-    _faceReady = true;
-  } catch (err) {
-    console.warn('[FaceDetect] face-api no disponible:', err);
-    _faceError = true;
-  }
-}
-
-function faceOpts() {
-  return new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.45 });
-}
-
-// ---------------------------------------------------------------------------
-// Bucle de detección en tiempo real (cada 800 ms)
-// ---------------------------------------------------------------------------
-
-async function startFaceLoop() {
-  const btn  = document.getElementById('btnCapturarFoto');
-  const hint = document.getElementById('fotoCamHint');
-  const oval = document.getElementById('fotoFaceOval');
-
-  if (btn)  { btn.disabled = true; btn.textContent = 'Cargando detección…'; }
-  if (hint) hint.textContent = 'Cargando detección facial…';
-
-  await initFaceApi();
-
-  if (_faceError) {
-    // Sin detección disponible — permitir captura libre
-    if (btn)  { btn.disabled = false; btn.textContent = '📷 Capturar'; }
-    if (hint) hint.textContent = 'Posicioná tu cara en el óvalo y capturá.';
-    return;
-  }
-
-  if (hint) hint.textContent = 'Posicioná tu cara en el óvalo…';
-  if (btn)  btn.textContent  = '📷 Capturar';
-
-  const video = document.getElementById('fotoVideo');
-
-  _detectLoop = setInterval(async () => {
-    if (!video?.srcObject) return;
-    try {
-      const det   = await faceapi.detectSingleFace(video, faceOpts());
-      const found = !!det;
-      if (found === _faceFound) return;
-      _faceFound = found;
-      oval?.classList.toggle('foto-face-oval--detected', found);
-      if (btn)  btn.disabled = !found;
-      if (hint) {
-        hint.textContent = found ? '✓ Cara detectada — presioná Capturar' : 'Posicioná tu cara en el óvalo…';
-        hint.className   = `foto-cam-live-hint${found ? ' foto-cam-live-hint--ok' : ''}`;
-      }
-    } catch { /* ignorar errores transitorios */ }
-  }, 800);
-}
-
-function stopFaceLoop() {
-  clearInterval(_detectLoop);
-  _detectLoop = null;
-  _faceFound  = false;
-}
-
-// ---------------------------------------------------------------------------
-// Cámara — abrir / cerrar / reiniciar
+// Cámara
 // ---------------------------------------------------------------------------
 
 function bindCamara() {
@@ -165,8 +71,6 @@ function bindCamara() {
 async function abrirCamara() {
   showCamState('active');
   clearCamError();
-  document.getElementById('btnCapturarFoto')?.setAttribute('disabled', '');
-
   try {
     _stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
@@ -174,14 +78,12 @@ async function abrirCamara() {
     });
     const video = document.getElementById('fotoVideo');
     if (video) { video.srcObject = _stream; await video.play(); }
-    await startFaceLoop();
   } catch {
     showCamError('⚠️ No se pudo acceder a la cámara. Verificá los permisos del navegador.');
   }
 }
 
 function cerrarCamara() {
-  stopFaceLoop();
   pararCamara();
   showCamState('idle');
 }
@@ -193,41 +95,13 @@ function pararCamara() {
   if (v) v.srcObject = null;
 }
 
-async function reiniciarCamara() {
-  clearCamError();
-  // Resetear estado del óvalo y hint
-  document.getElementById('fotoFaceOval')?.classList.remove('foto-face-oval--detected');
-  const hint = document.getElementById('fotoCamHint');
-  if (hint) { hint.textContent = 'Posicioná tu cara en el óvalo…'; hint.className = 'foto-cam-live-hint'; }
-  const btn = document.getElementById('btnCapturarFoto');
-  if (btn) { btn.disabled = true; btn.textContent = '📷 Capturar'; }
-
-  try {
-    _stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 480 } },
-      audio: false,
-    });
-    const video = document.getElementById('fotoVideo');
-    if (video) { video.srcObject = _stream; await video.play(); }
-    await startFaceLoop();
-  } catch {
-    showCamError('⚠️ No se pudo acceder a la cámara.');
-  }
-}
-
-// ---------------------------------------------------------------------------
-// Captura y validación facial
-// ---------------------------------------------------------------------------
-
-async function capturarFoto() {
-  stopFaceLoop();
-
+function capturarFoto() {
   const video   = document.getElementById('fotoVideo');
   const canvas  = document.getElementById('fotoCanvas');
   const preview = document.getElementById('fotoPreviewFull');
   if (!video || !canvas) return;
 
-  // Capturar cuadrado centrado del video
+  // Recortar cuadrado centrado
   const side = Math.min(video.videoWidth, video.videoHeight);
   const ox   = (video.videoWidth  - side) / 2;
   const oy   = (video.videoHeight - side) / 2;
@@ -235,25 +109,6 @@ async function capturarFoto() {
   canvas.width  = SIZE;
   canvas.height = SIZE;
   canvas.getContext('2d').drawImage(video, ox, oy, side, side, 0, 0, SIZE, SIZE);
-
-  // Validación facial sobre el frame capturado
-  if (_faceReady) {
-    let det = null;
-    try { det = await faceapi.detectSingleFace(canvas, faceOpts()); } catch { /* ignorar */ }
-
-    if (!det) {
-      showCamError('No se detectó ningún rostro. Mejorá la iluminación y asegurate de que tu cara esté bien visible.');
-      pararCamara();
-      await reiniciarCamara();
-      return;
-    }
-    if (det.box.width / SIZE < 0.22) {
-      showCamError('Acercate más a la cámara para que tu cara ocupe la mayor parte del encuadre.');
-      pararCamara();
-      await reiniciarCamara();
-      return;
-    }
-  }
 
   pararCamara();
   const dataUrl = canvas.toDataURL('image/jpeg', 0.75);
@@ -275,16 +130,11 @@ function usarFoto() {
   showCamState('idle');
 }
 
-async function repetirFoto() {
+function repetirFoto() {
   _fotoB64 = null;
   pararCamara();
-  showCamState('active');
-  await reiniciarCamara();
+  abrirCamara();
 }
-
-// ---------------------------------------------------------------------------
-// UI helpers — cámara
-// ---------------------------------------------------------------------------
 
 function showCamState(state) {
   document.getElementById('fotoCamIdle')?.classList.toggle('hidden',    state !== 'idle');
@@ -303,7 +153,7 @@ function clearCamError() {
 }
 
 // ---------------------------------------------------------------------------
-// Formulario de inscripción
+// Formulario
 // ---------------------------------------------------------------------------
 
 function bindForm() {
@@ -320,12 +170,13 @@ async function enviarSolicitud() {
 
   let ok = true;
   clearAll();
+
   if (!nombre)   { showErr(document.getElementById('errNombre'),   'El nombre es obligatorio.');                                        ok = false; }
-  if (!carnet)   { showErr(document.getElementById('errCarnet'),   'El carné es obligatorio.');                                          ok = false; }
-  if (!email)    { showErr(document.getElementById('errEmail'),    'El correo institucional es obligatorio.');                           ok = false; }
+  if (!carnet)   { showErr(document.getElementById('errCarnet'),   'El carné es obligatorio.');                                         ok = false; }
+  if (!email)    { showErr(document.getElementById('errEmail'),    'El correo institucional es obligatorio.');                          ok = false; }
   else if (!email.toLowerCase().endsWith('@usam.edu.sv')) {
                    showErr(document.getElementById('errEmail'),    'El correo debe ser institucional (@usam.edu.sv).'); ok = false; }
-  if (!telefono) { showErr(document.getElementById('errTelefono'), 'El teléfono es obligatorio.');                                       ok = false; }
+  if (!telefono) { showErr(document.getElementById('errTelefono'), 'El teléfono es obligatorio.');                                      ok = false; }
   if (checkedMaterias.length === 0) {
     showErr(document.getElementById('errMaterias'), 'Seleccioná al menos una materia.'); ok = false;
   }
@@ -335,7 +186,6 @@ async function enviarSolicitud() {
   if (!ok) return;
 
   pararCamara();
-  stopFaceLoop();
   setLoading(true);
 
   try {
@@ -345,7 +195,7 @@ async function enviarSolicitud() {
     await createSolicitud({
       nombre, carnet, email, telefono,
       fotoUrl: null, storagePath: null,
-      fotoB64: _fotoB64 ?? null,
+      fotoB64: _fotoB64,
       materias,
       fecha: new Date().toISOString().slice(0, 10),
     });
@@ -366,7 +216,7 @@ async function enviarSolicitud() {
 }
 
 // ---------------------------------------------------------------------------
-// UI helpers — formulario
+// UI helpers
 // ---------------------------------------------------------------------------
 
 function setLoading(on) {
