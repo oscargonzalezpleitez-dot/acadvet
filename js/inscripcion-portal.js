@@ -320,9 +320,12 @@ async function enviarSolicitud() {
 
   let ok = true;
   clearAll();
-  if (!nombre)  { showErr(document.getElementById('errNombre'),   'El nombre es obligatorio.');    ok = false; }
-  if (!carnet)  { showErr(document.getElementById('errCarnet'),   'El carné es obligatorio.');     ok = false; }
-  if (!email)   { showErr(document.getElementById('errEmail'),    'El correo es obligatorio.');    ok = false; }
+  if (!nombre)   { showErr(document.getElementById('errNombre'),   'El nombre es obligatorio.');                                        ok = false; }
+  if (!carnet)   { showErr(document.getElementById('errCarnet'),   'El carné es obligatorio.');                                          ok = false; }
+  if (!email)    { showErr(document.getElementById('errEmail'),    'El correo institucional es obligatorio.');                           ok = false; }
+  else if (!email.toLowerCase().endsWith('@usam.edu.sv')) {
+                   showErr(document.getElementById('errEmail'),    'El correo debe ser institucional (@usam.edu.sv).'); ok = false; }
+  if (!telefono) { showErr(document.getElementById('errTelefono'), 'El teléfono es obligatorio.');                                       ok = false; }
   if (checkedMaterias.length === 0) {
     showErr(document.getElementById('errMaterias'), 'Seleccioná al menos una materia.'); ok = false;
   }
