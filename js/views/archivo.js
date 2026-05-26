@@ -3,8 +3,8 @@
 // Lista historial de sesiones con lista de asistentes y exportación.
 // =============================================================================
 
-import { getQRSessions, getQRSessionAsistentes } from '../db.js';
-import { showToast } from '../ui.js';
+import { getQRSessions, getQRSessionAsistentes, deleteQRSession } from '../db.js';
+import { showToast, openModal, closeModal } from '../ui.js';
 
 let _container  = null;
 let _sessions   = [];
@@ -102,22 +102,35 @@ function cardHtml(s) {
   const isOpen = _openId === s.id;
   return `
     <div class="arch-card${isOpen ? ' arch-card--open' : ''}" data-sid="${esc(s.id)}">
-      <button class="arch-card-hdr" aria-expanded="${isOpen}" data-sid="${esc(s.id)}">
-        <span class="arch-status-dot" style="background:${s.active ? 'var(--color-success)' : 'var(--color-text-muted)'}"></span>
-        <div class="arch-card-main">
-          <div class="arch-card-title">${esc(s.materiaNombre || '—')}</div>
-          <div class="arch-card-sub text-muted text-sm">
-            ${s.ciclo ? esc(s.ciclo) + ' · ' : ''}${fmtFecha(s.fecha, s.startedAt)} · ${fmtHora(s.startedAt)}
-            · <strong>${s.asistentesCount}</strong> asistente${s.asistentesCount !== 1 ? 's' : ''}
+      <div class="arch-card-hdr-wrap">
+        <button class="arch-card-hdr" aria-expanded="${isOpen}" data-sid="${esc(s.id)}">
+          <span class="arch-status-dot" style="background:${s.active ? 'var(--color-success)' : 'var(--color-text-muted)'}"></span>
+          <div class="arch-card-main">
+            <div class="arch-card-title">${esc(s.materiaNombre || '—')}</div>
+            <div class="arch-card-sub text-muted text-sm">
+              ${s.ciclo ? esc(s.ciclo) + ' · ' : ''}${fmtFecha(s.fecha, s.startedAt)} · ${fmtHora(s.startedAt)}
+              · <strong>${s.asistentesCount}</strong> asistente${s.asistentesCount !== 1 ? 's' : ''}
+            </div>
           </div>
-        </div>
-        <div class="arch-card-right">
-          ${s.active
-            ? '<span class="badge badge--success" style="font-size:.65rem">Activa</span>'
-            : '<span class="badge badge--outline" style="font-size:.65rem">Finalizada</span>'}
-          <svg class="arch-chevron" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
-        </div>
-      </button>
+          <div class="arch-card-right">
+            ${s.active
+              ? '<span class="badge badge--success" style="font-size:.65rem">Activa</span>'
+              : '<span class="badge badge--outline" style="font-size:.65rem">Finalizada</span>'}
+            <svg class="arch-chevron" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+          </div>
+        </button>
+        <button class="arch-delete-btn${s.active ? ' arch-delete-btn--disabled' : ''}"
+          data-del="${esc(s.id)}"
+          ${s.active ? 'disabled title="No se puede borrar una sesión activa"' : 'title="Eliminar sesión"'}
+          aria-label="Eliminar sesión">
+          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="3 6 5 6 21 6"/>
+            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+            <path d="M10 11v6"/><path d="M14 11v6"/>
+            <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
+          </svg>
+        </button>
+      </div>
       ${isOpen ? `<div class="arch-card-body" id="archBody-${esc(s.id)}">
         <div class="loading-state" style="padding:var(--space-6)">
           <div class="loading-spinner" style="width:28px;height:28px;border-width:3px"></div>
@@ -129,6 +142,47 @@ function cardHtml(s) {
 function wireList() {
   _container.querySelectorAll('.arch-card-hdr[data-sid]').forEach(btn => {
     btn.addEventListener('click', () => toggleSession(btn.dataset.sid));
+  });
+  _container.querySelectorAll('.arch-delete-btn[data-del]').forEach(btn => {
+    btn.addEventListener('click', () => confirmDelete(btn.dataset.del));
+  });
+}
+
+function confirmDelete(id) {
+  const session = _sessions.find(s => s.id === id);
+  if (!session) return;
+
+  const fechaDisp = fmtFecha(session.fecha, session.startedAt);
+  openModal({
+    title: 'Eliminar sesión',
+    size: 'sm',
+    body: `
+      <p class="text-secondary">
+        ¿Eliminar la sesión de <strong>${esc(session.materiaNombre || '—')}</strong>
+        del <strong>${fechaDisp}</strong>?
+      </p>
+      <p class="text-muted text-sm" style="margin-top:var(--space-2)">
+        Se borrarán permanentemente los <strong>${session.asistentesCount}</strong>
+        registro${session.asistentesCount !== 1 ? 's' : ''} de asistencia.
+        Esta acción no se puede deshacer.
+      </p>`,
+    confirmLabel:   'Eliminar',
+    confirmVariant: 'danger',
+    async onConfirm() {
+      try {
+        await deleteQRSession(id);
+        closeModal();
+        _sessions = _sessions.filter(s => s.id !== id);
+        _filtered = _filterMat ? _sessions.filter(s => s.materiaId === _filterMat) : _sessions;
+        delete _cache[id];
+        if (_openId === id) _openId = null;
+        paint();
+        showToast('Sesión eliminada');
+      } catch (err) {
+        console.error('[AcadVet] Error eliminando sesión:', err);
+        showToast('Error al eliminar la sesión', 'error');
+      }
+    },
   });
 }
 

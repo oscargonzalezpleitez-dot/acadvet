@@ -434,6 +434,11 @@ export async function getQRSessionAsistentes(sessionId) {
   return snapToArray(s).sort((a, b) => (a.ts || 0) - (b.ts || 0));
 }
 
+/** Elimina una sesión QR completa (metadata + asistentes). */
+export async function deleteQRSession(sessionId) {
+  await remove(ref(db, `qr_sessions/${sessionId}`));
+}
+
 export async function deleteTarea(alumnoId, materiaId, tareaId, storagePath = null) {
   if (storagePath) {
     try { await deleteObject(sRef(storage, storagePath)); } catch (_) { /* archivo ya eliminado */ }
