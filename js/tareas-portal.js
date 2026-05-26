@@ -1,55 +1,38 @@
 // =============================================================================
 // AcadVet USAM — Portal de entrega de tareas (alumno)
+// El alumno pega el link de Teams de su archivo. Sin subida a Storage.
 // =============================================================================
 
 import { getDatabase, ref, get, push, set }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL }
-  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 import { app } from './firebase-config.js';
 
-const db      = getDatabase(app);
-const storage = getStorage(app);
-
-const MAX_MB         = 200;
-const MAX_SIZE_BYTES = MAX_MB * 1024 * 1024;
+const db = getDatabase(app);
 
 // ---------------------------------------------------------------------------
 // Estado
 // ---------------------------------------------------------------------------
-let _alumno    = null;   // { id, nombre, carnet, inscripciones }
-let _materias  = [];     // [{ id, nombre, ciclo }]
-let _materiaId = null;   // pre-seleccionada desde URL ?materia=
-let _uploadTask   = null;
-let _paused       = false;
-let _startTime    = 0;
-let _startBytes   = 0;
-let _latestSnap   = null;
+let _alumno    = null;
+let _materias  = [];
+let _materiaId = null;
 
 // ---------------------------------------------------------------------------
 // Inicio
 // ---------------------------------------------------------------------------
-
 document.addEventListener('DOMContentLoaded', () => {
   const params = new URLSearchParams(location.search);
   _materiaId = params.get('materia') ?? null;
 
   bindBuscar();
-  bindFileInput();
-
-  if (_materiaId) {
-    showMateriaHint(_materiaId);
-  }
+  if (_materiaId) showMateriaHint(_materiaId);
 });
 
 // ---------------------------------------------------------------------------
 // Paso 1: Buscar alumno por carné
 // ---------------------------------------------------------------------------
-
 function bindBuscar() {
-  const btn    = document.getElementById('btnBuscar');
-  const input  = document.getElementById('fCarnet');
-
+  const btn   = document.getElementById('btnBuscar');
+  const input = document.getElementById('fCarnet');
   btn?.addEventListener('click', buscarAlumno);
   input?.addEventListener('keydown', e => { if (e.key === 'Enter') buscarAlumno(); });
 }
@@ -57,13 +40,9 @@ function bindBuscar() {
 async function buscarAlumno() {
   const carnet = document.getElementById('fCarnet')?.value.trim();
   const errEl  = document.getElementById('errCarnet');
-
   clearError('fCarnet', errEl);
 
-  if (!carnet) {
-    showError('fCarnet', errEl, 'Ingresá tu número de carné.');
-    return;
-  }
+  if (!carnet) { showError('fCarnet', errEl, 'Ingresá tu número de carné.'); return; }
 
   setBuscarLoading(true);
 
@@ -75,7 +54,7 @@ async function buscarAlumno() {
       return;
     }
 
-    const todos = Object.entries(snap.val()).map(([id, d]) => ({ id, ...d }));
+    const todos  = Object.entries(snap.val()).map(([id, d]) => ({ id, ...d }));
     const alumno = todos.find(a =>
       (a.carnet ?? '').toLowerCase().trim() === carnet.toLowerCase()
     );
@@ -88,7 +67,6 @@ async function buscarAlumno() {
 
     _alumno = alumno;
 
-    // Si hay materia pre-seleccionada, verificar que el alumno esté inscrito
     if (_materiaId) {
       if (!alumno.inscripciones?.[_materiaId]) {
         setBuscarLoading(false);
@@ -122,7 +100,7 @@ async function showMateriaHint(materiaId) {
   try {
     const snap = await get(ref(db, `materias/${materiaId}`));
     if (!snap.exists()) return;
-    const m = snap.val();
+    const m    = snap.val();
     const hint = document.getElementById('materiaHint');
     if (hint) {
       hint.textContent = `Materia: ${m.nombre}${m.seccion ? ' — Sección ' + m.seccion : ''} (${m.ciclo})`;
@@ -134,7 +112,6 @@ async function showMateriaHint(materiaId) {
 // ---------------------------------------------------------------------------
 // Paso 2: Formulario de entrega
 // ---------------------------------------------------------------------------
-
 function showFormStep() {
   document.getElementById('step1')?.classList.add('hidden');
   const step2 = document.getElementById('step2');
@@ -143,7 +120,6 @@ function showFormStep() {
 
   document.getElementById('alumnoNombre').textContent = _alumno.nombre;
 
-  // Materia selector
   const sel = document.getElementById('fMateria');
   if (!sel) return;
   sel.innerHTML = '';
@@ -156,7 +132,7 @@ function showFormStep() {
 
   if (_materiaId && _materias.length === 1) {
     sel.innerHTML = `<option value="${escHtml(_materias[0].id)}">${escHtml(_materias[0].nombre)} — ${escHtml(_materias[0].ciclo)}</option>`;
-    sel.disabled = true;
+    sel.disabled  = true;
   } else {
     sel.innerHTML = `<option value="">— Seleccioná la materia —</option>` +
       _materias.map(m =>
@@ -166,166 +142,64 @@ function showFormStep() {
       ).join('');
   }
 
-  bindEntregar();
+  document.getElementById('btnEntregar')?.addEventListener('click', registrarEntrega);
 }
 
 // ---------------------------------------------------------------------------
-// Archivo seleccionado: mostrar nombre
+// Paso 3: Registrar entrega (solo guarda el link en Firebase RTDB)
 // ---------------------------------------------------------------------------
-
-function bindFileInput() {
-  document.getElementById('fArchivo')?.addEventListener('change', e => {
-    const file     = e.target.files?.[0];
-    const labelEl  = document.getElementById('archivoNombre');
-    const errEl    = document.getElementById('errArchivo');
-    clearError(null, errEl);
-
-    if (!file) {
-      if (labelEl) labelEl.textContent = 'Ningún archivo seleccionado';
-      return;
-    }
-
-    if (file.type !== 'application/pdf') {
-      if (labelEl) labelEl.textContent = 'Archivo inválido';
-      showError(null, errEl, 'Solo se aceptan archivos PDF.');
-      e.target.value = '';
-      return;
-    }
-
-    if (file.size > MAX_SIZE_BYTES) {
-      if (labelEl) { labelEl.textContent = 'Archivo muy grande'; labelEl.classList.remove('selected'); }
-      showError(null, errEl, `El archivo supera el límite de ${MAX_MB} MB (${(file.size / 1048576).toFixed(0)} MB).`);
-      e.target.value = '';
-      return;
-    }
-
-    const sizeMB = (file.size / 1048576).toFixed(file.size < 1048576 ? 2 : 1);
-    if (labelEl) labelEl.textContent = `${file.name}  (${sizeMB} MB)`;
-  });
-}
-
-// ---------------------------------------------------------------------------
-// Paso 3: Subir tarea
-// ---------------------------------------------------------------------------
-
-function bindEntregar() {
-  document.getElementById('btnEntregar')?.addEventListener('click', subirTarea);
-}
-
-async function subirTarea() {
-  const materiaId = document.getElementById('fMateria')?.value;
-  const nombre    = document.getElementById('fNombreTarea')?.value.trim();
+async function registrarEntrega() {
+  const materiaId  = document.getElementById('fMateria')?.value;
+  const nombre     = document.getElementById('fNombreTarea')?.value.trim();
   const comentario = document.getElementById('fComentario')?.value.trim() ?? '';
-  const file      = document.getElementById('fArchivo')?.files?.[0];
-
-  let ok = true;
+  const linkTeams  = document.getElementById('fLinkTeams')?.value.trim();
 
   const errMateria = document.getElementById('errMateria');
   const errNombre  = document.getElementById('errNombre');
-  const errArchivo = document.getElementById('errArchivo');
-  clearError('fMateria', errMateria);
-  clearError('fNombreTarea', errNombre);
-  clearError(null, errArchivo);
+  const errLink    = document.getElementById('errLink');
+  clearError('fMateria',    errMateria);
+  clearError('fNombreTarea',errNombre);
+  clearError('fLinkTeams',  errLink);
 
-  if (!materiaId) {
-    showError('fMateria', errMateria, 'Seleccioná la materia.');
-    ok = false;
-  }
-  if (!nombre) {
-    showError('fNombreTarea', errNombre, 'El nombre de la tarea es obligatorio.');
-    ok = false;
-  }
-  if (!file) {
-    showError(null, errArchivo, 'Seleccioná un archivo PDF.');
-    ok = false;
-  }
+  let ok = true;
+  if (!materiaId) { showError('fMateria',    errMateria, 'Seleccioná la materia.');                       ok = false; }
+  if (!nombre)    { showError('fNombreTarea', errNombre,  'El nombre de la tarea es obligatorio.');        ok = false; }
+  if (!linkTeams) { showError('fLinkTeams',   errLink,    'Pegá el link de Teams de tu archivo.');         ok = false; }
+  else if (!isHttpsUrl(linkTeams)) {
+                    showError('fLinkTeams',   errLink,    'El link no es válido. Debe comenzar con https://'); ok = false; }
 
   if (!ok) return;
 
-  // Verificar doble que la materia sea válida para este alumno
   if (!_alumno.inscripciones?.[materiaId]) {
     showError('fMateria', errMateria, 'No estás inscrito en esa materia.');
     return;
   }
 
-  setEntregarLoading(true);
-  _paused     = false;
-  _startTime  = Date.now();
-  _startBytes = 0;
-  _latestSnap = null;
-
-  // Botón pausa/reanudar
-  const pauseBtn = document.getElementById('btnPauseResume');
-  if (pauseBtn) {
-    pauseBtn.onclick = () => {
-      if (!_uploadTask) return;
-      if (_paused) {
-        _startTime  = Date.now();
-        _startBytes = _latestSnap?.bytesTransferred ?? 0;
-        _uploadTask.resume();
-      } else {
-        _uploadTask.pause();
-      }
-    };
-  }
-
+  setLoading(true);
   try {
-    const fecha       = new Date().toISOString().slice(0, 10);
-    const timestamp   = Date.now();
-    const safeName    = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-    const storagePath = `tareas/${_alumno.id}/${materiaId}/${timestamp}_${safeName}`;
-
-    const fileRef = sRef(storage, storagePath);
-    _uploadTask   = uploadBytesResumable(fileRef, file, { contentType: 'application/pdf' });
-
-    await new Promise((resolve, reject) => {
-      _uploadTask.on('state_changed',
-        snap => {
-          _latestSnap = snap;
-          if (snap.state === 'paused') {
-            _paused = true;
-            if (pauseBtn) pauseBtn.textContent = '▶ Reanudar';
-          } else if (snap.state === 'running') {
-            _paused = false;
-            if (pauseBtn) pauseBtn.textContent = '⏸ Pausar';
-          }
-          updateProgress(snap);
-        },
-        reject,
-        resolve,
-      );
-    });
-
-    const url = await getDownloadURL(fileRef);
-
-    const newRef = push(ref(db, `alumnos/${_alumno.id}/inscripciones/${materiaId}/tareas`));
+    const fecha     = new Date().toISOString().slice(0, 10);
+    const timestamp = Date.now();
+    const newRef    = push(ref(db, `alumnos/${_alumno.id}/inscripciones/${materiaId}/tareas`));
     await set(newRef, {
       nombre,
-      archivoNombre: file.name,
-      url,
-      storagePath,
+      archivoNombre: null,
+      url:           linkTeams,
+      storagePath:   null,
       comentario,
       fecha,
-      subidoEn: timestamp,
+      subidoEn:      timestamp,
     });
-
-    showSuccess(nombre, file.name);
-
+    showSuccess(nombre);
   } catch (err) {
-    console.error('[Tareas] Error subiendo tarea:', err);
-    setEntregarLoading(false);
-    const errArchivo2 = document.getElementById('errArchivo');
-    const msg = err?.code === 'storage/retry-limit-exceeded'
-      ? 'La conexión es inestable. Revisá tu internet y volvé a intentarlo.'
-      : 'Error al subir el archivo. Verificá tu conexión e intentá de nuevo.';
-    showError(null, errArchivo2, msg);
+    console.error('[Tareas] Error guardando entrega:', err);
+    setLoading(false);
+    showError('fLinkTeams', document.getElementById('errLink'), 'Error de conexión. Intentá de nuevo.');
   }
 }
 
 // ---------------------------------------------------------------------------
 // UI helpers
 // ---------------------------------------------------------------------------
-
 function setBuscarLoading(on) {
   const btn = document.getElementById('btnBuscar');
   if (!btn) return;
@@ -333,61 +207,20 @@ function setBuscarLoading(on) {
   btn.textContent = on ? 'Buscando…' : 'Buscar';
 }
 
-function setEntregarLoading(on) {
-  const btn      = document.getElementById('btnEntregar');
-  const prog     = document.getElementById('progressWrap');
-  const pauseBtn = document.getElementById('btnPauseResume');
-  if (btn)      { btn.disabled = on; btn.textContent = on ? 'Subiendo…' : 'Entregar tarea'; }
-  if (prog)     prog.classList.toggle('hidden', !on);
-  if (pauseBtn) pauseBtn.textContent = '⏸ Pausar';
-  if (!on) { _uploadTask = null; _paused = false; }
+function setLoading(on) {
+  const btn = document.getElementById('btnEntregar');
+  if (!btn) return;
+  btn.disabled    = on;
+  btn.textContent = on ? 'Registrando…' : 'Registrar entrega';
 }
 
-function updateProgress(snap) {
-  const pct   = Math.round((snap.bytesTransferred / snap.totalBytes) * 100);
-  const txMB  = (snap.bytesTransferred / 1048576).toFixed(1);
-  const totMB = (snap.totalBytes / 1048576).toFixed(1);
-
-  const bar    = document.getElementById('progressBar');
-  const pctEl  = document.getElementById('progressPct');
-  const txtEl  = document.getElementById('progressText');
-  const infoEl = document.getElementById('progressInfo');
-
-  if (bar)   bar.style.width = `${pct}%`;
-  if (pctEl) pctEl.textContent = `${pct}%`;
-  if (txtEl) txtEl.textContent = `${txMB} MB / ${totMB} MB`;
-
-  if (!infoEl) return;
-  if (_paused) { infoEl.textContent = 'Pausado'; return; }
-
-  const elapsed  = (Date.now() - _startTime) / 1000;
-  const deltaB   = snap.bytesTransferred - _startBytes;
-  const speedBps = elapsed > 1 ? deltaB / elapsed : 0;
-
-  if (speedBps > 10240) {
-    const speedLabel = speedBps >= 1048576
-      ? `${(speedBps / 1048576).toFixed(1)} MB/s`
-      : `${(speedBps / 1024).toFixed(0)} KB/s`;
-    const remSecs = (snap.totalBytes - snap.bytesTransferred) / speedBps;
-    infoEl.textContent = `${speedLabel} · ~${fmtSecs(remSecs)} restante`;
-  } else {
-    infoEl.textContent = 'Subiendo…';
-  }
-}
-
-function fmtSecs(secs) {
-  if (secs >= 3600) return `${Math.floor(secs / 3600)}h ${Math.floor((secs % 3600) / 60)}m`;
-  if (secs >= 60)   return `${Math.round(secs / 60)} min`;
-  return `${Math.round(secs)} seg`;
-}
-
-function showSuccess(nombre, archivoNombre) {
+function showSuccess(nombre) {
   document.getElementById('step2')?.classList.add('hidden');
   const ok = document.getElementById('stepOk');
   if (!ok) return;
   ok.classList.remove('hidden');
   const el = document.getElementById('okDetalle');
-  if (el) el.textContent = `"${nombre}" (${archivoNombre}) entregado correctamente.`;
+  if (el) el.textContent = `"${nombre}" registrada correctamente. Tu docente puede ver el link en la aplicación.`;
 }
 
 function showError(inputId, errEl, msg) {
@@ -398,6 +231,10 @@ function showError(inputId, errEl, msg) {
 function clearError(inputId, errEl) {
   if (inputId) document.getElementById(inputId)?.classList.remove('input-error');
   if (errEl)   errEl.classList.add('hidden');
+}
+
+function isHttpsUrl(str) {
+  try { return new URL(str).protocol === 'https:'; } catch { return false; }
 }
 
 function escHtml(str) {

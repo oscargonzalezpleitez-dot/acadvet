@@ -879,21 +879,19 @@ async function paintTareas(el) {
 }
 
 function tareaRowHTML(t) {
-  const fecha     = t.fecha ? formatFecha(t.fecha) : '—';
   const subida    = t.subidoEn ? new Date(t.subidoEn).toLocaleString('es-SV', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
   const comentario = t.comentario ? `<span class="text-muted text-xs" style="display:block;margin-top:2px">${escHtml(t.comentario)}</span>` : '';
 
   return `
     <div class="nota-row" style="align-items:flex-start;padding:var(--space-3) var(--space-4)">
-      <div style="display:flex;align-items:center;gap:var(--space-2);flex-shrink:0;color:var(--color-danger)">
+      <div style="display:flex;align-items:center;gap:var(--space-2);flex-shrink:0;color:var(--color-primary)">
         <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-          <polyline points="14 2 14 8 20 8"/>
+          <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+          <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
         </svg>
       </div>
       <div class="nota-row__info" style="flex:1;min-width:0">
         <span class="nota-row__nombre">${escHtml(t.nombre)}</span>
-        <span class="text-muted text-xs" style="display:block">${escHtml(t.archivoNombre)}</span>
         ${comentario}
       </div>
       <div style="text-align:right;flex-shrink:0">
@@ -902,16 +900,16 @@ function tareaRowHTML(t) {
       <div class="nota-row__actions">
         <button class="btn btn--secondary btn--sm"
           data-tarea-action="ver" data-tarea-id="${escHtml(t.id)}"
-          title="Ver PDF">
+          title="Abrir en Teams">
           <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-            <circle cx="12" cy="12" r="3"/>
+            <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/>
           </svg>
-          Ver
+          Abrir en Teams
         </button>
         <button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
           data-tarea-action="delete" data-tarea-id="${escHtml(t.id)}"
-          aria-label="Eliminar tarea">
+          aria-label="Eliminar entrega">
           <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/>
             <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
@@ -928,8 +926,8 @@ function confirmDeleteTarea(tarea) {
     title: 'Eliminar tarea',
     size: 'sm',
     body: `<p class="text-secondary">
-      ¿Eliminar <strong>${escHtml(tarea.nombre)}</strong>?<br>
-      <span class="text-muted text-xs">El archivo PDF también se eliminará del servidor.</span>
+      ¿Eliminar el registro de entrega <strong>${escHtml(tarea.nombre)}</strong>?<br>
+      <span class="text-muted text-xs">Solo se elimina el registro en la app. El archivo en Teams no se toca.</span>
     </p>`,
     confirmLabel: 'Eliminar',
     confirmVariant: 'danger',
