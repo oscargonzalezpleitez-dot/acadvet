@@ -404,6 +404,36 @@ export async function rechazarSolicitud(solicitudId) {
   });
 }
 
+// ---------------------------------------------------------------------------
+// ARCHIVO — sesiones QR para la vista de historial
+// ---------------------------------------------------------------------------
+
+/** Retorna todas las sesiones QR con su conteo de asistentes (sin fotos). */
+export async function getQRSessions() {
+  const s = await get(ref(db, 'qr_sessions'));
+  if (!s.exists()) return [];
+  return Object.entries(s.val())
+    .map(([id, data]) => ({
+      id,
+      materiaId:       data.materiaId,
+      materiaNombre:   data.materiaNombre,
+      ciclo:           data.ciclo,
+      fecha:           data.fecha,
+      active:          data.active,
+      startedAt:       data.startedAt,
+      stoppedAt:       data.stoppedAt,
+      config:          data.config,
+      asistentesCount: data.asistentes ? Object.keys(data.asistentes).length : 0,
+    }))
+    .sort((a, b) => (b.startedAt || 0) - (a.startedAt || 0));
+}
+
+/** Retorna los asistentes de una sesión ordenados por hora de registro. */
+export async function getQRSessionAsistentes(sessionId) {
+  const s = await get(ref(db, `qr_sessions/${sessionId}/asistentes`));
+  return snapToArray(s).sort((a, b) => (a.ts || 0) - (b.ts || 0));
+}
+
 export async function deleteTarea(alumnoId, materiaId, tareaId, storagePath = null) {
   if (storagePath) {
     try { await deleteObject(sRef(storage, storagePath)); } catch (_) { /* archivo ya eliminado */ }

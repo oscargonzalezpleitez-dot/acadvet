@@ -108,24 +108,52 @@ async function init() {
 // ---------------------------------------------------------------------------
 function startGPS() {
   setGPSStatus('Obteniendo ubicación…', 'loading');
+  document.getElementById('gpsIcon').textContent = '📡';
+  document.getElementById('gpsRetryBtn')?.classList.add('hidden');
+
+  // Primer intento: baja precisión (WiFi/celular) — rápido, funciona bien en interiores.
+  // Si falla, se reintenta con alta precisión como fallback.
   navigator.geolocation.getCurrentPosition(
-    pos => {
-      _gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-      setGPSStatus('📍 Ubicación verificada', 'ok');
-      document.getElementById('gpsIcon').textContent = '📍';
-    },
+    onGPSSuccess,
     err => {
-      const denied = err.code === 1; // PERMISSION_DENIED
-      setGPSStatus(
-        denied
-          ? '⚠️ Permiso de ubicación denegado. Habilitalo en tu navegador.'
-          : '⚠️ No se pudo obtener la ubicación. Verificá que el GPS esté activo.',
-        'error'
-      );
-      document.getElementById('gpsIcon').textContent = '⚠️';
+      if (err.code === 1) {
+        onGPSPermissionDenied();
+      } else {
+        setGPSStatus('Ajustando señal GPS…', 'loading');
+        navigator.geolocation.getCurrentPosition(
+          onGPSSuccess,
+          onGPSFinalError,
+          { timeout: 20000, enableHighAccuracy: true }
+        );
+      }
     },
-    { timeout: 15000, enableHighAccuracy: true }
+    { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
   );
+}
+
+function onGPSSuccess(pos) {
+  _gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+  setGPSStatus('📍 Ubicación verificada', 'ok');
+  document.getElementById('gpsIcon').textContent = '📍';
+  document.getElementById('gpsRetryBtn')?.classList.add('hidden');
+}
+
+function onGPSPermissionDenied() {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  setGPSStatus(
+    isIOS
+      ? '⚠️ Permiso denegado. En iPhone: Ajustes → Privacidad → Localización → Safari → Permitir.'
+      : '⚠️ Permiso denegado. Habilitá la ubicación en la configuración de tu navegador.',
+    'error'
+  );
+  document.getElementById('gpsIcon').textContent = '⚠️';
+  document.getElementById('gpsRetryBtn')?.classList.remove('hidden');
+}
+
+function onGPSFinalError() {
+  setGPSStatus('⚠️ No se pudo obtener la ubicación. Verificá que la ubicación esté activa y tocá Reintentar.', 'error');
+  document.getElementById('gpsIcon').textContent = '⚠️';
+  document.getElementById('gpsRetryBtn')?.classList.remove('hidden');
 }
 
 function setGPSStatus(msg, state) {
@@ -145,6 +173,8 @@ function wireForm() {
   rToken?.addEventListener('input', () => {
     rToken.value = rToken.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
   });
+
+  document.getElementById('gpsRetryBtn')?.addEventListener('click', startGPS);
 
   // Paso 2 — selfie
   document.getElementById('btnCapture')?.addEventListener('click',    capturePhoto);

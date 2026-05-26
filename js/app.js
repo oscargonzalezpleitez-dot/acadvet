@@ -9,6 +9,7 @@ import { renderMaterias }           from './views/materias.js';
 import { renderAlumnos }            from './views/alumnos.js';
 import { renderExpediente }         from './views/expediente.js';
 import { renderSolicitudes }        from './views/solicitudes.js';
+import { renderArchivo }            from './views/archivo.js';
 import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
 
 // --- Guard de sesión ---
@@ -133,6 +134,10 @@ on('/alumno/:id', ({ params, query }) => {
 
 on('/solicitudes', () => {
   renderSolicitudes(mainContent);
+});
+
+on('/archivo', () => {
+  renderArchivo(mainContent);
 });
 
 // ---------------------------------------------------------------------------
