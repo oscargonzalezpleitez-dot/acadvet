@@ -1167,8 +1167,8 @@ async function exportPDF(btn) {
 
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
-    doc.text('UNIVERSIDAD DE EL SALVADOR', ML, 10);
+    doc.setFontSize(9);
+    doc.text('UNIVERSIDAD SALVADOREÑA ALBERTO MASFERRER', ML, 10);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.text('Facultad de Medicina Veterinaria', ML, 17);
@@ -1515,8 +1515,8 @@ async function exportWord(btn) {
 
     // Header USAM
     for (const [text, size, bold] of [
-      ['UNIVERSIDAD DE EL SALVADOR',       24, true ],
-      ['Facultad de Medicina Veterinaria',  18, false],
+      ['UNIVERSIDAD SALVADOREÑA ALBERTO MASFERRER', 20, true ],
+      ['Facultad de Medicina Veterinaria',         18, false],
       ['EXPEDIENTE ACADÉMICO INDIVIDUAL',   22, true ],
     ]) {
       ch.push(new Paragraph({
@@ -1795,7 +1795,7 @@ async function exportExcel(btn) {
     });
 
     // ── Header USAM ──────────────────────────────────────────────────────────
-    mergedCell(r++, 'UNIVERSIDAD DE EL SALVADOR',       C.dark, fnt(true, 13, C.white));
+    mergedCell(r++, 'UNIVERSIDAD SALVADOREÑA ALBERTO MASFERRER', C.dark, fnt(true, 11, C.white));
     mergedCell(r++, 'Facultad de Medicina Veterinaria',  C.dark, fnt(false, 10, C.white));
     mergedCell(r++, 'EXPEDIENTE ACADÉMICO INDIVIDUAL',   C.dark, fnt(true, 11, C.white));
     blankRow(r++);
