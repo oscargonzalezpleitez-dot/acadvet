@@ -705,6 +705,11 @@ function paintResultados(el) {
             <option value="">— Todos los cuestionarios —</option>
             ${quizIds.map(id => `<option value="${id}" ${id === _filterQuizId ? 'selected' : ''}>${esc(quizNames[id] || id)}</option>`).join('')}
           </select>
+          ${sessionStorage.getItem('acadvet_auth') === 'eps' ? `
+            <span title="No disponible en sesión EPS" style="font-size:.78rem;color:var(--color-text-muted);padding:0 4px">
+              🔒 Descargas no disponibles en sesión EPS
+            </span>
+          ` : `
           <button class="btn btn--secondary btn--sm" id="btnExportXLSX" ${filtered.length ? '' : 'disabled'}>
             📊 Excel
           </button>
@@ -714,6 +719,7 @@ function paintResultados(el) {
           <button class="btn btn--secondary btn--sm" id="btnExportPDFFotos" ${filtered.length ? '' : 'disabled'}>
             📷 PDF con fotos
           </button>
+          `}
         </div>
       </div>
 

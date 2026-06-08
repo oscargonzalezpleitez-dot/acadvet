@@ -14,9 +14,13 @@ import { renderCuestionarios }      from './views/cuestionarios.js';
 import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
 
 // --- Guard de sesión ---
-if (sessionStorage.getItem('acadvet_auth') !== 'true') {
+const _auth = sessionStorage.getItem('acadvet_auth');
+if (!['admin', 'eps', 'true'].includes(_auth)) {
   window.location.replace('index.html');
 }
+
+// Helper global de rol (disponible para todas las vistas vía import o sessionStorage directo)
+export const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
 
 // ---------------------------------------------------------------------------
 // Referencias DOM del shell
@@ -59,6 +63,17 @@ btnLogout.addEventListener('click', () => {
   sessionStorage.removeItem('acadvet_auth');
   window.location.replace('index.html');
 });
+
+// Badge EPS en sidebar cuando la sesión es de visitante
+if (isEPS()) {
+  const roleEl = document.querySelector('.user-role');
+  if (roleEl) {
+    roleEl.textContent = 'Visitante · USAM';
+    roleEl.insertAdjacentHTML('beforeend', '<span class="eps-badge">EPS</span>');
+  }
+  const nameEl = document.querySelector('.user-name');
+  if (nameEl) nameEl.textContent = 'Sesión EPS';
+}
 
 // ---------------------------------------------------------------------------
 // Helpers de UI

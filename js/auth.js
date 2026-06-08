@@ -1,6 +1,7 @@
 // =============================================================================
 // AcadVet USAM — Autenticación por PIN
-// Compara SHA-256 del PIN ingresado contra /config/pin_hash en Firebase
+// Roles: 'admin' (docente) y 'eps' (visitante EPS)
+// PIN hash almacenado en Firebase: config/pin_hash y config/eps_pin_hash
 // Sesión guardada en sessionStorage (se borra al cerrar la pestaña)
 // =============================================================================
 
@@ -10,7 +11,8 @@ import { app } from './firebase-config.js';
 const rtdb = getDatabase(app);
 
 // Si ya hay sesión activa, ir directo al dashboard
-if (sessionStorage.getItem('acadvet_auth') === 'true') {
+const _existing = sessionStorage.getItem('acadvet_auth');
+if (_existing === 'admin' || _existing === 'eps' || _existing === 'true') {
   window.location.replace('app.html');
 }
 
@@ -20,12 +22,31 @@ const pinInput         = document.getElementById('pinInput');
 const pinDots          = pinDotsContainer.querySelectorAll('.pin-dot');
 const btnLogin         = document.getElementById('btnLogin');
 const pinError         = document.getElementById('pinError');
+const pinLabel         = document.getElementById('pinInstructions');
+
+// --- Rol activo (docente | eps) ---
+let _role = 'docente';
+
+// --- Tabs de rol ---
+document.querySelectorAll('.login-role-tab').forEach(tab => {
+  tab.addEventListener('click', () => {
+    document.querySelectorAll('.login-role-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    _role = tab.dataset.role;
+    clearError();
+    pinInput.value = '';
+    pinDots.forEach(d => d.classList.remove('filled'));
+    btnLogin.disabled = true;
+    pinLabel.textContent = _role === 'eps'
+      ? 'Ingresá tu PIN de acceso EPS'
+      : 'Ingresá tu PIN de acceso';
+    pinInput.focus();
+  });
+});
 
 // --- Foco inicial ---
-// Dar foco al input oculto para capturar teclado desde el inicio
 pinInput.focus();
 
-// Hacer clic en los dots también da foco al input
 pinDotsContainer.addEventListener('click', () => {
   pinInput.focus();
   pinDotsContainer.classList.add('focused');
@@ -36,17 +57,13 @@ pinInput.addEventListener('blur',   () => pinDotsContainer.classList.remove('foc
 // --- Actualizar dots al escribir ---
 pinInput.addEventListener('input', () => {
   const len = pinInput.value.length;
-
   pinDots.forEach((dot, i) => {
     dot.classList.toggle('filled', i < len);
   });
-
-  // Habilitar botón cuando hay al menos 4 dígitos
   btnLogin.disabled = (len < 4);
   clearError();
 });
 
-// Enter también dispara el login
 pinInput.addEventListener('keydown', e => {
   if (e.key === 'Enter' && !btnLogin.disabled) attemptLogin();
 });
@@ -54,8 +71,8 @@ pinInput.addEventListener('keydown', e => {
 btnLogin.addEventListener('click', attemptLogin);
 
 // --- Protección contra fuerza bruta ---
-const MAX_ATTEMPTS  = 5;
-const BASE_LOCK_MS  = 30_000; // 30 s para el primer bloqueo; se duplica por bloque de 5
+const MAX_ATTEMPTS = 5;
+const BASE_LOCK_MS = 30_000;
 
 function getLock() {
   try { return JSON.parse(localStorage.getItem('acadvet_pin_lock') ?? 'null') ?? { attempts: 0, lockedUntil: 0 }; }
@@ -77,7 +94,6 @@ function checkLockout() {
   return false;
 }
 
-// Verificar bloqueo al cargar la página
 checkLockout();
 
 // --- Lógica de login ---
@@ -90,16 +106,21 @@ async function attemptLogin() {
 
   try {
     const enteredHash = await sha256(pin);
-    const snapshot    = await get(ref(rtdb, 'config/pin_hash'));
+    const hashKey     = _role === 'eps' ? 'config/eps_pin_hash' : 'config/pin_hash';
+    const snapshot    = await get(ref(rtdb, hashKey));
 
     if (!snapshot.exists()) {
-      showError('No hay PIN configurado. Revisá firebase-config.js y la consola.');
+      if (_role === 'eps') {
+        showError('El acceso EPS no está configurado. Contactá al docente.');
+      } else {
+        showError('No hay PIN configurado. Revisá firebase-config.js y la consola.');
+      }
       return;
     }
 
     if (snapshot.val() === enteredHash) {
       clearLock();
-      sessionStorage.setItem('acadvet_auth', 'true');
+      sessionStorage.setItem('acadvet_auth', _role === 'eps' ? 'eps' : 'admin');
       window.location.replace('app.html');
     } else {
       const lock     = getLock();
@@ -143,10 +164,8 @@ function setLoading(loading) {
 
 function showError(msg) {
   pinError.textContent = msg;
-  // Re-trigger animation al volver a mostrar
   pinError.classList.remove('visible');
-  // eslint-disable-next-line no-unused-expressions
-  pinError.offsetWidth; // reflow trick para reiniciar la animación
+  pinError.offsetWidth;
   pinError.classList.add('visible');
 }
 
@@ -155,7 +174,6 @@ function clearError() {
   pinError.classList.remove('visible');
 }
 
-// --- SHA-256 via Web Crypto API (nativo en todos los browsers modernos) ---
 async function sha256(message) {
   const data   = new TextEncoder().encode(message);
   const buffer = await crypto.subtle.digest('SHA-256', data);

@@ -256,6 +256,9 @@ function renderBody(session, asist) {
           ${asist.length} asistente${asist.length !== 1 ? 's' : ''} · Descargar:
         </span>
         <div style="display:flex;gap:var(--space-2);flex-wrap:wrap">
+          ${sessionStorage.getItem('acadvet_auth') === 'eps' ? `
+            <span style="font-size:.78rem;color:var(--color-text-muted)">🔒 Descargas no disponibles en sesión EPS</span>
+          ` : `
           <button class="btn btn--ghost btn--sm arch-btn-pdf-foto"
             ${!hasPhotos ? 'disabled title="Esta sesión no tiene fotos registradas"' : ''}>
             📄 PDF con foto
@@ -264,6 +267,7 @@ function renderBody(session, asist) {
           <button class="btn btn--ghost btn--sm arch-btn-excel" style="color:var(--color-success)">
             📊 Excel
           </button>
+          `}
         </div>
       </div>
 
