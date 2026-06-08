@@ -720,10 +720,10 @@ function paintResultados(el) {
           <button class="btn btn--secondary btn--sm" id="btnExportPDFFotos" ${filtered.length ? '' : 'disabled'}>
             📷 PDF con fotos
           </button>
-          ${_filterQuizId && filtered.length ? `
-          <button class="btn btn--danger btn--sm" id="btnDeleteAllResults" title="Eliminar todos los resultados del cuestionario seleccionado">
-            🗑 Eliminar todos
-          </button>` : ''}
+          <button class="btn btn--danger btn--sm" id="btnDeleteAllResults" ${filtered.length ? '' : 'disabled'}
+            title="${_filterQuizId ? 'Eliminar todos los resultados del cuestionario seleccionado' : 'Filtrá por cuestionario para eliminar todos sus resultados'}">
+            🗑 Eliminar ${_filterQuizId ? 'todos' : 'resultados'}
+          </button>
           `}
         </div>
       </div>
@@ -793,19 +793,33 @@ function paintResultados(el) {
   document.getElementById('btnExportPDF')?.addEventListener('click', () => exportPDF(filtered, false));
   document.getElementById('btnExportPDFFotos')?.addEventListener('click', () => exportPDF(filtered, true));
 
-  // Eliminar todos los resultados del cuestionario filtrado
+  // Eliminar todos los resultados (del cuestionario filtrado, o todos si no hay filtro)
   document.getElementById('btnDeleteAllResults')?.addEventListener('click', () => {
-    const quizNombre = filtered[0]?.cuestionarioNombre || _filterQuizId;
+    const quizNombre = _filterQuizId
+      ? (filtered[0]?.cuestionarioNombre || _filterQuizId)
+      : null;
+    const bodyMsg = quizNombre
+      ? `<p>¿Eliminás <strong>todos los ${filtered.length} resultado${filtered.length !== 1 ? 's' : ''}</strong> del cuestionario <strong>${esc(quizNombre)}</strong>? Esta acción no se puede deshacer.</p>`
+      : `<p>¿Eliminás <strong>todos los ${filtered.length} resultado${filtered.length !== 1 ? 's' : ''}</strong> de todos los cuestionarios? Esta acción no se puede deshacer.</p>`;
+
     openModal({
-      title:          'Eliminar todos los resultados',
-      body:           `<p>¿Eliminás <strong>todos los ${filtered.length} resultado${filtered.length !== 1 ? 's' : ''}</strong> del cuestionario <strong>${esc(quizNombre)}</strong>? Esta acción no se puede deshacer.</p>`,
-      confirmLabel:   'Sí, eliminar todos',
+      title:          'Eliminar resultados',
+      body:           bodyMsg,
+      confirmLabel:   'Sí, eliminar',
       confirmVariant: 'danger',
       onConfirm: async () => {
         closeModal();
         try {
-          const n = await deleteResultadosByQuiz(_filterQuizId);
-          _results = _results.filter(r => r.cuestionarioId !== _filterQuizId);
+          let n = 0;
+          if (_filterQuizId) {
+            n = await deleteResultadosByQuiz(_filterQuizId);
+            _results = _results.filter(r => r.cuestionarioId !== _filterQuizId);
+          } else {
+            // Eliminar todos los resultados visibles
+            await Promise.all(filtered.map(r => deleteResultado(r.id)));
+            n = filtered.length;
+            _results = _results.filter(r => !filtered.find(f => f.id === r.id));
+          }
           showToast(`${n} resultado${n !== 1 ? 's' : ''} eliminado${n !== 1 ? 's' : ''}.`, 'success');
           paintResultados(el);
         } catch {
