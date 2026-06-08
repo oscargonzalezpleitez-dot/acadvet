@@ -503,3 +503,16 @@ export async function getCuestionariosResultados() {
   const s = await get(ref(db, 'cuestionarios_resultados'));
   return snapToArray(s).sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
 }
+
+export async function deleteResultado(id) {
+  await remove(ref(db, `cuestionarios_resultados/${id}`));
+}
+
+export async function deleteResultadosByQuiz(quizId) {
+  const s    = await get(ref(db, 'cuestionarios_resultados'));
+  const ids  = snapToArray(s)
+    .filter(r => r.cuestionarioId === quizId)
+    .map(r => r.id);
+  await Promise.all(ids.map(id => remove(ref(db, `cuestionarios_resultados/${id}`))));
+  return ids.length;
+}

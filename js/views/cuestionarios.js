@@ -6,6 +6,7 @@
 import {
   getCuestionarios, createCuestionario, updateCuestionario,
   deleteCuestionario, toggleCuestionarioActivo, getCuestionariosResultados,
+  deleteResultado, deleteResultadosByQuiz,
 } from '../db.js';
 import { showToast, openModal, closeModal } from '../ui.js';
 
@@ -719,6 +720,10 @@ function paintResultados(el) {
           <button class="btn btn--secondary btn--sm" id="btnExportPDFFotos" ${filtered.length ? '' : 'disabled'}>
             📷 PDF con fotos
           </button>
+          ${_filterQuizId && filtered.length ? `
+          <button class="btn btn--danger btn--sm" id="btnDeleteAllResults" title="Eliminar todos los resultados del cuestionario seleccionado">
+            🗑 Eliminar todos
+          </button>` : ''}
           `}
         </div>
       </div>
@@ -765,8 +770,11 @@ function paintResultados(el) {
                     <td><span class="${cls}" style="font-weight:700">${pct}%</span></td>
                     <td style="text-align:center">${r.blurs ?? 0}</td>
                     <td style="white-space:nowrap;font-size:.8rem;color:var(--color-text-muted)">${fecha}</td>
-                    <td>
+                    <td style="white-space:nowrap">
                       <button class="btn btn--secondary btn--sm" data-detail="${i}">Ver</button>
+                      ${sessionStorage.getItem('acadvet_auth') !== 'eps'
+                        ? `<button class="btn btn--danger btn--sm" data-delete-result="${i}" style="margin-left:4px" title="Eliminar este resultado">🗑</button>`
+                        : ''}
                     </td>
                   </tr>`;
               }).join('')}
@@ -784,6 +792,53 @@ function paintResultados(el) {
   document.getElementById('btnExportXLSX')?.addEventListener('click', () => exportXLSX(filtered));
   document.getElementById('btnExportPDF')?.addEventListener('click', () => exportPDF(filtered, false));
   document.getElementById('btnExportPDFFotos')?.addEventListener('click', () => exportPDF(filtered, true));
+
+  // Eliminar todos los resultados del cuestionario filtrado
+  document.getElementById('btnDeleteAllResults')?.addEventListener('click', () => {
+    const quizNombre = filtered[0]?.cuestionarioNombre || _filterQuizId;
+    openModal({
+      title:          'Eliminar todos los resultados',
+      body:           `<p>¿Eliminás <strong>todos los ${filtered.length} resultado${filtered.length !== 1 ? 's' : ''}</strong> del cuestionario <strong>${esc(quizNombre)}</strong>? Esta acción no se puede deshacer.</p>`,
+      confirmLabel:   'Sí, eliminar todos',
+      confirmVariant: 'danger',
+      onConfirm: async () => {
+        closeModal();
+        try {
+          const n = await deleteResultadosByQuiz(_filterQuizId);
+          _results = _results.filter(r => r.cuestionarioId !== _filterQuizId);
+          showToast(`${n} resultado${n !== 1 ? 's' : ''} eliminado${n !== 1 ? 's' : ''}.`, 'success');
+          paintResultados(el);
+        } catch {
+          showToast('Error al eliminar. Revisá tu conexión.', 'error');
+        }
+      },
+    });
+  });
+
+  // Eliminar resultado individual
+  el.querySelectorAll('[data-delete-result]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const i = parseInt(btn.dataset.deleteResult);
+      const r = filtered[i];
+      openModal({
+        title:          'Eliminar resultado',
+        body:           `<p>¿Eliminás el resultado de <strong>${esc(r.alumno?.nombre || '—')}</strong>? Esta acción no se puede deshacer.</p>`,
+        confirmLabel:   'Sí, eliminar',
+        confirmVariant: 'danger',
+        onConfirm: async () => {
+          closeModal();
+          try {
+            await deleteResultado(r.id);
+            _results = _results.filter(x => x.id !== r.id);
+            showToast('Resultado eliminado.', 'success');
+            paintResultados(el);
+          } catch {
+            showToast('Error al eliminar. Revisá tu conexión.', 'error');
+          }
+        },
+      });
+    });
+  });
 
   el.querySelectorAll('[data-detail]').forEach(btn => {
     btn.addEventListener('click', () => {
