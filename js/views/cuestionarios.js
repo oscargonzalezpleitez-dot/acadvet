@@ -158,6 +158,7 @@ function renderTabCrear(el) {
               <option value="truefalse">Verdadero / Falso</option>
               <option value="short">Respuesta corta</option>
               <option value="fill">Completar espacio</option>
+              <option value="imagen">Con imagen</option>
             </select>
             <button class="btn btn--primary btn--sm" id="btnAddQ">+ Agregar pregunta</button>
           </div>
@@ -190,11 +191,23 @@ function renderTabCrear(el) {
     if (tipo === 'truefalse') _questions.push({ tipo, texto: '', correcta: 'verdadero', puntos: 1 });
     if (tipo === 'short')     _questions.push({ tipo, texto: '', correcta: '', puntos: 1 });
     if (tipo === 'fill')      _questions.push({ tipo, texto: '', correcta: '', puntos: 1 });
+    if (tipo === 'imagen')    _questions.push({ tipo, texto: '', imagen: '', opciones: ['', '', ''], correcta: 0, puntos: 1 });
     renderQList();
     setTimeout(() => {
       const last = document.querySelectorAll('.cuest-q-card');
       last[last.length - 1]?.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 80);
+  });
+
+  // Delegación de upload de imágenes
+  document.getElementById('cuestQList').addEventListener('change', async e => {
+    const fileInput = e.target.closest('.cuest-img-file');
+    if (!fileInput || !fileInput.files[0]) return;
+    const qi  = parseInt(fileInput.dataset.qi);
+    const url = await compressImage(fileInput.files[0], 900, 0.75);
+    syncQuestionsFromDOM();
+    _questions[qi].imagen = url;
+    renderQList();
   });
 
   document.getElementById('cuestQList').addEventListener('click', e => {
@@ -240,13 +253,14 @@ function syncQuestionsFromDOM() {
     const pEl = document.getElementById(`q-${i}-puntos`);
     if (pEl) q.puntos = Math.max(1, parseInt(pEl.value) || 1);
 
-    if (q.tipo === 'multiple') {
+    if (q.tipo === 'multiple' || q.tipo === 'imagen') {
       q.opciones.forEach((_, j) => {
         const o = document.getElementById(`q-${i}-opt-${j}`);
         if (o) q.opciones[j] = o.value;
       });
       const checked = document.querySelector(`input[name="q-${i}-correcta"]:checked`);
       if (checked) q.correcta = parseInt(checked.value);
+      // imagen permanece en estado (_questions[i].imagen), no viene del DOM
     }
     if (q.tipo === 'truefalse') {
       const checked = document.querySelector(`input[name="q-${i}-correcta"]:checked`);
@@ -286,12 +300,13 @@ const TIPO_LABEL = {
   truefalse: 'Verdadero / Falso',
   short:     'Respuesta corta',
   fill:      'Completar espacio',
+  imagen:    'Con imagen',
 };
 
 function buildQCard(q, i) {
   const total = _questions.length;
 
-  const opts = q.tipo === 'multiple' ? `
+  const optsHtml = (q.tipo === 'multiple' || q.tipo === 'imagen') ? `
     <div class="cuest-opts-list">
       ${q.opciones.map((opt, j) => `
         <div class="cuest-opt-row">
@@ -316,6 +331,20 @@ function buildQCard(q, i) {
         </button>` : ''}
     </div>
     <p class="cuest-hint">Seleccioná el círculo de la opción correcta.</p>
+  ` : '';
+
+  const opts = q.tipo === 'multiple' ? optsHtml : '';
+
+  const imagenBlock = q.tipo === 'imagen' ? `
+    <div class="cuest-img-upload-wrap">
+      ${q.imagen ? `<img src="${q.imagen}" class="cuest-img-preview" alt="Imagen de la pregunta">` : ''}
+      <label class="cuest-img-upload-label">
+        <input type="file" accept="image/*" class="cuest-img-file" data-qi="${i}" style="display:none">
+        <span class="btn btn--secondary btn--sm">${q.imagen ? '🔄 Cambiar imagen' : '🖼 Subir imagen *'}</span>
+      </label>
+      ${!q.imagen ? `<p class="cuest-hint" style="color:var(--color-danger)">La imagen es obligatoria.</p>` : ''}
+    </div>
+    ${optsHtml}
   ` : '';
 
   const truefalseOpts = q.tipo === 'truefalse' ? `
@@ -371,7 +400,7 @@ function buildQCard(q, i) {
           placeholder="${q.tipo === 'fill' ? 'Ej. El animal con más vértebras es ___ .' : 'Escribe el enunciado aquí…'}"
         >${esc(q.texto)}</textarea>
       </div>
-      ${opts}${truefalseOpts}${shortInput}
+      ${opts}${truefalseOpts}${shortInput}${imagenBlock}
     </div>
   `;
 }
@@ -418,6 +447,19 @@ async function saveQuiz() {
       showToast(`La respuesta correcta de la pregunta ${i + 1} es obligatoria.`, 'error');
       document.getElementById(`q-${i}-correcta`)?.focus();
       return;
+    }
+    if (q.tipo === 'imagen' && !q.imagen) {
+      showToast(`La imagen de la pregunta ${i + 1} es obligatoria.`, 'error');
+      return;
+    }
+    if (q.tipo === 'imagen') {
+      for (let j = 0; j < q.opciones.length; j++) {
+        if (!q.opciones[j].trim()) {
+          showToast(`La opción ${j + 1} de la pregunta ${i + 1} está vacía.`, 'error');
+          document.getElementById(`q-${i}-opt-${j}`)?.focus();
+          return;
+        }
+      }
     }
   }
 
@@ -939,5 +981,24 @@ function loadJsPDF() {
     s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
     s.onload = resolve; s.onerror = reject;
     document.head.appendChild(s);
+  });
+}
+
+function compressImage(file, maxPx = 900, quality = 0.75) {
+  return new Promise(resolve => {
+    const reader = new FileReader();
+    reader.onload = ev => {
+      const img = new Image();
+      img.onload = () => {
+        const scale  = Math.min(1, maxPx / Math.max(img.width, img.height));
+        const canvas = document.createElement('canvas');
+        canvas.width  = Math.round(img.width  * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = ev.target.result;
+    };
+    reader.readAsDataURL(file);
   });
 }
