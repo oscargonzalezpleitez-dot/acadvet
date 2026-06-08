@@ -709,7 +709,10 @@ function paintResultados(el) {
             📊 Excel
           </button>
           <button class="btn btn--secondary btn--sm" id="btnExportPDF" ${filtered.length ? '' : 'disabled'}>
-            📄 PDF
+            📄 PDF sin fotos
+          </button>
+          <button class="btn btn--secondary btn--sm" id="btnExportPDFFotos" ${filtered.length ? '' : 'disabled'}>
+            📷 PDF con fotos
           </button>
         </div>
       </div>
@@ -773,7 +776,8 @@ function paintResultados(el) {
   });
 
   document.getElementById('btnExportXLSX')?.addEventListener('click', () => exportXLSX(filtered));
-  document.getElementById('btnExportPDF')?.addEventListener('click', () => exportPDF(filtered));
+  document.getElementById('btnExportPDF')?.addEventListener('click', () => exportPDF(filtered, false));
+  document.getElementById('btnExportPDFFotos')?.addEventListener('click', () => exportPDF(filtered, true));
 
   el.querySelectorAll('[data-detail]').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -868,60 +872,121 @@ async function exportXLSX(rows) {
 // ---------------------------------------------------------------------------
 // Export PDF
 // ---------------------------------------------------------------------------
-async function exportPDF(rows) {
+async function exportPDF(rows, withPhotos = false) {
   try {
     await loadJsPDF();
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+
+    // ── Encabezado ──────────────────────────────────────────────────────────
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(14);
     doc.text('Resultados de Cuestionarios — AcadVet USAM', 14, 16);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text(`Generado: ${new Date().toLocaleString('es-SV')}  |  Total: ${rows.length}`, 14, 22);
+    doc.text(
+      `Generado: ${new Date().toLocaleString('es-SV')}  |  Total: ${rows.length}${withPhotos ? '  |  Con fotos' : ''}`,
+      14, 22
+    );
 
-    const cols = ['Alumno', 'Carnet', 'Cuestionario', 'Nota', '%', 'Salidas', 'Fecha'];
-    const colW = [52, 28, 60, 22, 16, 20, 40];
+    // ── Columnas ─────────────────────────────────────────────────────────────
+    const FOTO_W  = 18;   // ancho columna foto (mm)
+    const ROW_H   = withPhotos ? 18 : 7;
+    const HEAD_H  = 7;
+    const FOTO_SZ = 13;   // tamaño cuadrado de la foto en mm
+    const MARGIN  = 14;
+
+    const cols = withPhotos
+      ? ['Foto', 'Alumno', 'Carnet', 'Cuestionario', 'Nota', '%', 'Salidas', 'Fecha']
+      : [        'Alumno', 'Carnet', 'Cuestionario', 'Nota', '%', 'Salidas', 'Fecha'];
+    const colW = withPhotos
+      ? [FOTO_W,    44,     24,       52,             20,    14,   17,        37]
+      : [            52,    28,       60,             22,    16,   20,        40];
+
     let y = 30;
 
+    // ── Cabecera de tabla ───────────────────────────────────────────────────
     doc.setFillColor(108, 99, 255);
     doc.setTextColor(255, 255, 255);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
-    let x = 14;
+    let x = MARGIN;
     cols.forEach((c, i) => {
-      doc.rect(x, y, colW[i], 7, 'F');
-      doc.text(c, x + 2, y + 5);
+      doc.rect(x, y, colW[i], HEAD_H, 'F');
+      if (i > 0 || !withPhotos) doc.text(c, x + 2, y + 5);
       x += colW[i];
     });
 
+    // ── Filas ───────────────────────────────────────────────────────────────
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(26, 26, 46);
-    y += 7;
+    y += HEAD_H;
 
-    rows.forEach((r, ri) => {
-      if (y > 185) { doc.addPage(); y = 16; }
+    const totalW = colW.reduce((a, b) => a + b, 0);
+
+    for (let ri = 0; ri < rows.length; ri++) {
+      const r = rows[ri];
+
+      if (y + ROW_H > 195) { doc.addPage(); y = 16; }
+
+      // Fondo alterno
+      if (ri % 2 === 0) {
+        doc.setFillColor(236, 238, 255);
+        doc.rect(MARGIN, y, totalW, ROW_H, 'F');
+      }
+
+      x = MARGIN;
+
+      // Columna foto
+      if (withPhotos) {
+        if (r.alumno?.foto) {
+          try {
+            const fmt = r.alumno.foto.startsWith('data:image/png') ? 'PNG' : 'JPEG';
+            const pad = (ROW_H - FOTO_SZ) / 2;
+            doc.addImage(r.alumno.foto, fmt, x + 2, y + pad, FOTO_SZ, FOTO_SZ);
+          } catch (_) { /* foto inválida: se omite */ }
+        }
+        x += colW[0];
+      }
+
+      // Resto de columnas
+      const colOffset = withPhotos ? 1 : 0;
       const rowData = [
-        r.alumno?.nombre || '—',
-        r.alumno?.carnet || '—',
+        r.alumno?.nombre     || '—',
+        r.alumno?.carnet     || '—',
         r.cuestionarioNombre || '—',
         `${r.puntos ?? 0}/${r.puntosTotal ?? 0}`,
         `${r.porcentaje ?? 0}%`,
         String(r.blurs ?? 0),
         r.submitTime ? new Date(r.submitTime).toLocaleDateString('es-SV') : '—',
       ];
-      if (ri % 2 === 0) { doc.setFillColor(236, 238, 255); doc.rect(14, y, colW.reduce((a,b)=>a+b,0), 7, 'F'); }
-      x = 14;
-      doc.setFontSize(7.5);
-      rowData.forEach((val, i) => {
-        const txt = String(val).substring(0, colW[i] / 1.8);
-        doc.text(txt, x + 2, y + 5);
-        x += colW[i];
-      });
-      y += 7;
-    });
 
-    doc.save(`resultados_cuestionarios_${Date.now()}.pdf`);
+      doc.setFontSize(7.5);
+      doc.setTextColor(26, 26, 46);
+      rowData.forEach((val, ci) => {
+        const w   = colW[ci + colOffset];
+        const txt = String(val).substring(0, Math.floor(w / 1.8));
+        const ty  = withPhotos ? y + ROW_H / 2 + 1.5 : y + 5;
+        doc.text(txt, x + 2, ty);
+        x += w;
+      });
+
+      // Nota: colorear % columna
+      const pct     = r.porcentaje ?? 0;
+      const pctCol  = withPhotos ? 5 : 4;
+      let   xPct    = MARGIN + colW.slice(0, pctCol + colOffset).reduce((a, b) => a + b, 0);
+      const ty      = withPhotos ? y + ROW_H / 2 + 1.5 : y + 5;
+      doc.setTextColor(pct >= 60 ? 0 : 200, pct >= 60 ? 150 : 0, 0);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`${pct}%`, xPct + 2, ty);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(26, 26, 46);
+
+      y += ROW_H;
+    }
+
+    const suffix = withPhotos ? 'con_fotos' : 'sin_fotos';
+    doc.save(`resultados_cuestionarios_${suffix}_${Date.now()}.pdf`);
     showToast('PDF generado.', 'success');
   } catch (err) {
     console.error(err);
