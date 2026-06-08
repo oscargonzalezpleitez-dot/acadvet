@@ -53,6 +53,22 @@
       "$solicitudId": {
         ".validate": "newData.hasChildren(['nombre', 'carnet', 'email', 'materias'])"
       }
+    },
+
+    "cuestionarios": {
+      ".read": true,
+      ".write": true,
+      "$quizId": {
+        ".validate": "newData.hasChildren(['nombre', 'tiempo', 'activo'])"
+      }
+    },
+
+    "cuestionarios_resultados": {
+      ".read": true,
+      ".write": true,
+      "$resultId": {
+        ".validate": "newData.hasChildren(['cuestionarioId', 'alumno', 'puntos', 'puntosTotal'])"
+      }
     }
 
   }
