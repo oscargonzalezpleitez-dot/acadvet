@@ -447,3 +447,59 @@ export async function deleteTarea(alumnoId, materiaId, tareaId, storagePath = nu
   }
   await remove(ref(db, `${inscRef(alumnoId, materiaId)}/tareas/${tareaId}`));
 }
+
+// ---------------------------------------------------------------------------
+// CUESTIONARIOS EN LÍNEA
+// ---------------------------------------------------------------------------
+
+export async function createCuestionario({ nombre, desc, tiempo, mostrarNota, preguntas }) {
+  const newRef = push(ref(db, 'cuestionarios'));
+  await set(newRef, {
+    nombre,
+    desc: desc || '',
+    tiempo,
+    mostrarNota,
+    creado_en: Date.now(),
+    activo: true,
+    preguntas: preguntas || [],
+  });
+  return newRef.key;
+}
+
+export async function getCuestionarios() {
+  const s = await get(ref(db, 'cuestionarios'));
+  return snapToArray(s).sort((a, b) => (b.creado_en || 0) - (a.creado_en || 0));
+}
+
+export async function getCuestionario(id) {
+  const s = await get(ref(db, `cuestionarios/${id}`));
+  if (!s.exists()) return null;
+  return { id, ...s.val() };
+}
+
+export async function deleteCuestionario(id) {
+  await remove(ref(db, `cuestionarios/${id}`));
+}
+
+export async function updateCuestionario(id, { nombre, desc, tiempo, mostrarNota, preguntas }) {
+  await update(ref(db, `cuestionarios/${id}`), { nombre, desc: desc || '', tiempo, mostrarNota, preguntas });
+}
+
+export async function toggleCuestionarioActivo(id, activo) {
+  await update(ref(db, `cuestionarios/${id}`), { activo });
+}
+
+// ---------------------------------------------------------------------------
+// CUESTIONARIOS — RESULTADOS DE ALUMNOS
+// ---------------------------------------------------------------------------
+
+export async function saveCuestionarioResultado(resultado) {
+  const newRef = push(ref(db, 'cuestionarios_resultados'));
+  await set(newRef, { ...resultado, guardado_en: Date.now() });
+  return newRef.key;
+}
+
+export async function getCuestionariosResultados() {
+  const s = await get(ref(db, 'cuestionarios_resultados'));
+  return snapToArray(s).sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
+}

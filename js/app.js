@@ -10,6 +10,7 @@ import { renderAlumnos }            from './views/alumnos.js';
 import { renderExpediente }         from './views/expediente.js';
 import { renderSolicitudes }        from './views/solicitudes.js';
 import { renderArchivo }            from './views/archivo.js';
+import { renderCuestionarios }      from './views/cuestionarios.js';
 import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
 
 // --- Guard de sesión ---
@@ -138,6 +139,11 @@ on('/solicitudes', () => {
 
 on('/archivo', () => {
   renderArchivo(mainContent);
+});
+
+on('/cuestionarios', () => {
+  document.getElementById('topbarTitle').textContent = 'Cuestionarios';
+  renderCuestionarios(mainContent);
 });
 
 // ---------------------------------------------------------------------------

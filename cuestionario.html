@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cuestionario — AcadVet USAM</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --primary:  #6C63FF;
+      --accent:   #00D2D3;
+      --danger:   #FF6B6B;
+      --success:  #00B894;
+      --warning:  #FDCB6E;
+      --bg:       #0B0D1A;
+      --surface:  #12152A;
+      --surface2: #1A1E35;
+      --border:   rgba(108,99,255,0.2);
+      --text:     #F0F2FF;
+      --muted:    #8888AA;
+      --fd:       'Poppins', sans-serif;
+      --fb:       'Inter', sans-serif;
+    }
+
+    body {
+      font-family: var(--fb);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ---- Blobs ---- */
+    .blob {
+      position: fixed; border-radius: 50%; filter: blur(80px);
+      opacity: 0.10; pointer-events: none; z-index: 0;
+    }
+    .blob--a { width:420px; height:420px; background:#6C63FF; top:-80px; right:-80px; }
+    .blob--b { width:320px; height:320px; background:#00D2D3; bottom:-60px; left:-60px; }
+
+    /* ---- Header ---- */
+    .site-header {
+      text-align: center;
+      padding: 28px 16px 0;
+      position: relative; z-index: 1;
+    }
+    .site-logo {
+      font-family: var(--fd);
+      font-weight: 800;
+      font-size: 1.3rem;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .site-sub {
+      color: var(--muted);
+      font-size: .8rem;
+      margin-top: 2px;
+    }
+
+    /* ---- Contenedor centrado ---- */
+    .wrap {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 28px 16px 72px;
+    }
+
+    /* ---- Card ---- */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 28px 28px;
+      margin-bottom: 20px;
+    }
+
+    .card-title {
+      font-family: var(--fd);
+      font-weight: 700;
+      font-size: 1.15rem;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* ---- Form ---- */
+    .form-group { margin-bottom: 16px; }
+    .form-label {
+      display: block;
+      font-size: .78rem;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .04em;
+      margin-bottom: 6px;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--fb);
+      font-size: .95rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .form-input:focus { border-color: var(--primary); }
+    .form-input.err   { border-color: var(--danger); }
+    .form-input::placeholder { color: var(--muted); }
+    .form-error {
+      color: var(--danger);
+      font-size: .78rem;
+      margin-top: 4px;
+    }
+
+    /* ---- Botones ---- */
+    .btn {
+      font-family: var(--fb);
+      font-weight: 600;
+      font-size: .9rem;
+      border-radius: 10px;
+      padding: 11px 20px;
+      cursor: pointer;
+      border: none;
+      transition: opacity .15s, transform .1s;
+    }
+    .btn:disabled { opacity: .5; cursor: not-allowed; }
+    .btn:not(:disabled):hover  { opacity: .88; }
+    .btn:not(:disabled):active { transform: scale(.98); }
+    .btn--primary {
+      background: linear-gradient(135deg, var(--primary), #5A52E0);
+      color: #fff; width: 100%; padding: 13px; font-size: 1rem;
+    }
+    .btn--secondary {
+      background: var(--surface2); color: var(--text);
+      border: 1.5px solid var(--border);
+    }
+    .btn--sm { padding: 8px 16px; font-size: .85rem; }
+
+    /* ---- Cámara / foto ---- */
+    .cam-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    #camVideo, #camPreview {
+      width: 240px; height: 180px;
+      border-radius: 12px;
+      object-fit: cover;
+      background: #000;
+      border: 2px solid var(--border);
+    }
+    .cam-btns {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .cam-status {
+      font-size: .8rem;
+      color: var(--muted);
+      text-align: center;
+    }
+    .cam-status--ok { color: var(--success); }
+    .cam-status--err { color: var(--danger); }
+
+    /* ---- Progreso del quiz ---- */
+    .quiz-progress-bar {
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 7px;
+      margin-bottom: 10px;
+      overflow: hidden;
+    }
+    .quiz-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      border-radius: 99px;
+      transition: width .4s;
+    }
+    .quiz-progress-text {
+      font-size: .75rem;
+      color: var(--muted);
+      text-align: right;
+      margin-bottom: 20px;
+    }
+
+    /* ---- Timer ---- */
+    .quiz-timer-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 24px;
+    }
+    .quiz-timer-label {
+      font-size: .78rem;
+      color: var(--muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .04em;
+    }
+    .quiz-timer-display {
+      font-family: var(--fd);
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--accent);
+      letter-spacing: .05em;
+      transition: color .3s;
+    }
+    .quiz-timer-display.urgent { color: var(--danger); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:.6; } }
+
+    /* ---- Preguntas ---- */
+    .q-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 22px 22px;
+      margin-bottom: 16px;
+    }
+    .q-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 14px;
+    }
+    .q-num {
+      font-family: var(--fd);
+      font-weight: 800;
+      font-size: .85rem;
+      color: var(--primary);
+      min-width: 26px;
+    }
+    .q-tipo-badge {
+      font-size: .7rem;
+      font-weight: 700;
+      padding: 2px 9px;
+      border-radius: 99px;
+      background: rgba(108,99,255,.15);
+      color: var(--primary);
+    }
+    .q-pts {
+      margin-left: auto;
+      font-size: .78rem;
+      color: var(--muted);
+    }
+    .q-texto {
+      font-size: .95rem;
+      line-height: 1.6;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+    .q-blank { border-bottom: 2px solid var(--primary); padding: 0 4px; display: inline-block; min-width: 80px; color: var(--accent); }
+
+    /* Opciones multiple */
+    .q-options { display: flex; flex-direction: column; gap: 10px; }
+    .q-option {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      cursor: pointer;
+      transition: border-color .15s, background .15s;
+      user-select: none;
+    }
+    .q-option:hover  { border-color: var(--primary); background: rgba(108,99,255,.08); }
+    .q-option.selected { border-color: var(--primary); background: rgba(108,99,255,.18); }
+    .q-option-letter {
+      font-family: var(--fd);
+      font-weight: 700;
+      font-size: .85rem;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: rgba(108,99,255,.15);
+      color: var(--primary);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: background .15s;
+    }
+    .q-option.selected .q-option-letter { background: var(--primary); color: #fff; }
+
+    /* V/F */
+    .q-tf { display: flex; gap: 14px; }
+    .q-tf-btn {
+      flex: 1;
+      padding: 14px;
+      border-radius: 12px;
+      border: 1.5px solid var(--border);
+      background: var(--surface2);
+      color: var(--text);
+      font-family: var(--fd);
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: all .15s;
+      text-align: center;
+    }
+    .q-tf-btn:hover { border-color: var(--primary); }
+    .q-tf-btn.selected { background: rgba(108,99,255,.2); border-color: var(--primary); color: var(--primary); }
+
+    /* Short/fill inputs */
+    .q-short-input {
+      width: 100%;
+      background: var(--surface2);
+      border: 1.5px solid var(--border);
+      border-radius: 10px;
+      padding: 11px 14px;
+      color: var(--text);
+      font-family: var(--fb);
+      font-size: .95rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    .q-short-input:focus { border-color: var(--primary); }
+    .q-short-input::placeholder { color: var(--muted); }
+
+    /* ---- Overlay anti-copia ---- */
+    .fs-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      background: rgba(11,13,26,.97);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      gap: 20px;
+      text-align: center;
+      padding: 32px;
+    }
+    .fs-overlay.hidden { display: none; }
+    .fs-icon { font-size: 3.5rem; }
+    .fs-title {
+      font-family: var(--fd);
+      font-weight: 800;
+      font-size: 1.5rem;
+      color: var(--danger);
+    }
+    .fs-text { color: var(--muted); font-size: .95rem; line-height: 1.6; max-width: 420px; }
+    .fs-counter { font-size: .85rem; color: var(--warning); font-weight: 600; }
+
+    /* ---- Resultado ---- */
+    .result-card {
+      text-align: center;
+      padding: 12px 0;
+    }
+    .result-pct {
+      font-family: var(--fd);
+      font-size: 4rem;
+      font-weight: 800;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+    .result-nota {
+      font-size: 1.1rem;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+    .result-chips {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 28px;
+    }
+    .result-chip {
+      padding: 6px 16px;
+      border-radius: 99px;
+      font-size: .8rem;
+      font-weight: 700;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--muted);
+    }
+    .result-ok   { background: rgba(0,184,148,.12); border-color: rgba(0,184,148,.4); color: var(--success); }
+    .result-fail { background: rgba(255,107,107,.12); border-color: rgba(255,107,107,.4); color: var(--danger); }
+
+    .result-detail { text-align: left; margin-top: 24px; }
+    .result-detail-title {
+      font-size: .78rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .06em; color: var(--muted); margin-bottom: 12px;
+    }
+    .rd-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 10px;
+      margin-bottom: 8px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+    }
+    .rd-ok   { border-color: rgba(0,184,148,.35); background: rgba(0,184,148,.07); }
+    .rd-fail { border-color: rgba(255,107,107,.35); background: rgba(255,107,107,.07); }
+    .rd-num { font-weight: 800; font-size: .85rem; color: var(--muted); min-width: 22px; }
+    .rd-body { flex: 1; min-width: 0; }
+    .rd-q { font-size: .88rem; font-weight: 600; margin-bottom: 4px; }
+    .rd-a { font-size: .82rem; color: var(--muted); }
+
+    /* ---- Error/loading ---- */
+    .center-msg {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 50vh;
+      gap: 16px;
+      text-align: center;
+    }
+    .center-icon { font-size: 3rem; }
+    .center-title { font-family: var(--fd); font-weight: 700; font-size: 1.3rem; }
+    .center-text  { color: var(--muted); font-size: .9rem; max-width: 360px; line-height: 1.5; }
+
+    /* ---- Spinner ---- */
+    .spinner {
+      width: 44px; height: 44px;
+      border: 3px solid rgba(108,99,255,.2);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ---- Info del quiz (header del examen) ---- */
+    .quiz-info-card {
+      background: rgba(108,99,255,.08);
+      border: 1px solid rgba(108,99,255,.2);
+      border-radius: 14px;
+      padding: 18px 20px;
+      margin-bottom: 24px;
+    }
+    .quiz-info-nombre {
+      font-family: var(--fd);
+      font-weight: 700;
+      font-size: 1.15rem;
+      margin-bottom: 4px;
+    }
+    .quiz-info-desc {
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+
+    .hidden { display: none !important; }
+
+    /* Responsive */
+    @media (max-width: 480px) {
+      .card { padding: 20px 16px; }
+      #camVideo, #camPreview { width: 200px; height: 150px; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="blob blob--a" aria-hidden="true"></div>
+  <div class="blob blob--b" aria-hidden="true"></div>
+
+  <header class="site-header">
+    <div class="site-logo">AcadVet USAM</div>
+    <div class="site-sub">Facultad de Medicina Veterinaria · Cuestionario en línea</div>
+  </header>
+
+  <div class="wrap">
+
+    <!-- View: cargando -->
+    <div id="vLoading" class="center-msg">
+      <div class="spinner"></div>
+      <p class="center-text">Cargando cuestionario…</p>
+    </div>
+
+    <!-- View: error -->
+    <div id="vError" class="center-msg hidden">
+      <div class="center-icon">❌</div>
+      <h2 class="center-title">Cuestionario no encontrado</h2>
+      <p class="center-text" id="vErrorMsg">El enlace no corresponde a ningún cuestionario activo.</p>
+    </div>
+
+    <!-- View: registro del alumno -->
+    <div id="vRegistro" class="hidden">
+      <div class="quiz-info-card">
+        <div class="quiz-info-nombre" id="regQuizNombre"></div>
+        <div class="quiz-info-desc" id="regQuizDesc"></div>
+        <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:10px">
+          <span id="regQuizTiempo" style="font-size:.8rem;color:var(--accent);font-weight:600"></span>
+          <span id="regQuizPregs"  style="font-size:.8rem;color:var(--muted)"></span>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="card-title">
+          <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+          Identificación del alumno
+        </h2>
+
+        <div class="form-group">
+          <label class="form-label">Nombre completo *</label>
+          <input class="form-input" id="rNombre" type="text" placeholder="Nombre y apellidos completos" autocomplete="name">
+          <div class="form-error hidden" id="errNombre"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Número de carnet *</label>
+          <input class="form-input" id="rCarnet" type="text" placeholder="Ej. 2024-0001" maxlength="20" autocomplete="off">
+          <div class="form-error hidden" id="errCarnet"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Correo institucional *</label>
+          <input class="form-input" id="rEmail" type="email" placeholder="carnet@usam.edu.sv" autocomplete="email">
+          <div class="form-error hidden" id="errEmail"></div>
+        </div>
+
+        <!-- Foto con cámara -->
+        <div class="form-group">
+          <label class="form-label">Foto para identificación *</label>
+          <div class="cam-wrap">
+            <video id="camVideo" autoplay playsinline></video>
+            <canvas id="camCanvas" style="display:none"></canvas>
+            <img id="camPreview" src="" alt="Foto capturada" style="display:none">
+            <div class="cam-status" id="camStatus">Iniciando cámara…</div>
+            <div class="cam-btns">
+              <button class="btn btn--secondary btn--sm" id="btnCapture" disabled>📷 Tomar foto</button>
+              <button class="btn btn--secondary btn--sm hidden" id="btnRetake">🔄 Repetir</button>
+            </div>
+          </div>
+          <div class="form-error hidden" id="errFoto"></div>
+        </div>
+
+        <button class="btn btn--primary" id="btnIniciar" style="margin-top:8px">Iniciar cuestionario →</button>
+      </div>
+    </div>
+
+    <!-- View: quiz activo -->
+    <div id="vQuiz" class="hidden">
+      <div class="quiz-info-card" style="margin-bottom:16px">
+        <div class="quiz-info-nombre" id="qQuizNombre"></div>
+      </div>
+
+      <div class="quiz-timer-bar">
+        <span class="quiz-timer-label">Tiempo restante</span>
+        <span class="quiz-timer-display" id="timerDisplay">00:00</span>
+      </div>
+
+      <div class="quiz-progress-bar">
+        <div class="quiz-progress-fill" id="progressFill" style="width:0%"></div>
+      </div>
+      <div class="quiz-progress-text" id="progressText">0 de 0 respondidas</div>
+
+      <div id="questionsContainer"></div>
+
+      <button class="btn btn--primary" id="btnSubmit" style="margin-top:8px">
+        Entregar cuestionario
+      </button>
+    </div>
+
+    <!-- View: resultado -->
+    <div id="vResult" class="hidden">
+      <div class="card result-card">
+        <div id="resultContent"></div>
+      </div>
+    </div>
+
+  </div><!-- /wrap -->
+
+  <!-- Overlay anti-copia -->
+  <div class="fs-overlay hidden" id="fsOverlay">
+    <div class="fs-icon">⚠️</div>
+    <div class="fs-title">¡Advertencia!</div>
+    <p class="fs-text">Saliste de la ventana del cuestionario. Esta acción queda registrada y será vista por el docente.</p>
+    <p class="fs-counter" id="fsCounter"></p>
+    <button class="btn btn--secondary" id="btnReturn" style="max-width:300px;width:100%">Volver al cuestionario</button>
+  </div>
+
+  <script type="module">
+    import { app }  from './js/firebase-config.js';
+    import { getDatabase, ref, get, push, set }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+
+    const db = getDatabase(app);
+
+    // -------------------------------------------------------------------------
+    // Estado global
+    // -------------------------------------------------------------------------
+    let quiz         = null;   // datos del cuestionario (sin respuestas)
+    let _answers     = {};     // respuestas correctas selladas
+    let studentData  = {};
+    let photoDataUrl = '';
+    let userAnswers  = {};     // {idx: respuesta}
+    let blurCount    = 0;
+    let timerSec     = 0;
+    let timerInterval= null;
+    let antiActive   = false;
+    let submitted    = false;
+    let stream       = null;   // MediaStream de la cámara
+
+    // -------------------------------------------------------------------------
+    // Views
+    // -------------------------------------------------------------------------
+    const vLoading  = document.getElementById('vLoading');
+    const vError    = document.getElementById('vError');
+    const vRegistro = document.getElementById('vRegistro');
+    const vQuiz     = document.getElementById('vQuiz');
+    const vResult   = document.getElementById('vResult');
+    const fsOverlay = document.getElementById('fsOverlay');
+
+    function showView(id) {
+      [vLoading, vError, vRegistro, vQuiz, vResult].forEach(v => v.classList.add('hidden'));
+      document.getElementById(id)?.classList.remove('hidden');
+    }
+
+    // -------------------------------------------------------------------------
+    // Inicio: leer parámetro ?q y cargar cuestionario
+    // -------------------------------------------------------------------------
+    const quizId = new URLSearchParams(location.search).get('q');
+
+    if (!quizId) {
+      showView('vError');
+      document.getElementById('vErrorMsg').textContent = 'No se proporcionó un identificador de cuestionario en el enlace.';
+    } else {
+      loadQuiz(quizId);
+    }
+
+    async function loadQuiz(id) {
+      try {
+        const snap = await get(ref(db, `cuestionarios/${id}`));
+        if (!snap.exists()) {
+          showView('vError');
+          return;
+        }
+        const raw = snap.val();
+
+        if (raw.activo === false) {
+          showView('vError');
+          document.getElementById('vErrorMsg').textContent = 'Este cuestionario ha sido desactivado por el docente.';
+          return;
+        }
+
+        // Normalizar preguntas (Firebase puede devolver objeto con claves numéricas)
+        const preguntas = Array.isArray(raw.preguntas)
+          ? raw.preguntas
+          : Object.values(raw.preguntas || {});
+
+        // Sellar respuestas correctas y eliminarlas de la vista del alumno
+        const answerMap = {};
+        const safePregs = preguntas.map((p, i) => {
+          answerMap[i] = p.correcta;
+          const { correcta, ...rest } = p;
+          return rest;
+        });
+        _answers = Object.freeze(answerMap);
+
+        quiz = { ...raw, id, preguntas: safePregs };
+        setupRegistro();
+        showView('vRegistro');
+      } catch (err) {
+        console.error('[Cuestionario] Error cargando quiz:', err);
+        showView('vError');
+        document.getElementById('vErrorMsg').textContent = 'Ocurrió un error al cargar el cuestionario. Recargá la página.';
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Pantalla de registro del alumno
+    // -------------------------------------------------------------------------
+    function setupRegistro() {
+      document.getElementById('regQuizNombre').textContent = quiz.nombre || 'Cuestionario';
+      document.getElementById('regQuizDesc').textContent   = quiz.desc || '';
+      document.getElementById('regQuizTiempo').textContent = `⏱ ${quiz.tiempo} minutos`;
+      document.getElementById('regQuizPregs').textContent  =
+        `${quiz.preguntas.length} pregunta${quiz.preguntas.length !== 1 ? 's' : ''}`;
+
+      startCamera();
+
+      document.getElementById('btnCapture').addEventListener('click', takePhoto);
+      document.getElementById('btnRetake').addEventListener('click', retakePhoto);
+      document.getElementById('btnIniciar').addEventListener('click', iniciarQuiz);
+    }
+
+    async function startCamera() {
+      const status  = document.getElementById('camStatus');
+      const video   = document.getElementById('camVideo');
+      const captBtn = document.getElementById('btnCapture');
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } });
+        video.srcObject = stream;
+        status.textContent = 'Cámara lista. Mirá a la cámara y tomá tu foto.';
+        status.className = 'cam-status cam-status--ok';
+        captBtn.disabled = false;
+      } catch {
+        status.textContent = 'No se pudo acceder a la cámara. La foto es obligatoria.';
+        status.className = 'cam-status cam-status--err';
+      }
+    }
+
+    function takePhoto() {
+      const video   = document.getElementById('camVideo');
+      const canvas  = document.getElementById('camCanvas');
+      const preview = document.getElementById('camPreview');
+      const status  = document.getElementById('camStatus');
+
+      canvas.width  = video.videoWidth  || 320;
+      canvas.height = video.videoHeight || 240;
+      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+      photoDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+
+      preview.src = photoDataUrl;
+      preview.style.display = 'block';
+      video.style.display   = 'none';
+      document.getElementById('btnCapture').classList.add('hidden');
+      document.getElementById('btnRetake').classList.remove('hidden');
+      status.textContent = '✓ Foto capturada correctamente.';
+      status.className = 'cam-status cam-status--ok';
+
+      if (stream) stream.getTracks().forEach(t => t.stop());
+    }
+
+    function retakePhoto() {
+      const video   = document.getElementById('camVideo');
+      const preview = document.getElementById('camPreview');
+      photoDataUrl  = '';
+      preview.style.display = 'none';
+      video.style.display   = 'block';
+      document.getElementById('btnCapture').classList.remove('hidden');
+      document.getElementById('btnRetake').classList.add('hidden');
+      document.getElementById('camStatus').textContent = 'Iniciando cámara…';
+      document.getElementById('camStatus').className   = 'cam-status';
+      document.getElementById('btnCapture').disabled   = true;
+      startCamera();
+    }
+
+    function iniciarQuiz() {
+      const nombre = document.getElementById('rNombre').value.trim();
+      const carnet = document.getElementById('rCarnet').value.trim();
+      const email  = document.getElementById('rEmail').value.trim();
+      let ok = true;
+
+      const showErr = (id, msg) => {
+        const el = document.getElementById(id);
+        el.textContent = msg;
+        el.classList.remove('hidden');
+        ok = false;
+      };
+      const clearErr = id => document.getElementById(id).classList.add('hidden');
+
+      clearErr('errNombre'); clearErr('errCarnet');
+      clearErr('errEmail');  clearErr('errFoto');
+
+      if (!nombre)    showErr('errNombre', 'El nombre es obligatorio.');
+      if (!carnet)    showErr('errCarnet', 'El carnet es obligatorio.');
+      if (!email)     showErr('errEmail',  'El correo es obligatorio.');
+      else if (!email.toLowerCase().endsWith('@usam.edu.sv'))
+        showErr('errEmail', 'Debés usar tu correo @usam.edu.sv.');
+      if (!photoDataUrl) showErr('errFoto', 'La foto es obligatoria. Tomá tu foto con la cámara.');
+
+      if (!ok) return;
+
+      studentData = { nombre, carnet, email, foto: photoDataUrl };
+      startQuiz();
+    }
+
+    // -------------------------------------------------------------------------
+    // Quiz activo
+    // -------------------------------------------------------------------------
+    function startQuiz() {
+      userAnswers = {};
+      blurCount   = 0;
+      submitted   = false;
+
+      document.getElementById('qQuizNombre').textContent = quiz.nombre || 'Cuestionario';
+      renderStudentQuiz();
+      showView('vQuiz');
+
+      timerSec = (quiz.tiempo || 30) * 60;
+      startTimer();
+      setupAntiCheat();
+
+      document.getElementById('btnSubmit').addEventListener('click', () => confirmSubmit());
+    }
+
+    function renderStudentQuiz() {
+      const container = document.getElementById('questionsContainer');
+      container.innerHTML = quiz.preguntas.map((q, i) => buildStudentQuestion(q, i)).join('');
+      updateProgress();
+
+      container.addEventListener('click', e => {
+        // Opción múltiple
+        const opt = e.target.closest('.q-option');
+        if (opt) {
+          const qi = parseInt(opt.dataset.qi);
+          const val = parseInt(opt.dataset.val);
+          userAnswers[qi] = val;
+          container.querySelectorAll(`.q-option[data-qi="${qi}"]`).forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          updateProgress();
+        }
+        // Verdadero/Falso
+        const tf = e.target.closest('.q-tf-btn');
+        if (tf) {
+          const qi  = parseInt(tf.dataset.qi);
+          const val = tf.dataset.val;
+          userAnswers[qi] = val;
+          container.querySelectorAll(`.q-tf-btn[data-qi="${qi}"]`).forEach(b => b.classList.remove('selected'));
+          tf.classList.add('selected');
+          updateProgress();
+        }
+      });
+
+      // Short / Fill — capturar en tiempo real
+      container.querySelectorAll('.q-short-input').forEach(input => {
+        input.addEventListener('input', () => {
+          userAnswers[parseInt(input.dataset.qi)] = input.value;
+          updateProgress();
+        });
+      });
+    }
+
+    function buildStudentQuestion(q, i) {
+      const LABELS = { multiple:'Opción múltiple', truefalse:'V/F', short:'Respuesta corta', fill:'Completar' };
+      const pts = `${q.puntos || 1} pt${(q.puntos||1) !== 1 ? 's' : ''}`;
+
+      let bodyHtml = '';
+
+      if (q.tipo === 'multiple') {
+        const LETRAS = ['A','B','C','D','E','F'];
+        const opts = Array.isArray(q.opciones) ? q.opciones : Object.values(q.opciones || {});
+        bodyHtml = `<div class="q-options">
+          ${opts.map((o, j) => `
+            <div class="q-option" data-qi="${i}" data-val="${j}">
+              <span class="q-option-letter">${LETRAS[j]}</span>
+              <span>${escHtml(o)}</span>
+            </div>`).join('')}
+        </div>`;
+      }
+
+      if (q.tipo === 'truefalse') {
+        bodyHtml = `<div class="q-tf">
+          <button class="q-tf-btn" data-qi="${i}" data-val="verdadero">✓ Verdadero</button>
+          <button class="q-tf-btn" data-qi="${i}" data-val="falso">✗ Falso</button>
+        </div>`;
+      }
+
+      if (q.tipo === 'short') {
+        bodyHtml = `<input class="q-short-input" data-qi="${i}" type="text"
+          placeholder="Escribe tu respuesta aquí…">`;
+      }
+
+      if (q.tipo === 'fill') {
+        const parts = (q.texto || '').split('___');
+        if (parts.length >= 2) {
+          const textoHtml = `${escHtml(parts[0])}<input class="q-short-input" data-qi="${i}"
+            type="text" placeholder="…" style="width:auto;min-width:100px;display:inline-block;margin:0 4px">${escHtml(parts.slice(1).join('___'))}`;
+          return `
+            <div class="q-card">
+              <div class="q-header">
+                <span class="q-num">P${i + 1}</span>
+                <span class="q-tipo-badge">${LABELS[q.tipo]||q.tipo}</span>
+                <span class="q-pts">${pts}</span>
+              </div>
+              <p class="q-texto" style="line-height:2">${textoHtml}</p>
+            </div>`;
+        }
+        bodyHtml = `<input class="q-short-input" data-qi="${i}" type="text" placeholder="Completá el espacio…">`;
+      }
+
+      const texto = q.tipo === 'fill' ? '' : `<p class="q-texto">${escHtml(q.texto || '')}</p>`;
+
+      return `
+        <div class="q-card">
+          <div class="q-header">
+            <span class="q-num">P${i + 1}</span>
+            <span class="q-tipo-badge">${LABELS[q.tipo]||q.tipo}</span>
+            <span class="q-pts">${pts}</span>
+          </div>
+          ${texto}
+          ${bodyHtml}
+        </div>`;
+    }
+
+    function updateProgress() {
+      const total     = quiz.preguntas.length;
+      const answered  = Object.keys(userAnswers).filter(k => {
+        const v = userAnswers[k];
+        return v !== undefined && v !== null && String(v).trim() !== '';
+      }).length;
+      const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+      document.getElementById('progressFill').style.width = pct + '%';
+      document.getElementById('progressText').textContent = `${answered} de ${total} respondidas`;
+    }
+
+    // -------------------------------------------------------------------------
+    // Temporizador
+    // -------------------------------------------------------------------------
+    function startTimer() {
+      updateTimerDisplay();
+      timerInterval = setInterval(() => {
+        timerSec--;
+        updateTimerDisplay();
+        if (timerSec <= 0) {
+          clearInterval(timerInterval);
+          submitQuiz(true);
+        }
+      }, 1000);
+    }
+
+    function updateTimerDisplay() {
+      const m   = Math.floor(Math.abs(timerSec) / 60).toString().padStart(2, '0');
+      const s   = (Math.abs(timerSec) % 60).toString().padStart(2, '0');
+      const el  = document.getElementById('timerDisplay');
+      if (el) {
+        el.textContent = `${m}:${s}`;
+        el.classList.toggle('urgent', timerSec <= (quiz.tiempo || 30) * 60 * 0.1);
+      }
+    }
+
+    // -------------------------------------------------------------------------
+    // Anti-copia
+    // -------------------------------------------------------------------------
+    function onVisibilityChange() {
+      if (document.hidden && antiActive) { blurCount++; showOverlay(); }
+    }
+    function onWindowBlur() {
+      if (antiActive) { blurCount++; showOverlay(); }
+    }
+    function onKeyDown(e) {
+      if (!antiActive) return;
+      const key = e.key.toUpperCase();
+      if (e.key === 'F12' ||
+          (e.ctrlKey && e.shiftKey && ['I','J','C'].includes(key)) ||
+          (e.ctrlKey && ['U','S','P'].includes(key))) {
+        e.preventDefault(); e.stopPropagation();
+      }
+    }
+    function onContextMenu(e) { if (antiActive) e.preventDefault(); }
+
+    function setupAntiCheat() {
+      antiActive = true;
+      document.addEventListener('visibilitychange', onVisibilityChange);
+      window.addEventListener('blur', onWindowBlur);
+      document.addEventListener('keydown', onKeyDown);
+      document.addEventListener('contextmenu', onContextMenu);
+    }
+    function removeAntiCheat() {
+      antiActive = false;
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+      window.removeEventListener('blur', onWindowBlur);
+      document.removeEventListener('keydown', onKeyDown);
+      document.removeEventListener('contextmenu', onContextMenu);
+    }
+
+    function showOverlay() {
+      document.getElementById('fsCounter').textContent = `Salidas registradas: ${blurCount}`;
+      fsOverlay.classList.remove('hidden');
+    }
+
+    document.getElementById('btnReturn').addEventListener('click', () => {
+      fsOverlay.classList.add('hidden');
+    });
+
+    // -------------------------------------------------------------------------
+    // Entregar
+    // -------------------------------------------------------------------------
+    function confirmSubmit() {
+      const total    = quiz.preguntas.length;
+      const answered = Object.keys(userAnswers).filter(k => String(userAnswers[k] ?? '').trim() !== '').length;
+      const pending  = total - answered;
+      if (pending > 0 && !submitted) {
+        const ok = confirm(`Tenés ${pending} pregunta${pending !== 1 ? 's' : ''} sin responder. ¿Deseás entregar de todas formas?`);
+        if (!ok) return;
+      }
+      submitQuiz(false);
+    }
+
+    async function submitQuiz(timeout = false) {
+      if (submitted) return;
+      submitted = true;
+      clearInterval(timerInterval);
+      removeAntiCheat();
+      fsOverlay.classList.add('hidden');
+
+      const btn = document.getElementById('btnSubmit');
+      if (btn) { btn.disabled = true; btn.textContent = 'Enviando resultados…'; }
+
+      // Calificar
+      let puntos = 0;
+      let puntosTotal = 0;
+      const detalle = quiz.preguntas.map((q, i) => {
+        const pts = q.puntos || 1;
+        puntosTotal += pts;
+        const respuesta = userAnswers[i] ?? null;
+        const correcta  = _answers[i];
+        const correcto  = evaluarRespuesta(q.tipo, respuesta, correcta);
+        const obtenidos = correcto ? pts : 0;
+        puntos += obtenidos;
+        return {
+          q:             q.texto || '',
+          tipo:          q.tipo,
+          respuesta:     respuesta !== null && respuesta !== undefined ? String(respuesta) : '',
+          correcto,
+          puntos:        pts,
+          puntosObtenidos: obtenidos,
+        };
+      });
+
+      const porcentaje = puntosTotal > 0 ? Math.round((puntos / puntosTotal) * 100) : 0;
+
+      const resultado = {
+        cuestionarioId:     quizId,
+        cuestionarioNombre: quiz.nombre || '',
+        submitTime:         Date.now(),
+        blurs:              blurCount,
+        porEntregaTemporal: timeout,
+        puntos,
+        puntosTotal,
+        porcentaje,
+        alumno:             studentData,
+        detalle,
+      };
+
+      // Guardar en Firebase
+      try {
+        await push(ref(db, 'cuestionarios_resultados'), { ...resultado, guardado_en: Date.now() });
+      } catch (err) {
+        console.error('[Cuestionario] Error guardando resultado:', err);
+      }
+
+      showResultScreen(resultado);
+    }
+
+    function evaluarRespuesta(tipo, respuesta, correcta) {
+      if (respuesta === null || respuesta === undefined) return false;
+      if (tipo === 'multiple')  return parseInt(respuesta) === parseInt(correcta);
+      if (tipo === 'truefalse') return String(respuesta) === String(correcta);
+      if (tipo === 'short' || tipo === 'fill') {
+        const norm = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+        return norm(respuesta) === norm(correcta);
+      }
+      return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Pantalla de resultado
+    // -------------------------------------------------------------------------
+    function showResultScreen(r) {
+      showView('vResult');
+      const container = document.getElementById('resultContent');
+      const mostrar   = quiz.mostrarNota !== 'no';
+      const pct = r.porcentaje;
+      const pctColor = pct >= 60 ? '#00B894' : '#FF6B6B';
+      const estado   = pct >= 60 ? 'Aprobado' : 'Reprobado';
+
+      let html = `
+        <div class="fs-icon" style="margin-bottom:8px">${pct >= 60 ? '🎉' : '📚'}</div>
+        <h2 style="font-family:var(--fd);font-weight:800;font-size:1.3rem;margin-bottom:4px">
+          ¡Cuestionario entregado!
+        </h2>
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:24px">
+          ${r.porEntregaTemporal ? 'El tiempo se agotó y el cuestionario fue entregado automáticamente.' : 'Tu respuesta fue registrada correctamente.'}
+        </p>`;
+
+      if (mostrar) {
+        html += `
+          <div class="result-pct" style="color:${pctColor}">${pct}%</div>
+          <div class="result-nota">${r.puntos} / ${r.puntosTotal} puntos</div>
+          <div class="result-chips">
+            <span class="result-chip ${pct>=60?'result-ok':'result-fail'}">${estado}</span>
+            <span class="result-chip">Salidas: ${r.blurs}</span>
+            <span class="result-chip">${r.cuestionarioNombre}</span>
+          </div>
+
+          <div class="result-detail">
+            <div class="result-detail-title">Detalle por pregunta</div>
+            ${r.detalle.map((d, i) => `
+              <div class="rd-row ${d.correcto ? 'rd-ok' : 'rd-fail'}">
+                <div class="rd-num">${i + 1}</div>
+                <div class="rd-body">
+                  <div class="rd-q">${escHtml(d.q)}</div>
+                  <div class="rd-a">
+                    Tu respuesta: ${escHtml(String(d.respuesta || '(sin respuesta)'))}
+                    — ${d.correcto
+                      ? '<span style="color:var(--success)">✓ Correcto</span>'
+                      : '<span style="color:var(--danger)">✗ Incorrecto</span>'}
+                    — ${d.puntosObtenidos}/${d.puntos} pts
+                  </div>
+                </div>
+              </div>`).join('')}
+          </div>`;
+      } else {
+        html += `
+          <p style="color:var(--muted);font-size:.9rem;margin-bottom:12px">
+            El docente ha configurado este cuestionario para no mostrar la nota al finalizar.
+          </p>`;
+      }
+
+      container.innerHTML = html;
+    }
+
+    // -------------------------------------------------------------------------
+    // Utilidad: escape HTML
+    // -------------------------------------------------------------------------
+    function escHtml(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+  </script>
+
+</body>
+</html>
