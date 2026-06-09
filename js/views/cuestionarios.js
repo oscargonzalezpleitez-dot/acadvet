@@ -7,6 +7,7 @@ import {
   getCuestionarios, createCuestionario, updateCuestionario,
   deleteCuestionario, toggleCuestionarioActivo, getCuestionariosResultados,
   deleteResultado, deleteResultadosByQuiz,
+  getCuestionarioCorrect, getCuestionariosCorrectMap,
 } from '../db.js';
 import { showToast, openModal, closeModal } from '../ui.js';
 
@@ -602,11 +603,22 @@ function renderTabLista(el) {
       const qid  = editBtn.dataset.qid;
       const quiz = _quiz.find(q => q.id === qid);
       if (!quiz) return;
+      editBtn.disabled = true;
+
+      // Cargar respuestas correctas para repoblar el formulario de edición
+      const correctData = await getCuestionarioCorrect(qid).catch(() => null);
+
       _editId    = qid;
-      _questions = normPreguntas(quiz.preguntas).map(p => ({ ...p }));
-      _tab       = 'crear';
+      _questions = normPreguntas(quiz.preguntas).map((p, i) => ({
+        ...p,
+        // Reponer 'correcta' desde el nodo restringido
+        correcta: correctData?.respuestas?.[i] ?? p.correcta ?? '',
+        puntos:   correctData?.puntos?.[i]     ?? p.puntos   ?? 1,
+      }));
+      _tab = 'crear';
       paint();
       window.scrollTo({ top: 0, behavior: 'smooth' });
+      editBtn.disabled = false;
     }
 
     if (deleteBtn) {
@@ -664,10 +676,51 @@ async function toggleQR(qid, url, btn) {
 // TAB: RESULTADOS
 // ===========================================================================
 
+// ---------------------------------------------------------------------------
+// Calificación en el panel — evalúa resultados pendientes usando las respuestas
+// almacenadas en cuestionarios_correctas (nodo restringido a docentes).
+// ---------------------------------------------------------------------------
+function _evaluarRespuesta(tipo, respuesta, correcta) {
+  if (respuesta === null || respuesta === undefined || respuesta === '') return false;
+  if (tipo === 'multiple' || tipo === 'imagen') return parseInt(respuesta) === parseInt(correcta);
+  if (tipo === 'truefalse') return String(respuesta) === String(correcta);
+  if (tipo === 'short' || tipo === 'fill') {
+    const norm = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    return norm(respuesta) === norm(correcta);
+  }
+  return false;
+}
+
+function _gradeResult(result, correctData) {
+  if (!result.pendiente && result.puntos !== null && result.puntos !== undefined) {
+    return result;
+  }
+  if (!correctData?.respuestas) return result;
+
+  const { respuestas, puntos: ptsPorPregunta = [] } = correctData;
+  const detalle = (result.detalle || []).map((d, i) => {
+    const correcta       = respuestas[i];
+    const pts            = ptsPorPregunta[i] ?? d.puntos ?? 1;
+    const correcto       = _evaluarRespuesta(d.tipo, d.respuesta, correcta);
+    return { ...d, correcto, puntos: pts, puntosObtenidos: correcto ? pts : 0 };
+  });
+
+  const puntos      = detalle.reduce((s, d) => s + (d.puntosObtenidos || 0), 0);
+  const puntosTotal = detalle.reduce((s, d) => s + (d.puntos || 0), 0);
+  const porcentaje  = puntosTotal > 0 ? Math.round((puntos / puntosTotal) * 100) : 0;
+
+  return { ...result, detalle, puntos, puntosTotal, porcentaje };
+}
+
 async function renderTabResultados(el) {
   el.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div><p>Cargando resultados…</p></div>`;
   try {
-    _results = await getCuestionariosResultados();
+    const [rawResults, correctMap] = await Promise.all([
+      getCuestionariosResultados(),
+      getCuestionariosCorrectMap().catch(() => ({})),
+    ]);
+    // Calificar los pendientes usando las respuestas del nodo restringido
+    _results = rawResults.map(r => _gradeResult(r, correctMap[r.cuestionarioId]));
   } catch (err) {
     el.innerHTML = `<div class="empty-state">
       <div class="empty-state__icon">⚠️</div>

@@ -12,6 +12,13 @@ import { renderSolicitudes }        from './views/solicitudes.js';
 import { renderArchivo }            from './views/archivo.js';
 import { renderCuestionarios }      from './views/cuestionarios.js';
 import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
+import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+import { auth, app } from './firebase-config.js';
+
+const _rtdb = getDatabase(app);
+const _FB_EMAIL = { admin: 'docente@acadvet-usam.edu.sv', eps: 'eps@acadvet-usam.edu.sv', true: 'docente@acadvet-usam.edu.sv' };
+const _FB_HASH  = { admin: 'config/pin_hash', eps: 'config/eps_pin_hash', true: 'config/pin_hash' };
 
 // --- Guard de sesión ---
 const _auth = sessionStorage.getItem('acadvet_auth');
@@ -59,8 +66,9 @@ function closeSidebar() {
 // ---------------------------------------------------------------------------
 // Logout
 // ---------------------------------------------------------------------------
-btnLogout.addEventListener('click', () => {
+btnLogout.addEventListener('click', async () => {
   sessionStorage.removeItem('acadvet_auth');
+  try { await signOut(auth); } catch (_) {}
   window.location.replace('index.html');
 });
 
@@ -79,12 +87,16 @@ if (isEPS()) {
 // Helpers de UI
 // ---------------------------------------------------------------------------
 
+function _esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 /** Muestra un spinner de carga en el área principal. */
 function showLoading(msg = 'Cargando…') {
   mainContent.innerHTML = `
     <div class="loading-state">
       <div class="loading-spinner"></div>
-      <p>${msg}</p>
+      <p>${_esc(msg)}</p>
     </div>
   `;
 }
@@ -95,7 +107,7 @@ function showError(msg, retryFn = null) {
     <div class="empty-state">
       <div class="empty-state__icon">⚠️</div>
       <h3 class="empty-state__title">Error al cargar</h3>
-      <p class="empty-state__text">${msg}</p>
+      <p class="empty-state__text">${_esc(msg)}</p>
       ${retryFn ? '<button class="btn btn--primary" id="btnRetry">Reintentar</button>' : ''}
     </div>
   `;
@@ -128,8 +140,9 @@ on('/', async () => {
     renderDashboard(mainContent, { materias: materiasConConteo });
   } catch (err) {
     console.error('[AcadVet] Error cargando dashboard:', err);
+    const code = err?.code ?? err?.message ?? String(err);
     showError(
-      'No se pudo conectar con Firebase. Verificá tu conexión o la configuración de firebase-config.js.',
+      `Error al cargar datos (${code}). Si el problema persiste, cerrá sesión e ingresá de nuevo.`,
       () => navigate('/')
     );
   }
@@ -180,9 +193,31 @@ async function refreshSolicitudesBadge() {
   } catch (_) {}
 }
 
-refreshSolicitudesBadge();
+// ---------------------------------------------------------------------------
+// Init — esperar a que Firebase Auth restaure la sesión antes de arrancar
+// el router, para que las reglas de RTDB vean al usuario autenticado.
+// ---------------------------------------------------------------------------
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    // Sesión Firebase Auth activa — arrancar normal
+    refreshSolicitudesBadge();
+    initRouter();
+    return;
+  }
 
-// ---------------------------------------------------------------------------
-// Init
-// ---------------------------------------------------------------------------
-initRouter();
+  // Sin sesión Firebase Auth. Intentar re-autenticación silenciosa
+  // usando el pin_hash del nodo público /config (readable sin auth).
+  const role = sessionStorage.getItem('acadvet_auth');
+  if (!role) { window.location.replace('index.html'); return; }
+
+  try {
+    const snap = await get(ref(_rtdb, _FB_HASH[role] ?? 'config/pin_hash'));
+    if (!snap.exists()) throw new Error('no-hash');
+    await signInWithEmailAndPassword(auth, _FB_EMAIL[role] ?? _FB_EMAIL.admin, snap.val());
+    // onAuthStateChanged volverá a dispararse con el usuario autenticado
+  } catch (_) {
+    // Re-auth falló → forzar login para que el usuario ingrese el PIN
+    sessionStorage.removeItem('acadvet_auth');
+    window.location.replace('index.html');
+  }
+});

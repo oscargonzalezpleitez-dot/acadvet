@@ -452,18 +452,38 @@ export async function deleteTarea(alumnoId, materiaId, tareaId, storagePath = nu
 // CUESTIONARIOS EN LÍNEA
 // ---------------------------------------------------------------------------
 
+/** Sanitiza el carnet para usarlo como clave de Firebase (sin caracteres especiales). */
+function sanitizeKey(s) {
+  return String(s ?? '').toLowerCase().trim().replace(/[.#$\[\]\/\s]/g, '_');
+}
+
+/**
+ * Crea un cuestionario separando las respuestas correctas en un nodo restringido.
+ * - cuestionarios/{id}          → preguntas SIN campo 'correcta' (lectura pública con auth)
+ * - cuestionarios_correctas/{id} → { respuestas: [], puntos: [] } (solo admin)
+ */
 export async function createCuestionario({ nombre, desc, tiempo, mostrarNota, preguntas }) {
   const newRef = push(ref(db, 'cuestionarios'));
-  await set(newRef, {
-    nombre,
-    desc: desc || '',
-    tiempo,
-    mostrarNota,
-    creado_en: Date.now(),
-    activo: true,
-    preguntas: preguntas || [],
-  });
-  return newRef.key;
+  const id     = newRef.key;
+
+  const preguntasPublicas = (preguntas || []).map(({ correcta, ...rest }) => rest);
+  const respuestas        = (preguntas || []).map(p => p.correcta ?? null);
+  const puntos            = (preguntas || []).map(p => p.puntos ?? 1);
+
+  await Promise.all([
+    set(newRef, {
+      nombre,
+      desc: desc || '',
+      tiempo,
+      mostrarNota,
+      creado_en: Date.now(),
+      activo: true,
+      preguntas: preguntasPublicas,
+    }),
+    set(ref(db, `cuestionarios_correctas/${id}`), { respuestas, puntos }),
+  ]);
+
+  return id;
 }
 
 export async function getCuestionarios() {
@@ -477,12 +497,45 @@ export async function getCuestionario(id) {
   return { id, ...s.val() };
 }
 
-export async function deleteCuestionario(id) {
-  await remove(ref(db, `cuestionarios/${id}`));
+/** Retorna las respuestas correctas de un cuestionario (solo accesible como admin). */
+export async function getCuestionarioCorrect(id) {
+  const s = await get(ref(db, `cuestionarios_correctas/${id}`));
+  return s.exists() ? s.val() : null;
 }
 
+/** Retorna mapa { quizId → { respuestas, puntos } } para calificar resultados en el panel. */
+export async function getCuestionariosCorrectMap() {
+  const s = await get(ref(db, 'cuestionarios_correctas'));
+  return s.exists() ? s.val() : {};
+}
+
+/** Elimina cuestionario y sus respuestas almacenadas. */
+export async function deleteCuestionario(id) {
+  await Promise.all([
+    remove(ref(db, `cuestionarios/${id}`)),
+    remove(ref(db, `cuestionarios_correctas/${id}`)),
+  ]);
+}
+
+/**
+ * Actualiza cuestionario y sus respuestas. Las preguntas se guardan sin 'correcta'
+ * en el nodo público; las respuestas van al nodo restringido.
+ */
 export async function updateCuestionario(id, { nombre, desc, tiempo, mostrarNota, preguntas }) {
-  await update(ref(db, `cuestionarios/${id}`), { nombre, desc: desc || '', tiempo, mostrarNota, preguntas });
+  const preguntasPublicas = (preguntas || []).map(({ correcta, ...rest }) => rest);
+  const respuestas        = (preguntas || []).map(p => p.correcta ?? null);
+  const puntos            = (preguntas || []).map(p => p.puntos ?? 1);
+
+  await Promise.all([
+    update(ref(db, `cuestionarios/${id}`), {
+      nombre,
+      desc: desc || '',
+      tiempo,
+      mostrarNota,
+      preguntas: preguntasPublicas,
+    }),
+    set(ref(db, `cuestionarios_correctas/${id}`), { respuestas, puntos }),
+  ]);
 }
 
 export async function toggleCuestionarioActivo(id, activo) {
@@ -493,7 +546,30 @@ export async function toggleCuestionarioActivo(id, activo) {
 // CUESTIONARIOS — RESULTADOS DE ALUMNOS
 // ---------------------------------------------------------------------------
 
-export async function saveCuestionarioResultado(resultado) {
+/**
+ * Verifica si un alumno ya entregó un cuestionario (lectura de cuestionarios_enviados).
+ * Requiere auth (anónima o de docente).
+ */
+export async function checkYaRespondio(quizId, carnet) {
+  const key  = sanitizeKey(carnet);
+  const snap = await get(ref(db, `cuestionarios_enviados/${quizId}/${key}`));
+  return snap.exists();
+}
+
+/**
+ * Guarda un resultado de cuestionario de forma atómica:
+ * 1. Escribe en cuestionarios_enviados/{quizId}/{carnetKey} — falla si ya existe (regla !data.exists())
+ * 2. Escribe el resultado en cuestionarios_resultados
+ *
+ * Si el paso 1 falla con PERMISSION_DENIED, el alumno ya entregó antes.
+ */
+export async function saveCuestionarioResultado(quizId, carnet, resultado) {
+  const key = sanitizeKey(carnet);
+
+  // Reclamar el slot — la regla Firebase impide sobrescribir
+  await set(ref(db, `cuestionarios_enviados/${quizId}/${key}`), Date.now());
+
+  // Guardar resultado
   const newRef = push(ref(db, 'cuestionarios_resultados'));
   await set(newRef, { ...resultado, guardado_en: Date.now() });
   return newRef.key;

@@ -5,8 +5,15 @@
 // Sesión guardada en sessionStorage (se borra al cerrar la pestaña)
 // =============================================================================
 
-import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-import { app } from './firebase-config.js';
+import { getDatabase, ref, get, set, remove } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+import { signInWithEmailAndPassword }   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { app, auth } from './firebase-config.js';
+
+// Emails de Firebase Auth — deben coincidir con las cuentas creadas en Firebase Console.
+// Contraseña de cada cuenta = SHA-256 del PIN correspondiente.
+// Ver SETUP.md para instrucciones de configuración inicial.
+const FB_EMAIL_DOCENTE = 'docente@acadvet-usam.edu.sv';
+const FB_EMAIL_EPS     = 'eps@acadvet-usam.edu.sv';
 
 const rtdb = getDatabase(app);
 
@@ -71,15 +78,24 @@ pinInput.addEventListener('keydown', e => {
 btnLogin.addEventListener('click', attemptLogin);
 
 // --- Protección contra fuerza bruta ---
+// El lock vive en localStorage Y en Firebase para resistir localStorage.clear().
 const MAX_ATTEMPTS = 5;
 const BASE_LOCK_MS = 30_000;
+const LOCK_FB_KEY  = 'login_lockout/acadvet_pin';
 
 function getLock() {
   try { return JSON.parse(localStorage.getItem('acadvet_pin_lock') ?? 'null') ?? { attempts: 0, lockedUntil: 0 }; }
   catch { return { attempts: 0, lockedUntil: 0 }; }
 }
-function saveLock(s) { localStorage.setItem('acadvet_pin_lock', JSON.stringify(s)); }
-function clearLock() { localStorage.removeItem('acadvet_pin_lock'); }
+function saveLock(s) {
+  localStorage.setItem('acadvet_pin_lock', JSON.stringify(s));
+  // Respaldo en Firebase resistente a localStorage.clear()
+  set(ref(rtdb, LOCK_FB_KEY), { lockedUntil: s.lockedUntil, ts: Date.now() }).catch(() => {});
+}
+function clearLock() {
+  localStorage.removeItem('acadvet_pin_lock');
+  remove(ref(rtdb, LOCK_FB_KEY)).catch(() => {});
+}
 
 function checkLockout() {
   const lock = getLock();
@@ -120,6 +136,12 @@ async function attemptLogin() {
 
     if (snapshot.val() === enteredHash) {
       clearLock();
+
+      // Iniciar sesión en Firebase Auth — requerido para que las reglas de RTDB
+      // reconozcan al usuario. La contraseña = SHA-256 del PIN.
+      const fbEmail = _role === 'eps' ? FB_EMAIL_EPS : FB_EMAIL_DOCENTE;
+      await signInWithEmailAndPassword(auth, fbEmail, enteredHash);
+
       sessionStorage.setItem('acadvet_auth', _role === 'eps' ? 'eps' : 'admin');
       window.location.replace('app.html');
     } else {
@@ -145,12 +167,19 @@ async function attemptLogin() {
       pinInput.focus();
     }
   } catch (err) {
-    if (err.message?.includes('YOUR_API_KEY') || err.message?.includes('invalid')) {
+    console.error('[AcadVet] Error de auth:', err.code ?? err.message ?? err);
+    if (err.code === 'auth/wrong-password' || err.code === 'auth/invalid-credential') {
+      // No debería ocurrir si el PIN pasó la verificación — indica desincronización de cuentas
+      showError('Error de autenticación interna. Contactá al administrador del sistema.');
+    } else if (err.code === 'auth/user-not-found') {
+      showError('Las cuentas de acceso no están configuradas. Ejecutá el setup de Firebase Auth.');
+    } else if (err.code === 'auth/too-many-requests') {
+      showError('Demasiados intentos fallidos en Firebase. Esperá unos minutos e intentá de nuevo.');
+    } else if (err.message?.includes('YOUR_API_KEY') || err.message?.includes('invalid-api-key')) {
       showError('Firebase no está configurado. Revisá firebase-config.js.');
     } else {
-      showError('Error de conexión. Verificá tu internet.');
+      showError('Error de conexión. Verificá tu internet e intentá de nuevo.');
     }
-    console.error('[AcadVet] Error de auth:', err);
   } finally {
     setLoading(false);
   }

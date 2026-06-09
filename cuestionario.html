@@ -600,17 +600,28 @@
   </div>
 
   <script type="module">
-    import { app }  from './js/firebase-config.js';
+    import { app, auth }  from './js/firebase-config.js';
+    import { signInAnonymously }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
     import { getDatabase, ref, get, push, set }
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+    import { checkYaRespondio, saveCuestionarioResultado }
+      from './js/db.js';
 
     const db = getDatabase(app);
+
+    // Validación de carnet: formato YYYY-NNNN
+    const CARNET_RE = /^\d{4}-\d{4}$/;
+    // Límite de foto base64 (~150 KB)
+    const MAX_FOTO_BYTES = 150 * 1024;
+    // Número máximo de salidas antes de entrega automática
+    const MAX_BLURS = 5;
 
     // -------------------------------------------------------------------------
     // Estado global
     // -------------------------------------------------------------------------
     let quiz         = null;   // datos del cuestionario (sin respuestas)
-    let _answers     = {};     // respuestas correctas selladas
+    let _answers     = {};     // respuestas correctas (solo si el quiz es formato antiguo)
     let studentData  = {};
     let photoDataUrl = '';
     let userAnswers  = {};     // {idx: respuesta}
@@ -620,6 +631,12 @@
     let antiActive   = false;
     let submitted    = false;
     let stream       = null;   // MediaStream de la cámara
+    let _backupKey   = '';     // clave localStorage para backup de respuestas
+
+    // -------------------------------------------------------------------------
+    // Auth anónima — necesaria para que las reglas de Firebase permitan operar
+    // -------------------------------------------------------------------------
+    try { await signInAnonymously(auth); } catch (_) {}
 
     // -------------------------------------------------------------------------
     // Views
@@ -637,7 +654,8 @@
     }
 
     // -------------------------------------------------------------------------
-    // Inicio: leer parámetro ?q y cargar cuestionario
+    // Inicio: leer parámetro ?q y mostrar formulario de registro
+    // El cuestionario NO se descarga hasta que el alumno se identifica.
     // -------------------------------------------------------------------------
     const quizId = new URLSearchParams(location.search).get('q');
 
@@ -645,57 +663,67 @@
       showView('vError');
       document.getElementById('vErrorMsg').textContent = 'No se proporcionó un identificador de cuestionario en el enlace.';
     } else {
-      loadQuiz(quizId);
+      setupRegistroInicial(quizId);
     }
 
-    async function loadQuiz(id) {
+    // Muestra el formulario de identificación sin descargar las preguntas aún
+    async function setupRegistroInicial(id) {
+      showView('vLoading');
       try {
+        // Solo cargamos metadatos del quiz para mostrar nombre y tiempo
         const snap = await get(ref(db, `cuestionarios/${id}`));
-        if (!snap.exists()) {
-          showView('vError');
-          return;
-        }
+        if (!snap.exists()) { showView('vError'); return; }
         const raw = snap.val();
-
         if (raw.activo === false) {
           showView('vError');
           document.getElementById('vErrorMsg').textContent = 'Este cuestionario ha sido desactivado por el docente.';
           return;
         }
-
-        // Normalizar preguntas (Firebase puede devolver objeto con claves numéricas)
-        const preguntas = Array.isArray(raw.preguntas)
-          ? raw.preguntas
-          : Object.values(raw.preguntas || {});
-
-        // Sellar respuestas correctas y eliminarlas de la vista del alumno
-        const answerMap = {};
-        const safePregs = preguntas.map((p, i) => {
-          answerMap[i] = p.correcta;
-          const { correcta, ...rest } = p;
-          return rest;
-        });
-        _answers = Object.freeze(answerMap);
-
-        quiz = { ...raw, id, preguntas: safePregs };
-        setupRegistro();
+        // Guardamos los metadatos sin preguntas para el formulario
+        quiz = { ...raw, id, preguntas: [] };
+        setupRegistro(raw);
         showView('vRegistro');
       } catch (err) {
-        console.error('[Cuestionario] Error cargando quiz:', err);
+        console.error('[Cuestionario] Error:', err);
         showView('vError');
-        document.getElementById('vErrorMsg').textContent = 'Ocurrió un error al cargar el cuestionario. Recargá la página.';
+        document.getElementById('vErrorMsg').textContent = 'Error al cargar el cuestionario. Recargá la página.';
       }
+    }
+
+    // -------------------------------------------------------------------------
+    // Carga completa del cuestionario (preguntas) — solo después de identificación
+    // -------------------------------------------------------------------------
+    async function loadQuizPreguntas(id) {
+      const snap = await get(ref(db, `cuestionarios/${id}`));
+      if (!snap.exists()) throw new Error('Quiz no encontrado');
+      const raw      = snap.val();
+      const preguntas = Array.isArray(raw.preguntas)
+        ? raw.preguntas
+        : Object.values(raw.preguntas || {});
+
+      // Compatibilidad con quizzes en formato antiguo que aún tienen 'correcta'.
+      // Para quizzes nuevos, 'correcta' ya no está en este nodo.
+      const answerMap = {};
+      const safePregs = preguntas.map((p, i) => {
+        if (p.correcta !== undefined) {
+          answerMap[i] = p.correcta;
+        }
+        const { correcta, ...rest } = p;
+        return rest;
+      });
+      _answers = Object.freeze(answerMap);
+
+      return { ...raw, id, preguntas: safePregs };
     }
 
     // -------------------------------------------------------------------------
     // Pantalla de registro del alumno
     // -------------------------------------------------------------------------
-    function setupRegistro() {
-      document.getElementById('regQuizNombre').textContent = quiz.nombre || 'Cuestionario';
-      document.getElementById('regQuizDesc').textContent   = quiz.desc || '';
-      document.getElementById('regQuizTiempo').textContent = `⏱ ${quiz.tiempo} minutos`;
-      document.getElementById('regQuizPregs').textContent  =
-        `${quiz.preguntas.length} pregunta${quiz.preguntas.length !== 1 ? 's' : ''}`;
+    function setupRegistro(raw) {
+      document.getElementById('regQuizNombre').textContent = raw.nombre || 'Cuestionario';
+      document.getElementById('regQuizDesc').textContent   = raw.desc || '';
+      document.getElementById('regQuizTiempo').textContent = `⏱ ${raw.tiempo} minutos`;
+      document.getElementById('regQuizPregs').textContent  = 'Cargando preguntas…';
 
       startCamera();
 
@@ -726,10 +754,23 @@
       const preview = document.getElementById('camPreview');
       const status  = document.getElementById('camStatus');
 
-      canvas.width  = video.videoWidth  || 320;
-      canvas.height = video.videoHeight || 240;
-      canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
-      photoDataUrl = canvas.toDataURL('image/jpeg', 0.5);
+      // Capturar a máximo 320×240 para mantener base64 bajo el límite
+      const W = Math.min(video.videoWidth  || 320, 320);
+      const H = Math.min(video.videoHeight || 240, 240);
+      canvas.width  = W;
+      canvas.height = H;
+      canvas.getContext('2d').drawImage(video, 0, 0, W, H);
+
+      let dataUrl = canvas.toDataURL('image/jpeg', 0.5);
+
+      // Si sigue siendo muy grande, recomprimir más
+      if (dataUrl.length > MAX_FOTO_BYTES * 1.37) {
+        canvas.width  = 160;
+        canvas.height = 120;
+        canvas.getContext('2d').drawImage(video, 0, 0, 160, 120);
+        dataUrl = canvas.toDataURL('image/jpeg', 0.35);
+      }
+      photoDataUrl = dataUrl;
 
       preview.src = photoDataUrl;
       preview.style.display = 'block';
@@ -756,7 +797,7 @@
       startCamera();
     }
 
-    function iniciarQuiz() {
+    async function iniciarQuiz() {
       const nombre = document.getElementById('rNombre').value.trim();
       const carnet = document.getElementById('rCarnet').value.trim();
       const email  = document.getElementById('rEmail').value.trim();
@@ -773,16 +814,51 @@
       clearErr('errNombre'); clearErr('errCarnet');
       clearErr('errEmail');  clearErr('errFoto');
 
-      if (!nombre)    showErr('errNombre', 'El nombre es obligatorio.');
-      if (!carnet)    showErr('errCarnet', 'El carnet es obligatorio.');
-      if (!email)     showErr('errEmail',  'El correo es obligatorio.');
-      else if (!email.toLowerCase().endsWith('@usam.edu.sv'))
-        showErr('errEmail', 'Debés usar tu correo @usam.edu.sv.');
+      if (!nombre)               showErr('errNombre', 'El nombre es obligatorio.');
+      else if (nombre.length > 120) showErr('errNombre', 'El nombre no puede superar 120 caracteres.');
+
+      if (!carnet)               showErr('errCarnet', 'El carnet es obligatorio.');
+      else if (!CARNET_RE.test(carnet)) showErr('errCarnet', 'El carnet debe tener el formato YYYY-NNNN (ej. 2024-0001).');
+
+      if (!email)                showErr('errEmail',  'El correo es obligatorio.');
+      else if (!/^[^\s@]+@usam\.edu\.sv$/i.test(email))
+        showErr('errEmail', 'Debés usar tu correo institucional @usam.edu.sv.');
+
       if (!photoDataUrl) showErr('errFoto', 'La foto es obligatoria. Tomá tu foto con la cámara.');
 
       if (!ok) return;
 
+      // Deshabilitar botón mientras verificamos
+      const btnIniciar = document.getElementById('btnIniciar');
+      btnIniciar.disabled = true;
+      btnIniciar.textContent = 'Verificando…';
+
+      try {
+        // Verificar si este carnet ya entregó el cuestionario
+        const yaRespondio = await checkYaRespondio(quizId, carnet);
+        if (yaRespondio) {
+          showErr('errCarnet', 'Este carnet ya entregó este cuestionario. No se permiten múltiples intentos.');
+          btnIniciar.disabled = false;
+          btnIniciar.textContent = 'Iniciar cuestionario';
+          return;
+        }
+
+        // Ahora sí: cargar las preguntas del cuestionario
+        btnIniciar.textContent = 'Cargando preguntas…';
+        quiz = await loadQuizPreguntas(quizId);
+        document.getElementById('regQuizPregs').textContent =
+          `${quiz.preguntas.length} pregunta${quiz.preguntas.length !== 1 ? 's' : ''}`;
+
+      } catch (err) {
+        console.error('[Cuestionario] Error al iniciar:', err);
+        showErr('errCarnet', 'Error de conexión. Verificá tu internet e intentá de nuevo.');
+        btnIniciar.disabled = false;
+        btnIniciar.textContent = 'Iniciar cuestionario';
+        return;
+      }
+
       studentData = { nombre, carnet, email, foto: photoDataUrl };
+      _backupKey  = `acadvet_quiz_${quizId}_${carnet.replace(/\W/g,'_')}`;
       startQuiz();
     }
 
@@ -802,7 +878,24 @@
       startTimer();
       setupAntiCheat();
 
+      // Backup periódico de respuestas (cada 30 s) para recuperación ante cierre accidental
+      setInterval(() => {
+        if (!submitted && _backupKey) {
+          localStorage.setItem(_backupKey, JSON.stringify({ userAnswers, timerSec, ts: Date.now() }));
+        }
+      }, 30_000);
+
+      // Advertir antes de cerrar/recargar la pestaña durante el examen
+      window.addEventListener('beforeunload', onBeforeUnload);
+
       document.getElementById('btnSubmit').addEventListener('click', () => confirmSubmit());
+    }
+
+    function onBeforeUnload(e) {
+      if (!submitted) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
     }
 
     function renderStudentQuiz() {
@@ -958,10 +1051,24 @@
     // Anti-copia
     // -------------------------------------------------------------------------
     function onVisibilityChange() {
-      if (document.hidden && antiActive) { blurCount++; showOverlay(); }
+      if (document.hidden && antiActive) {
+        blurCount++;
+        if (blurCount >= MAX_BLURS) {
+          submitQuiz(false, true); // entrega forzada por exceso de salidas
+        } else {
+          showOverlay();
+        }
+      }
     }
     function onWindowBlur() {
-      if (antiActive) { blurCount++; showOverlay(); }
+      if (antiActive) {
+        blurCount++;
+        if (blurCount >= MAX_BLURS) {
+          submitQuiz(false, true);
+        } else {
+          showOverlay();
+        }
+      }
     }
     function onKeyDown(e) {
       if (!antiActive) return;
@@ -987,10 +1094,13 @@
       window.removeEventListener('blur', onWindowBlur);
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('contextmenu', onContextMenu);
+      window.removeEventListener('beforeunload', onBeforeUnload);
     }
 
     function showOverlay() {
-      document.getElementById('fsCounter').textContent = `Salidas registradas: ${blurCount}`;
+      const restantes = MAX_BLURS - blurCount;
+      document.getElementById('fsCounter').textContent =
+        `Salidas registradas: ${blurCount} / ${MAX_BLURS}. Permisos restantes: ${restantes}.`;
       fsOverlay.classList.remove('hidden');
     }
 
@@ -1012,7 +1122,7 @@
       submitQuiz(false);
     }
 
-    async function submitQuiz(timeout = false) {
+    async function submitQuiz(timeout = false, forcedByBlurs = false) {
       if (submitted) return;
       submitted = true;
       clearInterval(timerInterval);
@@ -1022,47 +1132,74 @@
       const btn = document.getElementById('btnSubmit');
       if (btn) { btn.disabled = true; btn.textContent = 'Enviando resultados…'; }
 
-      // Calificar
-      let puntos = 0;
-      let puntosTotal = 0;
+      // Construir detalle de respuestas (sin calificar aquí — el docente califica en el panel)
+      let puntos      = null;
+      let puntosTotal = null;
+      let porcentaje  = null;
+
       const detalle = quiz.preguntas.map((q, i) => {
-        const pts = q.puntos || 1;
-        puntosTotal += pts;
         const respuesta = userAnswers[i] ?? null;
-        const correcta  = _answers[i];
-        const correcto  = evaluarRespuesta(q.tipo, respuesta, correcta);
-        const obtenidos = correcto ? pts : 0;
-        puntos += obtenidos;
-        return {
-          q:             q.texto || '',
-          tipo:          q.tipo,
-          respuesta:     respuesta !== null && respuesta !== undefined ? String(respuesta) : '',
-          correcto,
-          puntos:        pts,
-          puntosObtenidos: obtenidos,
+        const d = {
+          q:        q.texto || '',
+          tipo:     q.tipo,
+          respuesta: respuesta !== null && respuesta !== undefined ? String(respuesta) : '',
+          puntos:   q.puntos || 1,
         };
+        // Si el quiz tiene respuestas en formato antiguo, calificar aquí también
+        if (_answers && _answers[i] !== undefined) {
+          const correcto      = evaluarRespuesta(q.tipo, respuesta, _answers[i]);
+          d.correcto          = correcto;
+          d.puntosObtenidos   = correcto ? (q.puntos || 1) : 0;
+        }
+        return d;
       });
 
-      const porcentaje = puntosTotal > 0 ? Math.round((puntos / puntosTotal) * 100) : 0;
+      // Si hay respuestas del formato antiguo, calcular nota
+      if (Object.keys(_answers).length > 0) {
+        puntos      = detalle.reduce((s, d) => s + (d.puntosObtenidos || 0), 0);
+        puntosTotal = detalle.reduce((s, d) => s + (d.puntos || 0), 0);
+        porcentaje  = puntosTotal > 0 ? Math.round((puntos / puntosTotal) * 100) : 0;
+      }
 
       const resultado = {
         cuestionarioId:     quizId,
         cuestionarioNombre: quiz.nombre || '',
         submitTime:         Date.now(),
         blurs:              blurCount,
-        porEntregaTemporal: timeout,
+        porEntregaTemporal: timeout || forcedByBlurs,
+        forzadoPorSalidas:  forcedByBlurs,
         puntos,
         puntosTotal,
         porcentaje,
+        pendiente:          puntos === null,
         alumno:             studentData,
         detalle,
       };
 
-      // Guardar en Firebase
+      // Guardar en Firebase — usa saveCuestionarioResultado que primero reclama el slot
       try {
-        await push(ref(db, 'cuestionarios_resultados'), { ...resultado, guardado_en: Date.now() });
+        await saveCuestionarioResultado(quizId, studentData.carnet, resultado);
+        // Limpiar backup local tras guardado exitoso
+        if (_backupKey) localStorage.removeItem(_backupKey);
       } catch (err) {
         console.error('[Cuestionario] Error guardando resultado:', err);
+        submitted = false; // Permitir reintento
+
+        if (err.code === 'PERMISSION_DENIED') {
+          // El slot ya estaba tomado — intento duplicado
+          showView('vError');
+          document.getElementById('vErrorMsg').textContent =
+            'Ya entregaste este cuestionario anteriormente. No se permiten múltiples intentos.';
+        } else {
+          // Error de red u otro
+          showView('vError');
+          document.getElementById('vErrorMsg').textContent =
+            'No se pudo guardar tu cuestionario por un problema de conexión. ' +
+            'Notificá al docente inmediatamente y no cierres esta página. ' +
+            'Tus respuestas están guardadas temporalmente en este dispositivo.';
+        }
+        if (btn) { btn.disabled = false; btn.textContent = 'Reintentar entrega'; }
+        return;
       }
 
       showResultScreen(resultado);
@@ -1085,33 +1222,36 @@
     function showResultScreen(r) {
       showView('vResult');
       const container = document.getElementById('resultContent');
-      const mostrar   = quiz.mostrarNota !== 'no';
-      const pct = r.porcentaje;
-      const pctColor = pct >= 60 ? '#00B894' : '#FF6B6B';
-      const estado   = pct >= 60 ? 'Aprobado' : 'Reprobado';
+
+      let motivoEntrega = 'Tu respuesta fue registrada correctamente.';
+      if (r.forzadoPorSalidas)  motivoEntrega = `El cuestionario fue entregado automáticamente por superar el límite de ${MAX_BLURS} salidas de la ventana.`;
+      else if (r.porEntregaTemporal) motivoEntrega = 'El tiempo se agotó y el cuestionario fue entregado automáticamente.';
 
       let html = `
-        <div class="fs-icon" style="margin-bottom:8px">${pct >= 60 ? '🎉' : '📚'}</div>
+        <div class="fs-icon" style="margin-bottom:8px">✅</div>
         <h2 style="font-family:var(--fd);font-weight:800;font-size:1.3rem;margin-bottom:4px">
           ¡Cuestionario entregado!
         </h2>
-        <p style="color:var(--muted);font-size:.85rem;margin-bottom:24px">
-          ${r.porEntregaTemporal ? 'El tiempo se agotó y el cuestionario fue entregado automáticamente.' : 'Tu respuesta fue registrada correctamente.'}
-        </p>`;
+        <p style="color:var(--muted);font-size:.85rem;margin-bottom:24px">${escHtml(motivoEntrega)}</p>
+        <div class="result-chips">
+          <span class="result-chip">Salidas registradas: ${r.blurs} / ${MAX_BLURS}</span>
+          <span class="result-chip">${escHtml(r.cuestionarioNombre)}</span>
+        </div>`;
 
-      if (mostrar) {
+      // Si el quiz tiene notas calculadas (formato antiguo con respuestas) Y el docente configuró mostrarlas
+      if (!r.pendiente && r.puntos !== null && quiz.mostrarNota !== 'no') {
+        const pct      = r.porcentaje ?? 0;
+        const pctColor = pct >= 60 ? '#00B894' : '#FF6B6B';
+        const estado   = pct >= 60 ? 'Aprobado' : 'Reprobado';
         html += `
-          <div class="result-pct" style="color:${pctColor}">${pct}%</div>
+          <div class="result-pct" style="color:${pctColor};margin-top:16px">${pct}%</div>
           <div class="result-nota">${r.puntos} / ${r.puntosTotal} puntos</div>
-          <div class="result-chips">
+          <div class="result-chips" style="margin-top:8px">
             <span class="result-chip ${pct>=60?'result-ok':'result-fail'}">${estado}</span>
-            <span class="result-chip">Salidas: ${r.blurs}</span>
-            <span class="result-chip">${r.cuestionarioNombre}</span>
           </div>
-
-          <div class="result-detail">
+          <div class="result-detail" style="margin-top:20px">
             <div class="result-detail-title">Detalle por pregunta</div>
-            ${r.detalle.map((d, i) => `
+            ${(r.detalle||[]).map((d, i) => `
               <div class="rd-row ${d.correcto ? 'rd-ok' : 'rd-fail'}">
                 <div class="rd-num">${i + 1}</div>
                 <div class="rd-body">
@@ -1121,15 +1261,15 @@
                     — ${d.correcto
                       ? '<span style="color:var(--success)">✓ Correcto</span>'
                       : '<span style="color:var(--danger)">✗ Incorrecto</span>'}
-                    — ${d.puntosObtenidos}/${d.puntos} pts
+                    — ${d.puntosObtenidos ?? 0}/${d.puntos ?? 1} pts
                   </div>
                 </div>
               </div>`).join('')}
           </div>`;
       } else {
         html += `
-          <p style="color:var(--muted);font-size:.9rem;margin-bottom:12px">
-            El docente ha configurado este cuestionario para no mostrar la nota al finalizar.
+          <p style="color:var(--muted);font-size:.9rem;margin-top:16px">
+            El docente revisará tu cuestionario y publicará tu nota oportunamente.
           </p>`;
       }
 

@@ -5,8 +5,12 @@
 
 import { getDatabase, ref, get }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-import { app } from './firebase-config.js';
+import { signInAnonymously } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { app, auth } from './firebase-config.js';
 import { createSolicitud } from './db.js';
+
+// Regex de validación de carnet USAM: YYYY-NNNN  (ej. 2024-0001)
+const CARNET_RE = /^\d{4}-\d{4}$/;
 
 const db = getDatabase(app);
 
@@ -19,6 +23,8 @@ let _stream   = null;
 // ---------------------------------------------------------------------------
 
 document.addEventListener('DOMContentLoaded', async () => {
+  // Auth anónima necesaria para que las reglas de Firebase permitan leer materias
+  try { await signInAnonymously(auth); } catch (_) {}
   await cargarMaterias();
   bindForm();
   bindCamara();
@@ -171,10 +177,12 @@ async function enviarSolicitud() {
   let ok = true;
   clearAll();
 
-  if (!nombre)   { showErr(document.getElementById('errNombre'),   'El nombre es obligatorio.');                                        ok = false; }
-  if (!carnet)   { showErr(document.getElementById('errCarnet'),   'El carné es obligatorio.');                                         ok = false; }
-  if (!email)    { showErr(document.getElementById('errEmail'),    'El correo institucional es obligatorio.');                          ok = false; }
-  else if (!email.toLowerCase().endsWith('@usam.edu.sv')) {
+  if (!nombre)                { showErr(document.getElementById('errNombre'),   'El nombre es obligatorio.');                           ok = false; }
+  else if (nombre.length > 120) { showErr(document.getElementById('errNombre'), 'El nombre no puede superar 120 caracteres.'); ok = false; }
+  if (!carnet)               { showErr(document.getElementById('errCarnet'),   'El carné es obligatorio.');                            ok = false; }
+  else if (!CARNET_RE.test(carnet)) { showErr(document.getElementById('errCarnet'), 'El carné debe tener el formato YYYY-NNNN (ej. 2024-0001).'); ok = false; }
+  if (!email)    { showErr(document.getElementById('errEmail'),    'El correo institucional es obligatorio.');                         ok = false; }
+  else if (!/^[^\s@]+@usam\.edu\.sv$/i.test(email)) {
                    showErr(document.getElementById('errEmail'),    'El correo debe ser institucional (@usam.edu.sv).'); ok = false; }
   if (!telefono) { showErr(document.getElementById('errTelefono'), 'El teléfono es obligatorio.');                                      ok = false; }
   if (checkedMaterias.length === 0) {

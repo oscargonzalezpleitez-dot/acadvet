@@ -6,20 +6,30 @@
       ".write": false
     },
 
+    "login_lockout": {
+      ".read": false,
+      ".write": true
+    },
+
     "materias": {
-      ".read": true,
-      ".write": true,
+      ".read":  "auth != null",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
       "$materiaId": {
         ".validate": "newData.hasChildren(['nombre', 'ciclo', 'estado'])"
       }
     },
 
     "alumnos": {
-      ".read": true,
-      ".write": true,
+      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
       "$alumnoId": {
         "inscripciones": {
           "$materiaId": {
+            "parciales": {
+              "$parcialId": {
+                ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 100)"
+              }
+            },
             "asistencias": {
               "$asistId": {
                 ".validate": "newData.hasChildren(['fecha', 'estado'])"
@@ -36,8 +46,8 @@
     },
 
     "qr_sessions": {
-      ".read": true,
-      ".write": true,
+      ".read":  "auth != null",
+      ".write": "auth != null",
       "$sessionId": {
         "asistentes": {
           "$asistenteId": {
@@ -48,26 +58,41 @@
     },
 
     "solicitudes_registro": {
-      ".read": true,
-      ".write": true,
+      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null",
       "$solicitudId": {
         ".validate": "newData.hasChildren(['nombre', 'carnet', 'email', 'materias'])"
       }
     },
 
     "cuestionarios": {
-      ".read": true,
-      ".write": true,
+      ".read":  "auth != null",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
       "$quizId": {
         ".validate": "newData.hasChildren(['nombre', 'tiempo', 'activo'])"
       }
     },
 
+    "cuestionarios_correctas": {
+      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'"
+    },
+
+    "cuestionarios_enviados": {
+      ".read":  "auth != null",
+      ".write": "auth != null",
+      "$quizId": {
+        "$carnetKey": {
+          ".validate": "!data.exists() && newData.isNumber()"
+        }
+      }
+    },
+
     "cuestionarios_resultados": {
-      ".read": true,
-      ".write": true,
+      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null",
       "$resultId": {
-        ".validate": "newData.hasChildren(['cuestionarioId', 'alumno', 'puntos', 'puntosTotal'])"
+        ".validate": "newData.hasChildren(['cuestionarioId', 'alumno']) && !data.exists()"
       }
     }
 
