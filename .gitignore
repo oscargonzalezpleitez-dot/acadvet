@@ -12,5 +12,11 @@ desktop.ini
 .vscode/
 .idea/
 
+# Firebase CLI
+.firebase/
+
+# Datos temporales
+users_temp.json
+
 # Logs
 *.log
