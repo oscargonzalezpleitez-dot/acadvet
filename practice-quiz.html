@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quiz de Práctica — AcadVet USAM</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary:#6C63FF; --primary-light:#A29BFE; --accent:#00D2D3;
+      --success:#00B894; --danger:#FF6B6B; --warning:#FDCB6E;
+      --bg:#F0F2FF; --surface:#FFFFFF; --surface-2:#ECEEFF;
+      --text:#1A1A2E; --text-2:#4A4A6A; --text-muted:#8888AA;
+      --border:rgba(108,99,255,0.15);
+      --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
+      --font-d:'Poppins',sans-serif; --font-b:'Inter',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:48px}
+
+    .app-header{background:var(--surface);border-bottom:2px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+    .logo{font-size:1.5rem}
+    .app-header h1{font-family:var(--font-d);font-size:1rem;font-weight:700;color:var(--primary);line-height:1.2}
+    .app-header h1 span{display:block;font-size:0.7rem;font-weight:500;color:var(--text-muted)}
+
+    .content{max-width:480px;margin:0 auto;padding:20px 16px}
+
+    /* ── Identity card ── */
+    .id-card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:16px;margin-bottom:16px}
+    .id-card-title{font-family:var(--font-d);font-weight:700;font-size:0.88rem;margin-bottom:10px;color:var(--text)}
+    .id-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .id-input{padding:9px 12px;border:2px solid var(--border);border-radius:var(--radius-md);font-family:var(--font-b);font-size:0.88rem;color:var(--text);background:var(--surface);width:100%}
+    .id-input:focus{outline:none;border-color:var(--primary)}
+    .btn-save-id{width:100%;padding:10px;border-radius:var(--radius-full);border:none;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-family:var(--font-d);font-weight:700;font-size:0.85rem;cursor:pointer}
+    .id-saved{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(0,184,148,0.07);border-radius:var(--radius-md);border:1px solid rgba(0,184,148,0.2)}
+    .id-saved-name{font-weight:700;font-size:0.88rem;color:var(--text)}
+    .id-saved-carne{font-size:0.72rem;color:var(--text-muted)}
+    .btn-change-id{font-size:0.72rem;color:var(--primary);background:none;border:none;cursor:pointer;font-family:var(--font-d);font-weight:600;white-space:nowrap;margin-left:auto}
+
+    /* ── Category grid ── */
+    .cat-section-title{font-family:var(--font-d);font-weight:700;font-size:0.9rem;color:var(--text);margin-bottom:10px}
+    .cat-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px}
+    .cat-card{background:var(--surface);border-radius:var(--radius-md);border:2px solid var(--border);padding:14px 12px;cursor:pointer;transition:border-color 0.15s,box-shadow 0.15s;text-align:center;-webkit-tap-highlight-color:transparent}
+    .cat-card:hover{border-color:var(--primary-light)}
+    .cat-card.selected{border-color:var(--primary);background:rgba(108,99,255,0.06);box-shadow:0 0 0 3px rgba(108,99,255,0.12)}
+    .cat-icon{font-size:1.6rem;margin-bottom:6px}
+    .cat-label{font-family:var(--font-d);font-weight:700;font-size:0.78rem;color:var(--text)}
+    .cat-desc{font-size:0.65rem;color:var(--text-muted);margin-top:2px;line-height:1.3}
+
+    .btn-start{width:100%;padding:13px;border-radius:var(--radius-full);border:none;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-family:var(--font-d);font-weight:700;font-size:0.95rem;cursor:pointer;transition:opacity 0.2s}
+    .btn-start:disabled{opacity:0.4;cursor:not-allowed}
+
+    /* ── Quiz screen ── */
+    .quiz-progress-bg{height:6px;background:var(--surface-2);border-radius:var(--radius-full);margin-bottom:16px;overflow:hidden}
+    .quiz-progress-fill{height:100%;background:linear-gradient(90deg,var(--primary),var(--accent));border-radius:var(--radius-full);transition:width 0.4s ease}
+    .quiz-meta{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+    .quiz-counter{font-family:var(--font-d);font-weight:700;font-size:0.88rem;color:var(--text-2)}
+    .quiz-counter span{color:var(--text-muted);font-weight:500}
+    .cat-chip{padding:4px 10px;border-radius:var(--radius-full);background:rgba(108,99,255,0.1);color:var(--primary);font-family:var(--font-d);font-size:0.7rem;font-weight:700}
+
+    .question-card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:20px;margin-bottom:14px}
+    .question-text{font-family:var(--font-d);font-weight:600;font-size:0.95rem;color:var(--text);line-height:1.5}
+
+    .options-list{display:flex;flex-direction:column;gap:8px}
+    .opt-btn{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:var(--radius-md);border:2px solid var(--border);background:var(--surface);text-align:left;cursor:pointer;transition:border-color 0.15s,background 0.15s;font-family:var(--font-b);font-size:0.88rem;color:var(--text);-webkit-tap-highlight-color:transparent}
+    .opt-btn:hover:not(:disabled){border-color:var(--primary-light);background:rgba(108,99,255,0.04)}
+    .opt-btn:disabled{cursor:not-allowed}
+    .opt-btn.correct{border-color:var(--success)!important;background:rgba(0,184,148,0.08)!important;color:var(--success);font-weight:600}
+    .opt-btn.wrong{border-color:var(--danger)!important;background:rgba(255,107,107,0.08)!important;color:var(--danger)}
+    .opt-letter{width:26px;height:26px;border-radius:50%;background:var(--surface-2);border:2px solid var(--border);display:flex;align-items:center;justify-content:center;font-family:var(--font-d);font-size:0.72rem;font-weight:700;color:var(--text-2);flex-shrink:0;transition:background 0.15s,border-color 0.15s}
+    .opt-btn.correct .opt-letter{background:var(--success);border-color:var(--success);color:#fff}
+    .opt-btn.wrong .opt-letter{background:var(--danger);border-color:var(--danger);color:#fff}
+
+    .explanation-box{background:rgba(108,99,255,0.06);border-radius:var(--radius-md);border:1px solid rgba(108,99,255,0.15);padding:12px 14px;margin-top:10px;font-size:0.8rem;color:var(--text-2);line-height:1.45}
+    .explanation-box strong{color:var(--primary)}
+
+    .btn-next{width:100%;padding:13px;border-radius:var(--radius-full);border:none;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-family:var(--font-d);font-weight:700;font-size:0.9rem;cursor:pointer;margin-top:14px}
+
+    /* ── Results screen ── */
+    .results-card{background:linear-gradient(135deg,var(--primary) 0%,var(--accent) 100%);border-radius:var(--radius-lg);padding:24px;margin-bottom:16px;color:#fff;text-align:center}
+    .results-emoji{font-size:2.8rem;margin-bottom:8px}
+    .results-score{font-family:var(--font-d);font-weight:800;font-size:3rem;line-height:1}
+    .results-total{font-size:1rem;opacity:0.8}
+    .results-label{font-family:var(--font-d);font-weight:700;font-size:1rem;margin-top:6px}
+    .results-pct{font-size:0.8rem;opacity:0.75;margin-top:4px}
+    .results-bar-bg{height:10px;background:rgba(255,255,255,0.25);border-radius:var(--radius-full);margin-top:14px;overflow:hidden}
+    .results-bar-fill{height:100%;background:#fff;border-radius:var(--radius-full);transition:width 0.8s ease}
+
+    .results-btns{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:20px}
+    .btn-retry{padding:12px;border-radius:var(--radius-full);border:2px solid var(--primary);background:none;color:var(--primary);font-family:var(--font-d);font-weight:700;font-size:0.85rem;cursor:pointer}
+    .btn-change-cat{padding:12px;border-radius:var(--radius-full);border:none;background:var(--surface);color:var(--text-2);font-family:var(--font-d);font-weight:700;font-size:0.85rem;cursor:pointer;border:2px solid var(--border)}
+
+    .review-section{}
+    .review-title{font-family:var(--font-d);font-weight:700;font-size:0.9rem;color:var(--text);margin-bottom:10px}
+    .review-item{background:var(--surface);border-radius:var(--radius-md);border-left:4px solid var(--border);padding:12px 14px;margin-bottom:8px}
+    .review-item.correct{border-left-color:var(--success)}
+    .review-item.wrong{border-left-color:var(--danger)}
+    .review-q{font-size:0.82rem;font-weight:600;color:var(--text);margin-bottom:6px}
+    .review-ans{font-size:0.75rem;margin-bottom:3px}
+    .review-ans.ok{color:var(--success);font-weight:600}
+    .review-ans.no{color:var(--danger)}
+    .review-exp{font-size:0.72rem;color:var(--text-muted);margin-top:4px;font-style:italic}
+
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="logo">🧩</div>
+    <h1>Quiz de Práctica<span>Autoevaluación · Sin nota oficial</span></h1>
+  </header>
+
+  <!-- ══ PANTALLA INICIO ══ -->
+  <div class="content" id="screenStart">
+
+    <!-- Identidad -->
+    <div class="id-card">
+      <div id="idForm">
+        <div class="id-card-title">👤 ¿Quién sos?</div>
+        <div class="id-row">
+          <div>
+            <label style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-2);display:block;margin-bottom:4px">Nombre</label>
+            <input class="id-input" id="inputName" placeholder="Tu nombre" autocomplete="name">
+          </div>
+          <div>
+            <label style="font-size:0.68rem;font-weight:700;text-transform:uppercase;color:var(--text-2);display:block;margin-bottom:4px">Carné</label>
+            <input class="id-input" id="inputCarne" placeholder="UV20210001" autocomplete="off">
+          </div>
+        </div>
+        <button class="btn-save-id" id="btnSaveId">Guardar identidad →</button>
+      </div>
+      <div id="idSaved" class="hidden">
+        <div class="id-saved">
+          <div>
+            <div class="id-saved-name" id="savedName"></div>
+            <div class="id-saved-carne" id="savedCarne"></div>
+          </div>
+          <button class="btn-change-id" id="btnChangeId">Cambiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Categorías -->
+    <div id="catSection" class="hidden">
+      <div class="cat-section-title">📚 Elige una categoría</div>
+      <div class="cat-grid" id="catGrid"></div>
+      <button class="btn-start" id="btnStart" disabled>Iniciar Quiz →</button>
+    </div>
+  </div>
+
+  <!-- ══ PANTALLA QUIZ ══ -->
+  <div class="content hidden" id="screenQuiz">
+    <div class="quiz-progress-bg"><div class="quiz-progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="quiz-meta">
+      <div class="quiz-counter">Pregunta <span id="qNum">1</span> <span>de 10</span></div>
+      <div class="cat-chip" id="catChip"></div>
+    </div>
+    <div class="question-card">
+      <div class="question-text" id="questionText"></div>
+    </div>
+    <div class="options-list" id="optionsList"></div>
+    <div class="explanation-box hidden" id="explanationBox"></div>
+    <button class="btn-next hidden" id="btnNext">Siguiente →</button>
+  </div>
+
+  <!-- ══ PANTALLA RESULTADOS ══ -->
+  <div class="content hidden" id="screenResults">
+    <div class="results-card">
+      <div class="results-emoji" id="resEmoji">🎉</div>
+      <div class="results-score" id="resScore">0</div>
+      <div class="results-total">de 10</div>
+      <div class="results-label" id="resLabel"></div>
+      <div class="results-pct" id="resPct"></div>
+      <div class="results-bar-bg"><div class="results-bar-fill" id="resBar" style="width:0%"></div></div>
+    </div>
+    <div class="results-btns">
+      <button class="btn-retry" id="btnRetry">↺ Repetir</button>
+      <button class="btn-change-cat" id="btnChangeCat">← Otra categoría</button>
+    </div>
+    <div class="review-section">
+      <div class="review-title">📋 Revisión de respuestas</div>
+      <div id="reviewList"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { CATEGORIES, getQuestions, checkAnswer } from './js/practice-quiz.js';
+
+    const LS_KEY = 'acadvet_student_id';
+    let _name = '', _carne = '';
+    let _category = null;
+    let _questions = [];
+    let _current   = 0;
+    let _answers   = [];
+    let _answered  = false;
+
+    // ── Identidad ─────────────────────────────────────────────────────────
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (saved?.name && saved?.carne) {
+      _name = saved.name; _carne = saved.carne;
+      showSaved();
+      document.getElementById('catSection').classList.remove('hidden');
+    } else { showForm(); }
+
+    document.getElementById('btnSaveId').addEventListener('click', () => {
+      const name  = document.getElementById('inputName').value.trim();
+      const carne = document.getElementById('inputCarne').value.trim();
+      if (name.length < 2 || carne.length < 3) { alert('Ingresá nombre y carné válidos'); return; }
+      _name = name; _carne = carne;
+      localStorage.setItem(LS_KEY, JSON.stringify({ name, carne }));
+      showSaved();
+      document.getElementById('catSection').classList.remove('hidden');
+    });
+
+    document.getElementById('btnChangeId').addEventListener('click', () => {
+      document.getElementById('idSaved').classList.add('hidden');
+      document.getElementById('idForm').classList.remove('hidden');
+      document.getElementById('catSection').classList.add('hidden');
+    });
+
+    function showForm() {
+      document.getElementById('idForm').classList.remove('hidden');
+      document.getElementById('idSaved').classList.add('hidden');
+    }
+    function showSaved() {
+      document.getElementById('idSaved').classList.remove('hidden');
+      document.getElementById('idForm').classList.add('hidden');
+      document.getElementById('savedName').textContent  = _name;
+      document.getElementById('savedCarne').textContent = `Carné: ${_carne}`;
+    }
+
+    // ── Renderizar categorías ─────────────────────────────────────────────
+    document.getElementById('catGrid').innerHTML = CATEGORIES.map(cat => `
+      <div class="cat-card" data-cat="${cat.id}">
+        <div class="cat-icon">${cat.icon}</div>
+        <div class="cat-label">${cat.label}</div>
+        <div class="cat-desc">${cat.desc}</div>
+      </div>`).join('');
+
+    document.querySelectorAll('.cat-card').forEach(card => {
+      card.addEventListener('click', () => {
+        document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+        card.classList.add('selected');
+        _category = card.dataset.cat;
+        document.getElementById('btnStart').disabled = false;
+      });
+    });
+
+    // ── Iniciar quiz ──────────────────────────────────────────────────────
+    document.getElementById('btnStart').addEventListener('click', startQuiz);
+
+    function startQuiz() {
+      _questions = getQuestions(_category, 10);
+      _current   = 0;
+      _answers   = [];
+      _answered  = false;
+      show('screenQuiz');
+      renderQuestion();
+    }
+
+    // ── Renderizar pregunta ───────────────────────────────────────────────
+    function renderQuestion() {
+      const q   = _questions[_current];
+      const n   = _current + 1;
+      const tot = _questions.length;
+      _answered = false;
+
+      document.getElementById('progressFill').style.width = `${(n - 1) / tot * 100}%`;
+      document.getElementById('qNum').textContent = n;
+
+      const catObj = CATEGORIES.find(c => c.id === q.cat);
+      document.getElementById('catChip').textContent = catObj?.label ?? q.cat;
+      document.getElementById('questionText').textContent = q.q;
+
+      const LETTERS = ['A', 'B', 'C', 'D'];
+      document.getElementById('optionsList').innerHTML = q.opts.map((opt, i) => `
+        <button class="opt-btn" data-idx="${i}">
+          <span class="opt-letter">${LETTERS[i]}</span>
+          <span>${esc(opt)}</span>
+        </button>`).join('');
+
+      document.querySelectorAll('.opt-btn').forEach(btn => {
+        btn.addEventListener('click', () => handleAnswer(parseInt(btn.dataset.idx, 10), btn));
+      });
+
+      document.getElementById('explanationBox').classList.add('hidden');
+      document.getElementById('btnNext').classList.add('hidden');
+      document.getElementById('btnNext').textContent =
+        n === tot ? '📊 Ver resultados' : 'Siguiente →';
+    }
+
+    // ── Responder ─────────────────────────────────────────────────────────
+    function handleAnswer(selectedIdx, btn) {
+      if (_answered) return;
+      _answered = true;
+      const q   = _questions[_current];
+      const res = checkAnswer(q, selectedIdx);
+
+      _answers.push({ questionIdx: _current, selected: selectedIdx, correct: res.correct });
+
+      document.querySelectorAll('.opt-btn').forEach(b => {
+        b.disabled = true;
+        const idx = parseInt(b.dataset.idx, 10);
+        if (idx === res.correctIdx) b.classList.add('correct');
+        if (idx === selectedIdx && !res.correct) b.classList.add('wrong');
+      });
+
+      const expBox = document.getElementById('explanationBox');
+      expBox.innerHTML = `<strong>${res.correct ? '✅ Correcto.' : '❌ Incorrecto.'}</strong> ${esc(q.exp)}`;
+      expBox.classList.remove('hidden');
+      document.getElementById('btnNext').classList.remove('hidden');
+    }
+
+    document.getElementById('btnNext').addEventListener('click', () => {
+      _current++;
+      if (_current >= _questions.length) {
+        showResults();
+      } else {
+        renderQuestion();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }
+    });
+
+    // ── Resultados ────────────────────────────────────────────────────────
+    function showResults() {
+      const score = _answers.filter(a => a.correct).length;
+      const pct   = Math.round(score / _questions.length * 100);
+      const emoji = pct >= 80 ? '🎉' : pct >= 60 ? '👍' : '📚';
+      const label = pct >= 80 ? '¡Excelente!'
+                  : pct >= 60 ? 'Buen trabajo'
+                  : 'Sigue practicando';
+
+      document.getElementById('resEmoji').textContent = emoji;
+      document.getElementById('resScore').textContent = score;
+      document.getElementById('resLabel').textContent = label;
+      document.getElementById('resPct').textContent   = `${pct}% correcto`;
+      document.getElementById('progressFill').style.width = '100%';
+
+      setTimeout(() => {
+        document.getElementById('resBar').style.width = `${pct}%`;
+      }, 100);
+
+      const LETTERS = ['A', 'B', 'C', 'D'];
+      document.getElementById('reviewList').innerHTML = _questions.map((q, i) => {
+        const ans = _answers[i];
+        return `
+          <div class="review-item ${ans.correct ? 'correct' : 'wrong'}">
+            <div class="review-q">${i + 1}. ${esc(q.q)}</div>
+            ${!ans.correct
+              ? `<div class="review-ans no">Tu respuesta: ${LETTERS[ans.selected]}. ${esc(q.opts[ans.selected])}</div>`
+              : ''}
+            <div class="review-ans ok">✓ ${LETTERS[q.c]}. ${esc(q.opts[q.c])}</div>
+            <div class="review-exp">${esc(q.exp)}</div>
+          </div>`;
+      }).join('');
+
+      show('screenResults');
+    }
+
+    document.getElementById('btnRetry').addEventListener('click', () => {
+      startQuiz();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+    document.getElementById('btnChangeCat').addEventListener('click', () => {
+      _category = null;
+      document.querySelectorAll('.cat-card').forEach(c => c.classList.remove('selected'));
+      document.getElementById('btnStart').disabled = true;
+      show('screenStart');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+    function show(id) {
+      ['screenStart','screenQuiz','screenResults'].forEach(s => {
+        document.getElementById(s).classList.toggle('hidden', s !== id);
+      });
+    }
+
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

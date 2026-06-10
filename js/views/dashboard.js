@@ -132,6 +132,51 @@ export function renderDashboard(container, data = null) {
             </div>
           </div>
         </a>
+        <a href="reminders.html" style="text-decoration:none">
+          <div class="materia-card" style="cursor:pointer">
+            <div class="materia-card__accent" style="background:linear-gradient(135deg,#FDCB6E 0%,#FF6B6B 100%)"></div>
+            <div class="materia-card__body">
+              <div class="materia-card__header">
+                <span class="badge badge--primary">Avisos</span>
+              </div>
+              <h3 class="materia-card__name">🔔 Evaluaciones</h3>
+              <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px">Recordatorios y fechas de evaluaciones</p>
+            </div>
+            <div class="materia-card__footer">
+              <span class="btn btn--primary btn--sm" style="background:linear-gradient(135deg,#FDCB6E,#FF6B6B)">Ver →</span>
+            </div>
+          </div>
+        </a>
+        <a href="practice-quiz.html" style="text-decoration:none">
+          <div class="materia-card" style="cursor:pointer">
+            <div class="materia-card__accent" style="background:linear-gradient(135deg,#A29BFE 0%,#6C63FF 100%)"></div>
+            <div class="materia-card__body">
+              <div class="materia-card__header">
+                <span class="badge badge--primary">Autoevaluación</span>
+              </div>
+              <h3 class="materia-card__name">🧩 Quiz de Práctica</h3>
+              <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px">Bacteriología, micología, lab clínico y hemograma</p>
+            </div>
+            <div class="materia-card__footer">
+              <span class="btn btn--primary btn--sm">Practicar →</span>
+            </div>
+          </div>
+        </a>
+        <a href="image-gallery.html" style="text-decoration:none">
+          <div class="materia-card" style="cursor:pointer">
+            <div class="materia-card__accent" style="background:linear-gradient(135deg,#00D2D3 0%,#00B894 100%)"></div>
+            <div class="materia-card__body">
+              <div class="materia-card__header">
+                <span class="badge badge--primary">Referencia</span>
+              </div>
+              <h3 class="materia-card__name">🔬 Galería Micro.</h3>
+              <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px">Imágenes de referencia de microscopía</p>
+            </div>
+            <div class="materia-card__footer">
+              <span class="btn btn--primary btn--sm" style="background:linear-gradient(135deg,#00D2D3,#00B894)">Ver →</span>
+            </div>
+          </div>
+        </a>
         <a href="calculator.html" style="text-decoration:none">
           <div class="materia-card" style="cursor:pointer">
             <div class="materia-card__accent" style="background:linear-gradient(135deg,#00B894 0%,#00D2D3 100%)"></div>
