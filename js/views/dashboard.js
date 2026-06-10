@@ -78,6 +78,30 @@ export function renderDashboard(container, data = null) {
         </div>
       </div>
 
+      <!-- Accesos rápidos -->
+      <div class="section-header" style="margin-top:var(--space-6)">
+        <h3 class="section-title">Módulos</h3>
+      </div>
+      <div class="materias-grid" style="margin-bottom:var(--space-6)">
+        <a href="admin-mobile.html" style="text-decoration:none">
+          <div class="materia-card" style="cursor:pointer">
+            <div class="materia-card__accent" style="background:linear-gradient(135deg,#00D2D3 0%,#6C63FF 100%)"></div>
+            <div class="materia-card__body">
+              <div class="materia-card__header">
+                <span class="badge badge--primary">Laboratorio</span>
+              </div>
+              <h3 class="materia-card__name">📋 Reportes de Prácticas</h3>
+              <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px">Revisar fotos, dar feedback y marcar prácticas</p>
+            </div>
+            <div class="materia-card__footer">
+              <span class="btn btn--primary btn--sm" style="background:linear-gradient(135deg,#00D2D3,#6C63FF)">
+                Abrir dashboard →
+              </span>
+            </div>
+          </div>
+        </a>
+      </div>
+
       <!-- Grid de materias -->
       <div class="section-header">
         <h3 class="section-title">Materias activas</h3>
