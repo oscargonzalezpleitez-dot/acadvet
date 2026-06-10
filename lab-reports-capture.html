@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="description" content="AcadVet USAM — Captura de Prácticas de Laboratorio">
+  <title>Lab Reports — AcadVet</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary:       #6C63FF;
+      --primary-light: #A29BFE;
+      --accent:        #00D2D3;
+      --success:       #00B894;
+      --danger:        #FF6B6B;
+      --warning:       #FDCB6E;
+      --bg:            #F0F2FF;
+      --surface:       #FFFFFF;
+      --surface-2:     #ECEEFF;
+      --text:          #1A1A2E;
+      --text-2:        #4A4A6A;
+      --text-muted:    #8888AA;
+      --border:        rgba(108,99,255,0.15);
+      --radius-md:     12px;
+      --radius-lg:     20px;
+      --radius-full:   9999px;
+      --font-display:  'Poppins', sans-serif;
+      --font-body:     'Inter', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: 48px;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    .app-header .logo { font-size: 1.4rem; }
+    .app-header h1 {
+      font-family: var(--font-display);
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1.2;
+    }
+    .app-header span {
+      display: block;
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+    }
+
+    /* ── Content ── */
+    .content {
+      max-width: 480px;
+      margin: 0 auto;
+      padding: 20px 16px;
+    }
+
+    /* ── GPS Card ── */
+    .gps-card {
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 20px;
+      border: 2px solid;
+      transition: background 0.3s, border-color 0.3s;
+    }
+    .gps-card.detecting  { background: var(--surface-2); border-color: var(--border); }
+    .gps-card.in-range   { background: rgba(0,184,148,0.08); border-color: var(--success); }
+    .gps-card.out-range  { background: rgba(255,107,107,0.08); border-color: var(--danger); }
+    .gps-card.gps-error  { background: rgba(253,203,110,0.12); border-color: var(--warning); }
+
+    .gps-dot {
+      width: 18px; height: 18px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .detecting  .gps-dot { background: var(--text-muted); animation: pulse-gray 1.4s infinite; }
+    .in-range   .gps-dot { background: var(--success);    animation: pulse-green 1.8s infinite; }
+    .out-range  .gps-dot { background: var(--danger);     animation: pulse-red 1.2s infinite; }
+    .gps-error  .gps-dot { background: var(--warning); }
+
+    @keyframes pulse-gray  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
+    @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(0,184,148,.5)} 50%{box-shadow:0 0 0 8px rgba(0,184,148,0)} }
+    @keyframes pulse-red   { 0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.5)} 50%{box-shadow:0 0 0 8px rgba(255,107,107,0)} }
+
+    .gps-info {}
+    .gps-status-text {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+    .detecting  .gps-status-text { color: var(--text-muted); }
+    .in-range   .gps-status-text { color: var(--success); }
+    .out-range  .gps-status-text { color: var(--danger); }
+    .gps-error  .gps-status-text { color: var(--warning); }
+    .gps-distance {
+      font-size: 0.78rem;
+      color: var(--text-2);
+      margin-top: 2px;
+    }
+
+    /* ── Form Section ── */
+    .section-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 24px 20px;
+      border: 1px solid var(--border);
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 20px;
+    }
+
+    .form-group { margin-bottom: 16px; }
+    .form-group label {
+      display: block;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-2);
+      margin-bottom: 6px;
+      letter-spacing: 0.02em;
+      text-transform: uppercase;
+    }
+    .form-group input,
+    .form-group select {
+      width: 100%;
+      padding: 12px 14px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.95rem;
+      color: var(--text);
+      background: var(--surface);
+      transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .form-group input:focus,
+    .form-group select:focus {
+      outline: none;
+      border-color: var(--primary);
+    }
+    .form-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888AA' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+      padding-right: 36px;
+      cursor: pointer;
+    }
+
+    /* ── Botón principal captura ── */
+    .btn-capture {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px;
+      margin-top: 8px;
+      border-radius: var(--radius-full);
+      border: 3px solid var(--accent);
+      background: #a8e63d;
+      color: #1A1A2E;
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-capture:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-capture:not(:disabled):active { transform: scale(0.97); }
+
+    /* ── Modal Cámara ── */
+    .camera-modal {
+      position: fixed; inset: 0;
+      background: #000;
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+    }
+    .camera-modal.hidden { display: none; }
+
+    #cameraVideo {
+      flex: 1;
+      width: 100%;
+      object-fit: cover;
+      background: #111;
+    }
+    .camera-bar {
+      padding: 20px 24px 32px;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+    .btn-shutter {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      border: 4px solid #fff;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.12s;
+    }
+    .btn-shutter:active { background: rgba(255,255,255,0.4); transform: scale(0.93); }
+    .btn-cancel-camera {
+      padding: 10px 20px;
+      background: rgba(255,107,107,0.25);
+      border: 2px solid rgba(255,107,107,0.6);
+      border-radius: var(--radius-full);
+      color: #FF9999;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+    .camera-hint {
+      color: rgba(255,255,255,0.55);
+      font-size: 0.78rem;
+      flex: 1;
+      text-align: center;
+    }
+
+    /* ── Preview Section ── */
+    .preview-section {
+      padding: 20px 16px;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .preview-section.hidden { display: none; }
+
+    #photoCanvas {
+      width: 100%;
+      border-radius: var(--radius-md);
+      display: block;
+      border: 3px solid var(--accent);
+      margin-bottom: 16px;
+    }
+    .preview-meta {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      margin-bottom: 16px;
+      border: 1px solid var(--border);
+      font-size: 0.85rem;
+      color: var(--text-2);
+    }
+    .preview-meta strong { color: var(--text); }
+
+    .btn-submit {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 16px;
+      margin-bottom: 12px;
+      border-radius: var(--radius-full);
+      border: none;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 1.05rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-submit:not(:disabled):active { transform: scale(0.97); }
+
+    .btn-secondary {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+      padding: 14px;
+      border-radius: var(--radius-full);
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    /* ── Loading Overlay ── */
+    .loading-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.6);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+    }
+    .loading-overlay.hidden { display: none; }
+    .spinner {
+      width: 48px; height: 48px;
+      border: 4px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text {
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 1rem;
+    }
+
+    /* ── Success Screen ── */
+    .success-section {
+      padding: 40px 20px;
+      text-align: center;
+      max-width: 480px;
+      margin: 0 auto;
+    }
+    .success-section.hidden { display: none; }
+    .success-icon { font-size: 4rem; margin-bottom: 16px; }
+    .success-title {
+      font-family: var(--font-display);
+      font-size: 1.4rem;
+      font-weight: 800;
+      color: var(--success);
+      margin-bottom: 8px;
+    }
+    .success-msg {
+      color: var(--text-2);
+      font-size: 0.9rem;
+      margin-bottom: 28px;
+      line-height: 1.6;
+    }
+    .btn-nuevo {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 14px 28px;
+      border-radius: var(--radius-full);
+      border: none;
+      background: var(--primary);
+      color: #fff;
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+    }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div class="logo">🔬</div>
+    <h1>
+      Acad<span style="color:var(--accent);display:inline">Vet</span> Lab
+      <span>Captura de Prácticas</span>
+    </h1>
+  </header>
+
+  <!-- ── Pantalla principal ── -->
+  <div id="mainView">
+    <div class="content">
+
+      <!-- GPS Status -->
+      <div class="gps-card detecting" id="gpsCard">
+        <div class="gps-dot"></div>
+        <div class="gps-info">
+          <div class="gps-status-text" id="gpsStatusText">Obteniendo ubicación…</div>
+          <div class="gps-distance" id="gpsDistanceText">Activá el GPS de tu dispositivo</div>
+        </div>
+      </div>
+
+      <!-- Formulario -->
+      <div class="section-card">
+        <div class="section-title">📋 Datos del Estudiante</div>
+
+        <div class="form-group">
+          <label>Nombre completo</label>
+          <input type="text" id="studentName" placeholder="Ej. María López García" autocomplete="name">
+        </div>
+
+        <div class="form-group">
+          <label>Carné / Código</label>
+          <input type="text" id="studentId" placeholder="Ej. UV20210001" autocomplete="off">
+        </div>
+
+        <div class="form-group">
+          <label>Asignatura</label>
+          <input type="text" id="asignatura" placeholder="Ej. Parasitología Veterinaria">
+        </div>
+
+        <div class="form-group">
+          <label>Tipo de preparación</label>
+          <select id="tipoPrep">
+            <option value="">— Seleccioná el tipo —</option>
+          </select>
+        </div>
+
+        <button class="btn-capture" id="btnCapturar" disabled>
+          📷 Capturar Práctica
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Modal Cámara ── -->
+  <div class="camera-modal hidden" id="cameraModal">
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <div class="camera-bar">
+      <button class="btn-cancel-camera" id="btnCancelarCamera">✕ Cancelar</button>
+      <span class="camera-hint">Encuadrá la preparación</span>
+      <button class="btn-shutter" id="btnCapturarFoto" title="Capturar foto">⬤</button>
+    </div>
+  </div>
+
+  <!-- ── Vista previa ── -->
+  <div class="preview-section hidden" id="previewSection">
+    <canvas id="photoCanvas"></canvas>
+    <div class="preview-meta" id="previewMeta"></div>
+    <button class="btn-submit" id="btnEnviar">✅ Enviar al Laboratorio</button>
+    <button class="btn-secondary" id="btnNuevaFoto">↩ Tomar otra foto</button>
+  </div>
+
+  <!-- ── Éxito ── -->
+  <div class="success-section hidden" id="successSection">
+    <div class="success-icon">✅</div>
+    <div class="success-title">¡Práctica Guardada!</div>
+    <p class="success-msg" id="successMsg"></p>
+    <button class="btn-nuevo" id="btnNuevoReporte">📷 Nuevo Reporte</button>
+  </div>
+
+  <!-- ── Loading ── -->
+  <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Subiendo foto…</div>
+  </div>
+
+  <canvas id="hiddenCanvas" style="display:none"></canvas>
+
+  <script type="module">
+    import {
+      validateLocation, drawWatermark, uploadPhoto, saveReport,
+      getLabLocation, haversineMeters,
+      TIPOS_PREPARACION, LAB_LAT, LAB_LNG, RADIUS_METERS
+    } from './js/lab-reports.js';
+
+    // ── Poblar dropdown de tipos ──
+    const tipoPrepSel = document.getElementById('tipoPrep');
+    TIPOS_PREPARACION.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = opt.textContent = t;
+      tipoPrepSel.appendChild(opt);
+    });
+
+    // ── Estado global ──
+    let gpsOk     = false;
+    let gpsCoords = null;
+    let gpsDist   = null;
+    let cameraStream   = null;
+    let capturedCanvas = null;
+    let labLoc = { lat: LAB_LAT, lng: LAB_LNG, radius: RADIUS_METERS };
+
+    // ── Refs DOM ──
+    const gpsCard        = document.getElementById('gpsCard');
+    const gpsStatusText  = document.getElementById('gpsStatusText');
+    const gpsDistanceText= document.getElementById('gpsDistanceText');
+    const btnCapturar    = document.getElementById('btnCapturar');
+    const cameraModal    = document.getElementById('cameraModal');
+    const cameraVideo    = document.getElementById('cameraVideo');
+    const photoCanvas    = document.getElementById('photoCanvas');
+    const previewSection = document.getElementById('previewSection');
+    const previewMeta    = document.getElementById('previewMeta');
+    const mainView       = document.getElementById('mainView');
+    const successSection = document.getElementById('successSection');
+    const loadingOverlay = document.getElementById('loadingOverlay');
+
+    // ── GPS watchPosition ──
+    function startGpsWatch() {
+      if (!navigator.geolocation) {
+        setGpsState('error', 'GPS no disponible en este dispositivo', '');
+        return;
+      }
+      navigator.geolocation.watchPosition(
+        pos => updateGps(pos.coords),
+        err => setGpsState('error', 'No se pudo obtener GPS', err.message),
+        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
+      );
+    }
+
+    function updateGps(coords) {
+      const dist = haversineMeters(coords.latitude, coords.longitude, labLoc.lat, labLoc.lng);
+
+      gpsCoords = coords;
+      gpsDist   = dist;
+
+      if (dist <= labLoc.radius) {
+        gpsOk = true;
+        setGpsState('in-range',
+          `✅ Estás en el laboratorio`,
+          `Distancia: ${dist.toFixed(0)} m — dentro del rango`
+        );
+      } else {
+        gpsOk = false;
+        setGpsState('out-range',
+          `❌ Fuera del laboratorio`,
+          `Distancia: ${dist.toFixed(0)} m — se requieren ≤ ${labLoc.radius} m`
+        );
+      }
+      checkFormReady();
+    }
+
+    function setGpsState(state, status, detail) {
+      gpsCard.className = `gps-card ${state}`;
+      gpsStatusText.textContent  = status;
+      gpsDistanceText.textContent = detail;
+    }
+
+    // ── Validación del formulario ──
+    const formInputs = ['studentName', 'studentId', 'asignatura'].map(id => document.getElementById(id));
+    formInputs.forEach(el => el.addEventListener('input', checkFormReady));
+    tipoPrepSel.addEventListener('change', checkFormReady);
+
+    function checkFormReady() {
+      const filled = formInputs.every(el => el.value.trim().length >= 2)
+                   && tipoPrepSel.value !== '';
+      btnCapturar.disabled = !(gpsOk && filled);
+    }
+
+    // ── Abrir cámara ──
+    btnCapturar.addEventListener('click', async () => {
+      try {
+        cameraStream = await navigator.mediaDevices.getUserMedia({
+          video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 960 } }
+        });
+        cameraVideo.srcObject = cameraStream;
+        mainView.classList.add('hidden');
+        cameraModal.classList.remove('hidden');
+      } catch (e) {
+        alert(`❌ No se pudo acceder a la cámara: ${e.message}`);
+      }
+    });
+
+    // ── Cancelar cámara ──
+    document.getElementById('btnCancelarCamera').addEventListener('click', () => {
+      stopCamera();
+      cameraModal.classList.add('hidden');
+      mainView.classList.remove('hidden');
+    });
+
+    function stopCamera() {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(t => t.stop());
+        cameraStream = null;
+      }
+    }
+
+    // ── Capturar foto ──
+    document.getElementById('btnCapturarFoto').addEventListener('click', () => {
+      const w = cameraVideo.videoWidth  || 1280;
+      const h = cameraVideo.videoHeight || 960;
+
+      photoCanvas.width  = w;
+      photoCanvas.height = h;
+
+      const ctx = photoCanvas.getContext('2d');
+      ctx.drawImage(cameraVideo, 0, 0, w, h);
+
+      const name = document.getElementById('studentName').value.trim();
+      const id   = document.getElementById('studentId').value.trim();
+      drawWatermark(photoCanvas, name, id, gpsCoords);
+
+      capturedCanvas = photoCanvas;
+      stopCamera();
+
+      // Mostrar preview
+      cameraModal.classList.add('hidden');
+      const tipo = tipoPrepSel.value;
+      const asig = document.getElementById('asignatura').value.trim();
+      previewMeta.innerHTML = `
+        <strong>Tipo:</strong> ${tipo}<br>
+        <strong>Asignatura:</strong> ${asig}<br>
+        <strong>GPS:</strong> ${gpsCoords.latitude.toFixed(4)}, ${gpsCoords.longitude.toFixed(4)} (${Math.round(gpsDist)} m del lab)
+      `;
+      previewSection.classList.remove('hidden');
+    });
+
+    // ── Nueva foto ──
+    document.getElementById('btnNuevaFoto').addEventListener('click', () => {
+      previewSection.classList.add('hidden');
+      mainView.classList.remove('hidden');
+    });
+
+    // ── Enviar ──
+    document.getElementById('btnEnviar').addEventListener('click', async () => {
+      const btnEnviar = document.getElementById('btnEnviar');
+      btnEnviar.disabled = true;
+
+      const studentName    = document.getElementById('studentName').value.trim();
+      const studentId      = document.getElementById('studentId').value.trim();
+      const asignatura     = document.getElementById('asignatura').value.trim();
+      const tipoPreparacion= tipoPrepSel.value;
+
+      loadingOverlay.classList.remove('hidden');
+
+      try {
+        document.getElementById('loadingText').textContent = 'Subiendo foto…';
+        const fotoUrl = await uploadPhoto(capturedCanvas, studentId);
+
+        document.getElementById('loadingText').textContent = 'Guardando reporte…';
+        await saveReport({
+          studentName, studentId, asignatura, tipoPreparacion,
+          coords: gpsCoords, distance: gpsDist, fotoUrl
+        });
+
+        loadingOverlay.classList.add('hidden');
+        previewSection.classList.add('hidden');
+
+        document.getElementById('successMsg').textContent =
+          `"${tipoPreparacion}" registrada para ${studentName}. El docente la revisará y enviará feedback.`;
+        successSection.classList.remove('hidden');
+
+      } catch (err) {
+        loadingOverlay.classList.add('hidden');
+        btnEnviar.disabled = false;
+        alert(`❌ Error al guardar: ${err.message}\n\nVerificá tu conexión a internet e intentá de nuevo.`);
+      }
+    });
+
+    // ── Nuevo reporte ──
+    document.getElementById('btnNuevoReporte').addEventListener('click', () => {
+      successSection.classList.add('hidden');
+      // Limpiar form parcialmente (mantener nombre/carné para siguiente captura)
+      tipoPrepSel.value = '';
+      checkFormReady();
+      mainView.classList.remove('hidden');
+    });
+
+    // ── Cargar ubicación del lab desde RTDB y arrancar GPS ──
+    getLabLocation().then(loc => {
+      labLoc = loc;
+      startGpsWatch();
+    }).catch(() => startGpsWatch());
+  </script>
+</body>
+</html>

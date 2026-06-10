@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="AcadVet USAM — Dashboard de Reportes de Prácticas">
+  <title>Reportes de Prácticas — AcadVet</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary:       #6C63FF;
+      --primary-light: #A29BFE;
+      --accent:        #00D2D3;
+      --success:       #00B894;
+      --danger:        #FF6B6B;
+      --warning:       #FDCB6E;
+      --bg:            #F0F2FF;
+      --surface:       #FFFFFF;
+      --surface-2:     #ECEEFF;
+      --text:          #1A1A2E;
+      --text-2:        #4A4A6A;
+      --text-muted:    #8888AA;
+      --border:        rgba(108,99,255,0.15);
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     20px;
+      --radius-full:   9999px;
+      --font-display:  'Poppins', sans-serif;
+      --font-body:     'Inter', sans-serif;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      padding: 14px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--primary);
+    }
+    .header-title span { color: var(--accent); }
+    .header-sub {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+    .btn-back {
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      border: 2px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-2);
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.82rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* ── Counters ── */
+    .counters {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      padding: 20px 24px 0;
+    }
+    .counter-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .counter-num {
+      font-family: var(--font-display);
+      font-size: 1.8rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .counter-label {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 4px;
+    }
+    .counter-card.total   .counter-num { color: var(--primary); }
+    .counter-card.pending .counter-num { color: var(--danger); }
+    .counter-card.done    .counter-num { color: var(--success); }
+    .counter-card.today   .counter-num { color: var(--accent); }
+
+    /* ── Filters ── */
+    .filters-bar {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      padding: 16px 20px;
+      margin: 16px 24px;
+      border: 1px solid var(--border);
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      align-items: flex-end;
+    }
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      min-width: 140px;
+      flex: 1;
+    }
+    .filter-group label {
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .filter-group input,
+    .filter-group select {
+      padding: 8px 12px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--text);
+      background: var(--surface);
+    }
+    .filter-group input:focus,
+    .filter-group select:focus { outline: none; border-color: var(--primary); }
+    .filter-group select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888AA' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 30px;
+      -webkit-appearance: none;
+      cursor: pointer;
+    }
+    .btn-clear-filters {
+      padding: 9px 16px;
+      border-radius: var(--radius-md);
+      border: 2px solid var(--border);
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 0.82rem;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      align-self: flex-end;
+    }
+    .btn-clear-filters:hover { border-color: var(--danger); color: var(--danger); }
+
+    /* ── Results header ── */
+    .results-header {
+      padding: 0 24px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .results-count {
+      font-family: var(--font-display);
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: var(--text-muted);
+    }
+
+    /* ── Grid ── */
+    .reports-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 16px;
+      padding: 0 24px 40px;
+    }
+
+    .report-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--border);
+      overflow: hidden;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s, border-color 0.15s;
+    }
+    .report-card:hover { transform: translateY(-3px); box-shadow: 0 8px 24px rgba(108,99,255,0.12); }
+    .report-card.revisado { border-color: rgba(0,184,148,0.3); }
+    .report-card:focus { outline: 3px solid var(--primary); outline-offset: 2px; }
+
+    .report-thumb {
+      position: relative;
+      aspect-ratio: 4/3;
+      background: var(--surface-2);
+      overflow: hidden;
+    }
+    .report-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .report-estado-badge {
+      position: absolute;
+      top: 8px; right: 8px;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.72rem;
+      font-weight: 700;
+      font-family: var(--font-display);
+    }
+    .report-estado-badge.pendiente { background: rgba(255,107,107,0.9); color: #fff; }
+    .report-estado-badge.revisado  { background: rgba(0,184,148,0.9);   color: #fff; }
+
+    .report-info { padding: 14px 16px; }
+    .report-name  { font-family: var(--font-display); font-weight: 700; font-size: 0.92rem; color: var(--text); }
+    .report-id-text { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+    .report-tipo  { font-size: 0.82rem; color: var(--primary); font-weight: 600; margin-bottom: 6px; }
+    .report-meta-row {
+      display: flex;
+      gap: 12px;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .report-asig {
+      margin-top: 4px;
+      font-size: 0.75rem;
+      color: var(--text-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .empty-state {
+      grid-column: 1/-1;
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-muted);
+    }
+    .empty-icon { font-size: 3rem; margin-bottom: 12px; }
+
+    /* ── Detail Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-overlay.hidden { display: none; }
+
+    .modal-box {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      width: 100%;
+      max-width: 700px;
+      max-height: 90vh;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .modal-header {
+      padding: 20px 24px 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+    .modal-title {
+      font-family: var(--font-display);
+      font-size: 1.1rem;
+      font-weight: 800;
+      color: var(--text);
+    }
+    .btn-close-modal {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-muted);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .btn-close-modal:hover { background: var(--danger); color: #fff; border-color: var(--danger); }
+
+    .modal-body {
+      padding: 20px 24px 24px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 580px) {
+      .modal-body { grid-template-columns: 1fr; }
+      .counters { grid-template-columns: repeat(2,1fr); }
+      .filters-bar { gap: 8px; }
+      .filter-group { min-width: 100%; }
+      .reports-grid { padding: 0 12px 40px; }
+      .counters { padding: 16px 12px 0; }
+      .filters-bar { margin: 12px; }
+      .results-header { padding: 0 12px 10px; }
+    }
+
+    .detail-photo {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      background: var(--surface-2);
+      aspect-ratio: 4/3;
+    }
+    .detail-photo img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .detail-right { display: flex; flex-direction: column; gap: 16px; }
+
+    .detail-meta {
+      background: var(--surface-2);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+      font-size: 0.85rem;
+    }
+    .meta-row { display: flex; flex-direction: column; margin-bottom: 10px; }
+    .meta-row:last-child { margin-bottom: 0; }
+    .meta-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 2px;
+    }
+    .meta-value { color: var(--text); font-weight: 500; }
+
+    .feedback-section label {
+      display: block;
+      font-size: 0.78rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 6px;
+    }
+    .feedback-section textarea {
+      width: 100%;
+      min-height: 90px;
+      padding: 10px 12px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--text);
+      resize: vertical;
+    }
+    .feedback-section textarea:focus { outline: none; border-color: var(--primary); }
+
+    .modal-actions {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .btn-modal {
+      padding: 11px 16px;
+      border-radius: var(--radius-full);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s;
+    }
+    .btn-modal:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-modal.primary { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
+    .btn-modal.success { background: var(--success); color: #fff; }
+    .btn-modal.outline { background: transparent; border: 2px solid var(--border); color: var(--text-2); }
+
+    /* ── Lab Location Config ── */
+    .lab-location-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--border);
+      padding: 16px 20px;
+      margin: 16px 24px 0;
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .lab-location-card.configured { border-color: rgba(0,184,148,0.4); }
+    .lab-loc-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .lab-loc-info { flex: 1; min-width: 160px; }
+    .lab-loc-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text);
+      margin-bottom: 2px;
+    }
+    .lab-loc-coords {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+    .lab-loc-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .lab-loc-radius {
+      width: 70px;
+      padding: 7px 10px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      text-align: center;
+      color: var(--text);
+    }
+    .lab-loc-radius:focus { outline: none; border-color: var(--primary); }
+    .btn-register-loc {
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      border: none;
+      background: var(--success);
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.82rem;
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .btn-register-loc:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div class="header-left">
+      <div>
+        <div class="header-title">📊 Reportes de Prácticas</div>
+        <div class="header-sub">AcadVet USAM — Dashboard Docente</div>
+      </div>
+    </div>
+    <a href="app.html" class="btn-back">← Volver</a>
+  </header>
+
+  <!-- ── Configuración ubicación del lab ── -->
+  <div class="lab-location-card" id="labLocCard">
+    <div class="lab-loc-icon">📍</div>
+    <div class="lab-loc-info">
+      <div class="lab-loc-title">Ubicación del Laboratorio</div>
+      <div class="lab-loc-coords" id="labLocCoords">Cargando…</div>
+    </div>
+    <div class="lab-loc-actions">
+      <input type="number" class="lab-loc-radius" id="labLocRadius" value="50" min="10" max="500" title="Radio en metros">
+      <span style="font-size:0.75rem;color:var(--text-muted)">m</span>
+      <button class="btn-register-loc" id="btnRegisterLoc">📍 Registrar mi ubicación actual</button>
+    </div>
+  </div>
+
+  <!-- ── Contadores ── -->
+  <div class="counters">
+    <div class="counter-card total">
+      <div class="counter-num" id="cntTotal">—</div>
+      <div class="counter-label">Total</div>
+    </div>
+    <div class="counter-card pending">
+      <div class="counter-num" id="cntPending">—</div>
+      <div class="counter-label">Pendientes</div>
+    </div>
+    <div class="counter-card done">
+      <div class="counter-num" id="cntReviewed">—</div>
+      <div class="counter-label">Revisados</div>
+    </div>
+    <div class="counter-card today">
+      <div class="counter-num" id="cntToday">—</div>
+      <div class="counter-label">Hoy</div>
+    </div>
+  </div>
+
+  <!-- ── Filtros ── -->
+  <div class="filters-bar">
+    <div class="filter-group">
+      <label>🔍 Estudiante</label>
+      <input type="text" id="filterSearch" placeholder="Nombre o carné…">
+    </div>
+    <div class="filter-group">
+      <label>🔬 Tipo</label>
+      <select id="filterTipo">
+        <option value="">Todos los tipos</option>
+        <option>Frotis sanguíneo</option>
+        <option>Raspado cutáneo</option>
+        <option>Necropsia</option>
+        <option>Examen coproparasitológico</option>
+        <option>Hematocrito (PCV)</option>
+        <option>Conteo diferencial leucocitario</option>
+        <option>Tinción Gram</option>
+        <option>Cultivo bacteriano</option>
+        <option>Urianálisis</option>
+        <option>Biopsia tisular</option>
+        <option>Otro</option>
+      </select>
+    </div>
+    <div class="filter-group">
+      <label>📚 Asignatura</label>
+      <input type="text" id="filterAsig" placeholder="Materia…">
+    </div>
+    <div class="filter-group">
+      <label>📅 Desde</label>
+      <input type="date" id="filterFechaDesde">
+    </div>
+    <div class="filter-group">
+      <label>📅 Hasta</label>
+      <input type="date" id="filterFechaHasta">
+    </div>
+    <div class="filter-group">
+      <label>📌 Estado</label>
+      <select id="filterEstado">
+        <option value="">Todos</option>
+        <option value="pendiente">🔴 Pendiente</option>
+        <option value="revisado">✅ Revisado</option>
+      </select>
+    </div>
+    <button class="btn-clear-filters" id="btnClearFilters">✕ Limpiar</button>
+  </div>
+
+  <!-- ── Results header ── -->
+  <div class="results-header">
+    <div class="results-count" id="resultsCount">Cargando…</div>
+  </div>
+
+  <!-- ── Grid ── -->
+  <div class="reports-grid" id="reportsGrid">
+    <div class="empty-state">
+      <div class="empty-icon">🔬</div>
+      <p>Cargando reportes…</p>
+    </div>
+  </div>
+
+  <!-- ── Modal Detalle ── -->
+  <div class="modal-overlay hidden" id="detailModal" role="dialog" aria-modal="true" aria-hidden="true">
+    <div class="modal-box">
+      <div class="modal-header">
+        <div class="modal-title">🔬 Detalle del Reporte</div>
+        <button class="btn-close-modal" id="btnCloseModal" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <!-- Foto -->
+        <div class="detail-photo" id="detailPhoto"></div>
+
+        <!-- Info + acciones -->
+        <div class="detail-right">
+          <div class="detail-meta">
+            <div class="meta-row">
+              <span class="meta-label">Estudiante</span>
+              <span class="meta-value" id="detailName"></span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Carné</span>
+              <span class="meta-value" id="detailStudentId"></span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Tipo de preparación</span>
+              <span class="meta-value" id="detailTipo"></span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Asignatura</span>
+              <span class="meta-value" id="detailAsig"></span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Fecha y hora</span>
+              <span class="meta-value" id="detailFecha"></span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">GPS</span>
+              <span class="meta-value" id="detailGps"></span>
+            </div>
+            <div class="meta-row">
+              <span class="meta-label">Estado</span>
+              <span class="meta-value" id="detailEstado"></span>
+            </div>
+          </div>
+
+          <div class="feedback-section">
+            <label>💬 Feedback al estudiante</label>
+            <textarea id="detailFeedback" placeholder="Escribe observaciones, correcciones o comentarios…"></textarea>
+          </div>
+
+          <div class="modal-actions">
+            <button class="btn-modal primary" id="btnSaveFeedback">💾 Guardar Feedback</button>
+            <button class="btn-modal success" id="btnMarkReviewed">✅ Marcar como Revisado</button>
+            <button class="btn-modal outline" id="btnDownload">⬇ Descargar Foto</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import {
+      initDashboard, applyFilters, openDetail, closeDetail,
+      saveFeedback, markReviewed
+    } from './js/lab-reports-admin.js';
+    import { getLabLocation, saveLabLocation } from './js/lab-reports.js';
+
+    // ── Inicializar dashboard ──
+    initDashboard();
+
+    // ── Ubicación del laboratorio ──
+    const labLocCard   = document.getElementById('labLocCard');
+    const labLocCoords = document.getElementById('labLocCoords');
+    const labLocRadius = document.getElementById('labLocRadius');
+    const btnRegister  = document.getElementById('btnRegisterLoc');
+
+    async function loadLabLocation() {
+      const loc = await getLabLocation();
+      labLocRadius.value = loc.radius;
+      if (loc.lat === 13.6894 && loc.lng === -89.1872) {
+        labLocCoords.textContent = 'Sin configurar — usá los valores por defecto';
+        labLocCard.classList.remove('configured');
+      } else {
+        labLocCoords.textContent = `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)} · radio ${loc.radius} m`;
+        labLocCard.classList.add('configured');
+      }
+    }
+    loadLabLocation();
+
+    btnRegister.addEventListener('click', async () => {
+      if (!navigator.geolocation) { alert('GPS no disponible en este dispositivo'); return; }
+      btnRegister.disabled = true;
+      btnRegister.textContent = '⏳ Obteniendo GPS…';
+      navigator.geolocation.getCurrentPosition(
+        async pos => {
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const radius = parseInt(labLocRadius.value, 10) || 50;
+          try {
+            await saveLabLocation(lat, lng, radius);
+            labLocCoords.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} · radio ${radius} m`;
+            labLocCard.classList.add('configured');
+            btnRegister.textContent = '✅ Guardado';
+            setTimeout(() => {
+              btnRegister.disabled = false;
+              btnRegister.textContent = '📍 Registrar mi ubicación actual';
+            }, 2500);
+          } catch (e) {
+            alert(`Error al guardar: ${e.message}`);
+            btnRegister.disabled = false;
+            btnRegister.textContent = '📍 Registrar mi ubicación actual';
+          }
+        },
+        err => {
+          alert(`No se pudo obtener GPS: ${err.message}`);
+          btnRegister.disabled = false;
+          btnRegister.textContent = '📍 Registrar mi ubicación actual';
+        },
+        { enableHighAccuracy: true, timeout: 15000 }
+      );
+    });
+
+    // ── Filtros ──
+    ['filterSearch','filterTipo','filterAsig','filterEstado','filterFechaDesde','filterFechaHasta']
+      .forEach(id => document.getElementById(id)?.addEventListener('input', applyFilters));
+
+    // ── Limpiar filtros ──
+    document.getElementById('btnClearFilters').addEventListener('click', () => {
+      ['filterSearch','filterAsig','filterFechaDesde','filterFechaHasta'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.value = '';
+      });
+      ['filterTipo','filterEstado'].forEach(id => {
+        const el = document.getElementById(id); if (el) el.selectedIndex = 0;
+      });
+      applyFilters();
+    });
+
+    // ── Modal ──
+    document.getElementById('btnCloseModal').addEventListener('click', closeDetail);
+    document.getElementById('detailModal').addEventListener('click', e => {
+      if (e.target === e.currentTarget) closeDetail();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDetail(); });
+
+    document.getElementById('btnSaveFeedback').addEventListener('click', saveFeedback);
+    document.getElementById('btnMarkReviewed').addEventListener('click', markReviewed);
+  </script>
+</body>
+</html>

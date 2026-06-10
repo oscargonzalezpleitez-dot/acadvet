@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0">
+  <meta name="description" content="AcadVet USAM — Administración Móvil">
+  <title>Admin Lab — AcadVet</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary:       #6C63FF;
+      --primary-light: #A29BFE;
+      --accent:        #00D2D3;
+      --success:       #00B894;
+      --danger:        #FF6B6B;
+      --warning:       #FDCB6E;
+      --bg:            #F0F2FF;
+      --surface:       #FFFFFF;
+      --surface-2:     #ECEEFF;
+      --surface-3:     #E4E6F8;
+      --text:          #1A1A2E;
+      --text-2:        #4A4A6A;
+      --text-muted:    #8888AA;
+      --border:        rgba(108,99,255,0.15);
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     20px;
+      --radius-full:   9999px;
+      --font-display:  'Poppins', sans-serif;
+      --font-body:     'Inter', sans-serif;
+      --header-h:      56px;
+      --tab-h:         50px;
+      --bottom-h:      68px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      font-family: var(--font-body);
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 10;
+    }
+    .btn-back {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-2);
+      font-size: 1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      text-decoration: none;
+    }
+    .header-title {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 1rem;
+      color: var(--primary);
+      flex: 1;
+    }
+    .header-title span { color: var(--accent); }
+
+    /* ── Tab bar ── */
+    .tab-bar {
+      height: var(--tab-h);
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      flex-shrink: 0;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: none;
+      font-family: var(--font-display);
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-bottom: 3px solid transparent;
+      transition: color 0.2s, border-color 0.2s;
+      padding: 0 8px;
+    }
+    .tab-btn.active {
+      color: var(--primary);
+      border-bottom-color: var(--primary);
+    }
+
+    /* ── Scroll container ── */
+    .tab-content {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 24px;
+    }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Stats widget ── */
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      padding: 14px 14px 0;
+    }
+    .stat-card {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px 12px;
+      border: 1px solid var(--border);
+      text-align: center;
+    }
+    .stat-num {
+      font-family: var(--font-display);
+      font-size: 1.7rem;
+      font-weight: 800;
+      line-height: 1;
+    }
+    .stat-label {
+      font-size: 0.68rem;
+      color: var(--text-muted);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-top: 3px;
+    }
+    .stat-card.hoy   .stat-num { color: var(--accent); }
+    .stat-card.rev   .stat-num { color: var(--success); }
+    .stat-card.pend  .stat-num { color: var(--danger); }
+    .stat-card.top   .stat-num { font-size: 1rem; color: var(--primary); margin-top: 4px; }
+
+    /* ── Filters ── */
+    .filters-section {
+      margin: 12px 14px 0;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      overflow: hidden;
+    }
+    .filters-header {
+      padding: 12px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      user-select: none;
+    }
+    .filters-header-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.85rem;
+      color: var(--text);
+    }
+    .filters-toggle-icon {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+      transition: transform 0.2s;
+    }
+    .filters-toggle-icon.open { transform: rotate(180deg); }
+    .filters-body {
+      padding: 0 14px 14px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .filters-body.collapsed { display: none; }
+    .filter-item { display: flex; flex-direction: column; gap: 4px; }
+    .filter-item.full { grid-column: 1/-1; }
+    .filter-item label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .filter-item select,
+    .filter-item input {
+      padding: 9px 10px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.85rem;
+      color: var(--text);
+      background: var(--surface);
+      width: 100%;
+      -webkit-appearance: none;
+    }
+    .filter-item select:focus,
+    .filter-item input:focus { outline: none; border-color: var(--primary); }
+    .filter-item select {
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7' viewBox='0 0 10 7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238888AA' stroke-width='1.8' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      padding-right: 28px;
+      cursor: pointer;
+    }
+    .btn-filtrar {
+      grid-column: 1/-1;
+      padding: 11px;
+      border-radius: var(--radius-full);
+      border: none;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.9rem;
+      cursor: pointer;
+    }
+
+    /* ── Reports list ── */
+    .reports-section { padding: 12px 14px 0; }
+    .reports-count {
+      font-family: var(--font-display);
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--text-muted);
+      margin-bottom: 10px;
+      padding-left: 2px;
+    }
+
+    .report-item {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 12px;
+      margin-bottom: 10px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .report-item:active { box-shadow: 0 2px 12px rgba(108,99,255,0.15); border-color: var(--primary-light); }
+    .report-item.revisado { border-color: rgba(0,184,148,0.3); }
+
+    .report-thumb {
+      width: 80px; height: 80px;
+      border-radius: var(--radius-sm);
+      background: var(--surface-2);
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+    .report-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+    .report-thumb-empty {
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.8rem;
+    }
+
+    .report-body { flex: 1; min-width: 0; }
+    .report-name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .report-tipo {
+      font-size: 0.78rem;
+      color: var(--primary);
+      font-weight: 600;
+      margin: 2px 0;
+    }
+    .report-datetime { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 5px; }
+    .report-estado {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 3px 9px;
+      border-radius: var(--radius-full);
+      font-size: 0.68rem;
+      font-weight: 700;
+    }
+    .report-estado.pendiente { background: rgba(255,107,107,0.12); color: var(--danger); }
+    .report-estado.revisado  { background: rgba(0,184,148,0.12);   color: var(--success); }
+
+    .btn-revisar {
+      padding: 8px 14px;
+      border-radius: var(--radius-full);
+      border: 2px solid var(--primary);
+      background: transparent;
+      color: var(--primary);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.78rem;
+      cursor: pointer;
+      flex-shrink: 0;
+      white-space: nowrap;
+    }
+    .btn-revisar:active { background: var(--primary); color: #fff; }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--text-muted);
+    }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* ── Review Modal ── */
+    .review-modal {
+      position: fixed; inset: 0;
+      background: var(--bg);
+      z-index: 200;
+      display: flex;
+      flex-direction: column;
+    }
+    .review-modal.hidden { display: none; }
+
+    .modal-topbar {
+      height: var(--header-h);
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+    }
+    .modal-topbar-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.95rem;
+      flex: 1;
+    }
+    .btn-close-modal {
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      border: 2px solid var(--border);
+      background: var(--surface-2);
+      color: var(--text-2);
+      font-size: 1.1rem;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    .modal-scroll {
+      flex: 1;
+      overflow-y: auto;
+      -webkit-overflow-scrolling: touch;
+      padding-bottom: 80px;
+    }
+
+    /* Photo with zoom */
+    .modal-photo-wrap {
+      position: relative;
+      background: #000;
+      overflow: hidden;
+      max-height: 45vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-photo-wrap.zoomed {
+      max-height: none;
+      overflow: scroll;
+      -webkit-overflow-scrolling: touch;
+    }
+    #modalPhoto {
+      width: 100%;
+      height: auto;
+      display: block;
+      cursor: zoom-in;
+      transition: transform 0.2s;
+    }
+    .modal-photo-wrap.zoomed #modalPhoto {
+      width: 200%;
+      cursor: zoom-out;
+    }
+    .zoom-hint {
+      position: absolute;
+      bottom: 8px; right: 8px;
+      background: rgba(0,0,0,0.55);
+      color: #fff;
+      font-size: 0.7rem;
+      padding: 4px 8px;
+      border-radius: var(--radius-full);
+    }
+
+    /* Modal info */
+    .modal-info {
+      padding: 16px 16px 0;
+    }
+    .info-grid {
+      background: var(--surface);
+      border-radius: var(--radius-md);
+      padding: 14px;
+      border: 1px solid var(--border);
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .info-item { display: flex; flex-direction: column; gap: 2px; }
+    .info-item.full { grid-column: 1/-1; }
+    .info-label {
+      font-size: 0.65rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .info-value { font-size: 0.85rem; color: var(--text); font-weight: 500; }
+
+    /* Feedback */
+    .modal-feedback {
+      padding: 14px 16px 0;
+    }
+    .feedback-label {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.82rem;
+      color: var(--text);
+      margin-bottom: 8px;
+    }
+    #modalFeedback {
+      width: 100%;
+      min-height: 100px;
+      padding: 11px 13px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 0.875rem;
+      color: var(--text);
+      resize: vertical;
+    }
+    #modalFeedback:focus { outline: none; border-color: var(--primary); }
+
+    .modal-checkbox-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px 0;
+    }
+    #chkRevisada {
+      width: 20px; height: 20px;
+      accent-color: var(--success);
+      cursor: pointer;
+    }
+    .checkbox-label {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: 0.88rem;
+      color: var(--text);
+      cursor: pointer;
+    }
+
+    /* Modal bottom actions */
+    .modal-actions {
+      position: fixed;
+      bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 2px solid var(--border);
+      padding: 12px 16px;
+      display: flex;
+      gap: 10px;
+      z-index: 201;
+    }
+    .review-modal.hidden + .modal-actions { display: none; }
+    .btn-action {
+      flex: 1;
+      padding: 13px;
+      border-radius: var(--radius-full);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.875rem;
+      cursor: pointer;
+      border: none;
+      transition: opacity 0.2s;
+    }
+    .btn-action:disabled { opacity: 0.45; cursor: not-allowed; }
+    .btn-action.download { background: var(--surface-2); border: 2px solid var(--border); color: var(--text-2); }
+    .btn-action.save     { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
+
+    .hidden { display: none !important; }
+  </style>
+</head>
+
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <a href="app.html" class="btn-back" aria-label="Volver">←</a>
+    <div class="header-title">🔬 Admin <span>Lab</span></div>
+  </header>
+
+  <!-- ── Tab bar ── -->
+  <div class="tab-bar">
+    <button class="tab-btn active" data-tab="reportes">📋 Reportes Laboratorio</button>
+  </div>
+
+  <!-- ── Contenido ── -->
+  <div class="tab-content">
+    <div class="tab-panel active" id="tab-reportes">
+
+      <!-- Estadísticas -->
+      <div class="stats-grid">
+        <div class="stat-card hoy">
+          <div class="stat-num" id="statHoy">—</div>
+          <div class="stat-label">Hoy</div>
+        </div>
+        <div class="stat-card rev">
+          <div class="stat-num" id="statRev">—</div>
+          <div class="stat-label">✓ Revisadas</div>
+        </div>
+        <div class="stat-card pend">
+          <div class="stat-num" id="statPend">—</div>
+          <div class="stat-label">⏳ Pendientes</div>
+        </div>
+        <div class="stat-card top">
+          <div class="stat-num" id="statTop">—</div>
+          <div class="stat-label">Top preparación</div>
+        </div>
+      </div>
+
+      <!-- Filtros -->
+      <div class="filters-section">
+        <div class="filters-header" id="filtersHeader">
+          <span class="filters-header-title">🔄 Filtros</span>
+          <span class="filters-toggle-icon open" id="filtersIcon">▲</span>
+        </div>
+        <div class="filters-body" id="filtersBody">
+          <div class="filter-item">
+            <label>Estudiante</label>
+            <select id="fEstudiante">
+              <option value="">Todos</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>Preparación</label>
+            <select id="fTipo">
+              <option value="">Todas</option>
+              <option>Tinción Gram</option>
+              <option>Cultivo bacteriano</option>
+              <option>Hemograma</option>
+              <option>Urianálisis</option>
+              <option>Examen micológico (Hongos)</option>
+              <option>Otra preparación</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>Estado</label>
+            <select id="fEstado">
+              <option value="">Todas</option>
+              <option value="pendiente">⏳ Pendiente</option>
+              <option value="revisado">✓ Revisada</option>
+            </select>
+          </div>
+          <div class="filter-item">
+            <label>Desde</label>
+            <input type="date" id="fDesde">
+          </div>
+          <div class="filter-item">
+            <label>Hasta</label>
+            <input type="date" id="fHasta">
+          </div>
+          <button class="btn-filtrar" id="btnFiltrar">🔄 Filtrar</button>
+        </div>
+      </div>
+
+      <!-- Lista de reportes -->
+      <div class="reports-section">
+        <div class="reports-count" id="reportsCount">Cargando…</div>
+        <div id="reportsList">
+          <div class="empty-state">
+            <div class="empty-icon">🔬</div>
+            <p>Cargando reportes…</p>
+          </div>
+        </div>
+      </div>
+
+    </div><!-- /tab-panel -->
+  </div><!-- /tab-content -->
+
+  <!-- ── Modal de revisión ── -->
+  <div class="review-modal hidden" id="reviewModal" role="dialog" aria-modal="true">
+
+    <div class="modal-topbar">
+      <button class="btn-close-modal" id="btnCloseModal" aria-label="Cerrar">✕</button>
+      <div class="modal-topbar-title">👁️ Revisar Reporte</div>
+    </div>
+
+    <div class="modal-scroll" id="modalScroll">
+
+      <!-- Foto con zoom -->
+      <div class="modal-photo-wrap" id="photoWrap">
+        <img id="modalPhoto" src="" alt="Foto de práctica">
+        <span class="zoom-hint">Toca para zoom</span>
+      </div>
+
+      <!-- Info -->
+      <div class="modal-info">
+        <div class="info-grid">
+          <div class="info-item">
+            <span class="info-label">Estudiante</span>
+            <span class="info-value" id="infoNombre">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Carné</span>
+            <span class="info-value" id="infoCarne">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Preparación</span>
+            <span class="info-value" id="infoTipo">—</span>
+          </div>
+          <div class="info-item">
+            <span class="info-label">Asignatura</span>
+            <span class="info-value" id="infoAsig">—</span>
+          </div>
+          <div class="info-item full">
+            <span class="info-label">Fecha y hora</span>
+            <span class="info-value" id="infoFecha">—</span>
+          </div>
+          <div class="info-item full">
+            <span class="info-label">GPS</span>
+            <span class="info-value" id="infoGps">—</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Feedback -->
+      <div class="modal-feedback">
+        <div class="feedback-label">💬 Feedback al estudiante</div>
+        <textarea id="modalFeedback" placeholder="Observaciones, correcciones o comentarios…"></textarea>
+      </div>
+
+      <!-- Checkbox revisada -->
+      <div class="modal-checkbox-row">
+        <input type="checkbox" id="chkRevisada">
+        <label for="chkRevisada" class="checkbox-label">✓ Marcar como Revisada</label>
+      </div>
+
+    </div><!-- /modal-scroll -->
+
+    <!-- Acciones fijas abajo -->
+    <div class="modal-actions">
+      <button class="btn-action download" id="btnDescargar">📥 Descargar</button>
+      <button class="btn-action save" id="btnGuardar">💾 Guardar Feedback</button>
+    </div>
+
+  </div><!-- /review-modal -->
+
+  <script type="module">
+    import { getDatabase, ref, onValue, update }
+      from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+    import { app } from './js/firebase-config.js';
+
+    // ── Auth guard ──
+    if (sessionStorage.getItem('acadvet_auth') !== 'admin') {
+      window.location.replace('index.html');
+    }
+
+    const rtdb = getDatabase(app);
+
+    // ── Estado ──
+    let _all      = [];
+    let _filtered = [];
+    let _currentId = null;
+
+    // ── Filtros toggle ──
+    document.getElementById('filtersHeader').addEventListener('click', () => {
+      const body = document.getElementById('filtersBody');
+      const icon = document.getElementById('filtersIcon');
+      body.classList.toggle('collapsed');
+      icon.classList.toggle('open');
+    });
+
+    // ── Tabs ──
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`)?.classList.add('active');
+      });
+    });
+
+    // ── Cargar datos ──
+    onValue(ref(rtdb, 'lab_reports'), snap => {
+      if (!snap.exists()) { _all = []; }
+      else {
+        _all = Object.entries(snap.val())
+          .map(([id, d]) => ({ id, ...d }))
+          .sort((a, b) => b.timestamp - a.timestamp);
+      }
+      populateStudentFilter();
+      applyFilters();
+      updateStats();
+    });
+
+    // ── Dropdown estudiantes ──
+    function populateStudentFilter() {
+      const sel = document.getElementById('fEstudiante');
+      const current = sel.value;
+      const names = [...new Set(_all.map(r => r.student_name).filter(Boolean))].sort();
+      sel.innerHTML = '<option value="">Todos</option>';
+      names.forEach(n => {
+        const opt = document.createElement('option');
+        opt.value = opt.textContent = n;
+        sel.appendChild(opt);
+      });
+      sel.value = current;
+    }
+
+    // ── Estadísticas ──
+    function updateStats() {
+      const today = new Date().toISOString().slice(0, 10);
+      const hoy   = _all.filter(r => r.fecha === today).length;
+      const rev   = _all.filter(r => r.estado === 'revisado').length;
+      const pend  = _all.filter(r => r.estado === 'pendiente').length;
+
+      // Top preparación
+      const counts = {};
+      _all.forEach(r => { if (r.tipo_preparacion) counts[r.tipo_preparacion] = (counts[r.tipo_preparacion] || 0) + 1; });
+      const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+      const topLabel = top ? top[0].replace('bacteriano','').replace('micológico (Hongos)','(Hongos)').replace('preparación','prep.').trim() : '—';
+
+      document.getElementById('statHoy').textContent  = hoy;
+      document.getElementById('statRev').textContent  = rev;
+      document.getElementById('statPend').textContent = pend;
+      document.getElementById('statTop').textContent  = top ? topLabel : '—';
+    }
+
+    // ── Aplicar filtros ──
+    function applyFilters() {
+      const est   = document.getElementById('fEstudiante').value;
+      const tipo  = document.getElementById('fTipo').value;
+      const estado= document.getElementById('fEstado').value;
+      const desde = document.getElementById('fDesde').value;
+      const hasta = document.getElementById('fHasta').value;
+
+      _filtered = _all.filter(r => {
+        if (est   && r.student_name !== est) return false;
+        if (tipo  && r.tipo_preparacion !== tipo) return false;
+        if (estado && r.estado !== estado) return false;
+        if (desde && r.fecha < desde) return false;
+        if (hasta && r.fecha > hasta) return false;
+        return true;
+      });
+
+      renderList();
+    }
+
+    document.getElementById('btnFiltrar').addEventListener('click', applyFilters);
+
+    // ── Render lista ──
+    function renderList() {
+      const list = document.getElementById('reportsList');
+      document.getElementById('reportsCount').textContent =
+        `${_filtered.length} reporte${_filtered.length !== 1 ? 's' : ''}`;
+
+      if (_filtered.length === 0) {
+        list.innerHTML = `<div class="empty-state"><div class="empty-icon">🔬</div><p>Sin reportes para estos filtros</p></div>`;
+        return;
+      }
+
+      list.innerHTML = _filtered.map(r => {
+        const dt = new Date(r.timestamp).toLocaleString('es-SV', { dateStyle: 'short', timeStyle: 'short' });
+        return `
+          <div class="report-item ${r.estado}" data-id="${r.id}">
+            <div class="report-thumb">
+              ${r.foto_url
+                ? `<img src="${r.foto_url}" alt="foto" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'report-thumb-empty\\'>🔬</div>'">`
+                : '<div class="report-thumb-empty">🔬</div>'}
+            </div>
+            <div class="report-body">
+              <div class="report-name">${esc(r.student_name)}</div>
+              <div class="report-tipo">${esc(r.tipo_preparacion)}</div>
+              <div class="report-datetime">${dt}</div>
+              <span class="report-estado ${r.estado}">${r.estado === 'revisado' ? '🟢 Revisada' : '🔴 Pendiente'}</span>
+            </div>
+            <button class="btn-revisar" data-id="${r.id}">👁️ Revisar</button>
+          </div>`;
+      }).join('');
+
+      list.querySelectorAll('[data-id]').forEach(el => {
+        el.addEventListener('click', () => openModal(el.dataset.id));
+      });
+    }
+
+    // ── Modal ──
+    function openModal(id) {
+      const r = _all.find(x => x.id === id);
+      if (!r) return;
+      _currentId = id;
+
+      document.getElementById('modalPhoto').src = r.foto_url || '';
+      document.getElementById('infoNombre').textContent = r.student_name || '—';
+      document.getElementById('infoCarne').textContent  = r.student_id   || '—';
+      document.getElementById('infoTipo').textContent   = r.tipo_preparacion || '—';
+      document.getElementById('infoAsig').textContent   = r.asignatura   || '—';
+      document.getElementById('infoFecha').textContent  =
+        new Date(r.timestamp).toLocaleString('es-SV') + ` · ${r.fecha}`;
+      document.getElementById('infoGps').textContent    =
+        `${r.gps_lat?.toFixed(5)}, ${r.gps_lng?.toFixed(5)} (${r.gps_distancia} m del lab)`;
+      document.getElementById('modalFeedback').value    = r.feedback || '';
+      document.getElementById('chkRevisada').checked   = r.estado === 'revisado';
+
+      // Reset zoom
+      document.getElementById('photoWrap').classList.remove('zoomed');
+      document.getElementById('modalScroll').scrollTop = 0;
+
+      document.getElementById('reviewModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('reviewModal').classList.add('hidden');
+      _currentId = null;
+    }
+
+    document.getElementById('btnCloseModal').addEventListener('click', closeModal);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+
+    // ── Zoom foto ──
+    document.getElementById('photoWrap').addEventListener('click', () => {
+      document.getElementById('photoWrap').classList.toggle('zoomed');
+    });
+
+    // ── Guardar feedback ──
+    document.getElementById('btnGuardar').addEventListener('click', async () => {
+      if (!_currentId) return;
+      const btn = document.getElementById('btnGuardar');
+      btn.disabled = true;
+      btn.textContent = 'Guardando…';
+
+      const feedback  = document.getElementById('modalFeedback').value.trim();
+      const revisada  = document.getElementById('chkRevisada').checked;
+      const updates   = { feedback };
+      if (revisada) {
+        updates.estado      = 'revisado';
+        updates.reviewed_at = Date.now();
+      }
+
+      try {
+        await update(ref(rtdb, `lab_reports/${_currentId}`), updates);
+        btn.textContent = '✔ Guardado';
+        setTimeout(() => { btn.disabled = false; btn.textContent = '💾 Guardar Feedback'; }, 2000);
+      } catch (e) {
+        alert(`Error: ${e.message}`);
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar Feedback';
+      }
+    });
+
+    // ── Descargar foto ──
+    document.getElementById('btnDescargar').addEventListener('click', () => {
+      if (!_currentId) return;
+      const r = _all.find(x => x.id === _currentId);
+      if (!r?.foto_url) return;
+      const a = document.createElement('a');
+      a.href = r.foto_url;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      a.download = `practica-${r.student_id}-${r.fecha}.jpg`;
+      a.click();
+    });
+
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+
+</body>
+</html>
