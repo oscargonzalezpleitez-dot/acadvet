@@ -497,6 +497,70 @@
     .btn-action.download { background: var(--surface-2); border: 2px solid var(--border); color: var(--text-2); }
     .btn-action.save     { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
 
+    /* ── GPS Location Card ── */
+    .gps-loc-card {
+      margin: 12px 12px 0;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 2px solid var(--border);
+      padding: 14px 16px;
+    }
+    .gps-loc-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .gps-loc-icon { font-size: 1.3rem; }
+    .gps-loc-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.88rem;
+      color: var(--text);
+      flex: 1;
+    }
+    .gps-loc-coords {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      font-family: monospace;
+      margin-bottom: 10px;
+    }
+    .gps-loc-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+    .gps-loc-radius {
+      width: 64px;
+      padding: 8px 10px;
+      border: 2px solid var(--border);
+      border-radius: var(--radius-md);
+      font-size: 0.85rem;
+      text-align: center;
+      color: var(--text);
+      background: var(--surface);
+    }
+    .gps-loc-radius:focus { outline: none; border-color: var(--primary); }
+    .gps-loc-unit {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .btn-reg-loc {
+      flex: 1;
+      padding: 10px 12px;
+      border-radius: var(--radius-full);
+      border: none;
+      background: var(--success);
+      color: #fff;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.8rem;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+    .btn-reg-loc:disabled { opacity: 0.5; cursor: not-allowed; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -517,6 +581,20 @@
   <!-- ── Contenido ── -->
   <div class="tab-content">
     <div class="tab-panel active" id="tab-reportes">
+
+      <!-- Configuración GPS del laboratorio -->
+      <div class="gps-loc-card" id="gpsLocCard">
+        <div class="gps-loc-header">
+          <div class="gps-loc-icon">📍</div>
+          <div class="gps-loc-title">Ubicación del Laboratorio</div>
+        </div>
+        <div class="gps-loc-coords" id="gpsLocCoords">Cargando…</div>
+        <div class="gps-loc-actions">
+          <input type="number" class="gps-loc-radius" id="gpsLocRadius" value="50" min="10" max="500" title="Radio permitido en metros">
+          <span class="gps-loc-unit">m</span>
+          <button class="btn-reg-loc" id="btnRegLoc">📍 Registrar mi ubicación actual</button>
+        </div>
+      </div>
 
       <!-- Estadísticas -->
       <div class="stats-grid">
@@ -669,6 +747,7 @@
     import { getDatabase, ref, onValue, update }
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
     import { app } from './js/firebase-config.js';
+    import { getLabLocation, saveLabLocation } from './js/lab-reports.js';
 
     // ── Auth guard ──
     if (sessionStorage.getItem('acadvet_auth') !== 'admin') {
@@ -676,6 +755,49 @@
     }
 
     const rtdb = getDatabase(app);
+
+    // ── GPS Lab Location ──
+    (async () => {
+      const coordsEl = document.getElementById('gpsLocCoords');
+      const radiusEl = document.getElementById('gpsLocRadius');
+      const btnReg   = document.getElementById('btnRegLoc');
+
+      try {
+        const loc = await getLabLocation();
+        radiusEl.value = loc.radius;
+        coordsEl.textContent = `${loc.lat.toFixed(5)}, ${loc.lng.toFixed(5)} · radio ${loc.radius} m`;
+      } catch {
+        coordsEl.textContent = 'No configurada';
+      }
+
+      btnReg.addEventListener('click', () => {
+        if (!navigator.geolocation) { alert('GPS no disponible en este dispositivo'); return; }
+        btnReg.disabled = true;
+        btnReg.textContent = '⏳ Obteniendo GPS…';
+        navigator.geolocation.getCurrentPosition(
+          async pos => {
+            try {
+              const { latitude: lat, longitude: lng } = pos.coords;
+              const radius = parseInt(radiusEl.value, 10) || 50;
+              await saveLabLocation(lat, lng, radius);
+              coordsEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} · radio ${radius} m`;
+              alert(`✅ Ubicación del laboratorio actualizada.\n${lat.toFixed(5)}, ${lng.toFixed(5)} — radio ${radius} m`);
+            } catch (e) {
+              alert(`❌ Error al guardar: ${e.message}`);
+            } finally {
+              btnReg.disabled = false;
+              btnReg.textContent = '📍 Registrar mi ubicación actual';
+            }
+          },
+          err => {
+            alert(`No se pudo obtener GPS: ${err.message}`);
+            btnReg.disabled = false;
+            btnReg.textContent = '📍 Registrar mi ubicación actual';
+          },
+          { enableHighAccuracy: true, timeout: 15000 }
+        );
+      });
+    })();
 
     // ── Estado ──
     let _all      = [];
