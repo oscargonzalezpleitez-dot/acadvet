@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calculadora de Laboratorio — AcadVet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary:       #6C63FF;
+      --primary-light: #A29BFE;
+      --accent:        #00D2D3;
+      --success:       #00B894;
+      --danger:        #FF6B6B;
+      --warning:       #FDCB6E;
+      --bg:            #F0F2FF;
+      --surface:       #FFFFFF;
+      --surface-2:     #ECEEFF;
+      --text:          #1A1A2E;
+      --text-2:        #4A4A6A;
+      --text-muted:    #8888AA;
+      --border:        rgba(108,99,255,0.15);
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     20px;
+      --radius-full:   9999px;
+      --font-d:        'Poppins', sans-serif;
+      --font-b:        'Inter', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-b); background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 40px; }
+
+    /* ── Header ── */
+    .app-header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      padding: 14px 20px;
+      display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .app-header .logo { font-size: 1.5rem; }
+    .app-header h1 { font-family: var(--font-d); font-size: 1rem; font-weight: 700; color: var(--primary); line-height: 1.2; }
+    .app-header span { display: block; font-size: 0.7rem; font-weight: 500; color: var(--text-muted); }
+    .btn-back { padding: 8px 14px; border-radius: var(--radius-full); border: 2px solid var(--border); background: var(--surface-2); color: var(--primary); font-family: var(--font-d); font-weight: 600; font-size: 0.82rem; text-decoration: none; margin-left: auto; white-space: nowrap; }
+
+    /* ── Tabs ── */
+    .tab-scroll { overflow-x: auto; white-space: nowrap; background: var(--surface); border-bottom: 2px solid var(--border); padding: 0 12px; -webkit-overflow-scrolling: touch; }
+    .tab-scroll::-webkit-scrollbar { display: none; }
+    .tab-btn { display: inline-block; padding: 12px 14px; font-family: var(--font-d); font-weight: 600; font-size: 0.78rem; color: var(--text-muted); cursor: pointer; border: none; background: none; border-bottom: 3px solid transparent; transition: color 0.2s, border-color 0.2s; }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+
+    /* ── Content ── */
+    .content { max-width: 520px; margin: 0 auto; padding: 20px 16px; }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Cards ── */
+    .calc-card {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      padding: 22px 18px;
+      margin-bottom: 16px;
+    }
+    .calc-title { font-family: var(--font-d); font-weight: 700; font-size: 1rem; color: var(--text); margin-bottom: 4px; }
+    .calc-subtitle { font-size: 0.78rem; color: var(--text-muted); margin-bottom: 18px; }
+
+    /* ── Form ── */
+    .form-row { display: grid; grid-template-columns: 1fr auto; gap: 8px; margin-bottom: 12px; align-items: end; }
+    .form-row-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+    .form-group { margin-bottom: 12px; }
+    .form-group label { display: block; font-size: 0.75rem; font-weight: 600; color: var(--text-2); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.03em; }
+    .form-group input, .form-group select {
+      width: 100%; padding: 10px 12px;
+      border: 2px solid var(--border); border-radius: var(--radius-md);
+      font-family: var(--font-b); font-size: 0.9rem; color: var(--text);
+      background: var(--surface); transition: border-color 0.2s;
+      -webkit-appearance: none;
+    }
+    .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
+    .unknown-field input { border-color: var(--accent); background: rgba(0,210,211,0.05); }
+    .unknown-field input:focus { border-color: var(--accent); }
+
+    .input-with-unit { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
+    .input-with-unit select { width: auto; }
+
+    /* ── Botones ── */
+    .btn-calc {
+      width: 100%; padding: 13px;
+      border-radius: var(--radius-full); border: none;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: #fff; font-family: var(--font-d); font-weight: 700;
+      font-size: 0.95rem; cursor: pointer; margin-top: 4px;
+      transition: opacity 0.2s, transform 0.15s;
+    }
+    .btn-calc:active { transform: scale(0.98); }
+    .btn-save-hist {
+      width: 100%; padding: 10px;
+      border-radius: var(--radius-full); border: 2px solid var(--border);
+      background: var(--surface); color: var(--text-2);
+      font-family: var(--font-d); font-weight: 600; font-size: 0.82rem;
+      cursor: pointer; margin-top: 8px;
+    }
+
+    /* ── Resultado ── */
+    .result-box {
+      background: var(--surface-2); border-radius: var(--radius-md);
+      border: 2px solid var(--border); padding: 16px; margin-top: 16px;
+      display: none;
+    }
+    .result-box.visible { display: block; }
+    .result-box.error { border-color: var(--danger); background: rgba(255,107,107,0.06); }
+    .result-box.warning { border-color: var(--warning); background: rgba(253,203,110,0.08); }
+    .result-main { font-family: var(--font-d); font-weight: 800; font-size: 1.3rem; color: var(--primary); margin-bottom: 6px; }
+    .result-sub { font-size: 0.82rem; color: var(--text-2); margin-bottom: 4px; }
+    .result-warning { font-size: 0.78rem; color: #d48000; margin-top: 8px; }
+    .result-error  { font-size: 0.85rem; color: var(--danger); font-weight: 600; }
+    .steps { margin-top: 12px; border-top: 1px solid var(--border); padding-top: 10px; }
+    .steps-title { font-size: 0.72rem; font-weight: 700; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; }
+    .step-line { font-size: 0.8rem; color: var(--text-2); padding: 3px 0; font-family: monospace; }
+
+    /* ── Tabla diluciones en serie ── */
+    .serial-table { width: 100%; border-collapse: collapse; margin-top: 12px; font-size: 0.82rem; }
+    .serial-table th { background: var(--surface-2); padding: 8px 10px; text-align: left; font-weight: 700; color: var(--text-2); font-size: 0.72rem; text-transform: uppercase; }
+    .serial-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
+    .serial-table tr:last-child td { border-bottom: none; }
+
+    /* ── Historial ── */
+    .hist-item { background: var(--surface-2); border-radius: var(--radius-md); padding: 12px 14px; margin-bottom: 8px; border: 1px solid var(--border); }
+    .hist-type { font-size: 0.7rem; font-weight: 700; text-transform: uppercase; color: var(--primary); margin-bottom: 3px; }
+    .hist-result { font-family: var(--font-d); font-weight: 700; font-size: 0.95rem; color: var(--text); }
+    .hist-ts { font-size: 0.7rem; color: var(--text-muted); margin-top: 3px; }
+    .empty-hist { text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 0.88rem; }
+
+    /* ── Unknown toggle ── */
+    .unknown-selector { display: flex; gap: 6px; margin-bottom: 14px; flex-wrap: wrap; }
+    .unknown-btn {
+      padding: 6px 12px; border-radius: var(--radius-full);
+      border: 2px solid var(--border); background: var(--surface);
+      font-family: var(--font-d); font-weight: 600; font-size: 0.75rem;
+      color: var(--text-2); cursor: pointer; transition: all 0.15s;
+    }
+    .unknown-btn.active { background: var(--primary); border-color: var(--primary); color: #fff; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 10px 22px; border-radius: var(--radius-full); font-family: var(--font-d); font-weight: 700; font-size: 0.85rem; z-index: 300; box-shadow: 0 4px 20px rgba(0,0,0,0.2); opacity: 1; transition: opacity 0.35s; pointer-events: none; }
+    .toast.hidden { display: none; }
+    .toast.fade-out { opacity: 0; }
+
+    .section-divider { height: 1px; background: var(--border); margin: 20px 0; }
+
+    @media (max-width: 400px) {
+      .form-row-3 { grid-template-columns: 1fr 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="logo">🧪</div>
+    <h1>Calculadora Lab<span>Diluciones · pH · CFU · Molaridad</span></h1>
+    <a href="app.html" class="btn-back">← Volver</a>
+  </header>
+
+  <!-- Tabs -->
+  <div class="tab-scroll">
+    <button class="tab-btn active" data-tab="dilution">💧 Dilución</button>
+    <button class="tab-btn" data-tab="serial">📊 Serie</button>
+    <button class="tab-btn" data-tab="convert">⇄ Conversión</button>
+    <button class="tab-btn" data-tab="ph">pH</button>
+    <button class="tab-btn" data-tab="cfu">CFU</button>
+    <button class="tab-btn" data-tab="molarity">⚗️ Molaridad</button>
+    <button class="tab-btn" data-tab="history">📋 Historial</button>
+  </div>
+
+  <div class="content">
+
+    <!-- ══════════════ TAB 1: DILUCIÓN SIMPLE ══════════════ -->
+    <div class="tab-panel active" id="tab-dilution">
+      <div class="calc-card">
+        <div class="calc-title">💧 Dilución Simple</div>
+        <div class="calc-subtitle">C₁V₁ = C₂V₂ — dejá vacío el valor a calcular</div>
+
+        <div class="unknown-selector">
+          <button class="unknown-btn" data-unkn="C1">Calcular C₁</button>
+          <button class="unknown-btn" data-unkn="V1">Calcular V₁</button>
+          <button class="unknown-btn" data-unkn="C2">Calcular C₂</button>
+          <button class="unknown-btn active" data-unkn="V2">Calcular V₂</button>
+        </div>
+
+        <div class="form-group" id="grp-C1">
+          <label>C₁ — Concentración inicial</label>
+          <div class="input-with-unit">
+            <input type="number" id="d-C1" placeholder="Ej. 100" min="0" step="any">
+            <select id="d-uC1">
+              <option>mg/mL</option><option>mg/dL</option><option>g/L</option>
+              <option>g/dL</option><option>µg/mL</option><option>%</option><option>ppm</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" id="grp-V1">
+          <label>V₁ — Volumen inicial</label>
+          <div class="input-with-unit">
+            <input type="number" id="d-V1" placeholder="Ej. 5" min="0" step="any">
+            <select id="d-uV1"><option>mL</option><option>µL</option><option>L</option><option>dL</option></select>
+          </div>
+        </div>
+
+        <div class="form-group" id="grp-C2">
+          <label>C₂ — Concentración final</label>
+          <div class="input-with-unit">
+            <input type="number" id="d-C2" placeholder="Ej. 10" min="0" step="any">
+            <select id="d-uC2">
+              <option>mg/mL</option><option>mg/dL</option><option>g/L</option>
+              <option>g/dL</option><option>µg/mL</option><option>%</option><option>ppm</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group unknown-field" id="grp-V2">
+          <label>V₂ — Volumen final (calcular)</label>
+          <div class="input-with-unit">
+            <input type="number" id="d-V2" placeholder="— vacío —" min="0" step="any" disabled>
+            <select id="d-uV2"><option>mL</option><option>µL</option><option>L</option><option>dL</option></select>
+          </div>
+        </div>
+
+        <button class="btn-calc" id="btnDilution">Calcular</button>
+
+        <div class="result-box" id="res-dilution">
+          <div class="result-main" id="res-d-main"></div>
+          <div class="result-sub" id="res-d-sub"></div>
+          <div class="result-warning" id="res-d-warn"></div>
+          <div class="steps" id="res-d-steps"></div>
+          <button class="btn-save-hist" id="btnSaveD">📋 Guardar en historial</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ TAB 2: DILUCIONES EN SERIE ══════════════ -->
+    <div class="tab-panel" id="tab-serial">
+      <div class="calc-card">
+        <div class="calc-title">📊 Diluciones en Serie</div>
+        <div class="calc-subtitle">Genera tabla de diluciones seriadas</div>
+
+        <div class="form-group">
+          <label>Concentración inicial</label>
+          <div class="input-with-unit">
+            <input type="number" id="s-conc" placeholder="Ej. 1000000" min="0" step="any">
+            <select id="s-unit"><option>CFU/mL</option><option>mg/mL</option><option>µg/mL</option><option>UI/mL</option></select>
+          </div>
+        </div>
+
+        <div class="form-row-3">
+          <div class="form-group">
+            <label>Factor dilución</label>
+            <input type="number" id="s-factor" placeholder="10" min="2" value="10">
+          </div>
+          <div class="form-group">
+            <label>N.º diluciones</label>
+            <input type="number" id="s-steps" placeholder="5" min="1" max="12" value="5">
+          </div>
+          <div class="form-group">
+            <label>Vol. por tubo</label>
+            <input type="number" id="s-vol" placeholder="9" min="0.1" step="any" value="9">
+          </div>
+        </div>
+
+        <button class="btn-calc" id="btnSerial">Generar tabla</button>
+
+        <div class="result-box" id="res-serial">
+          <div class="result-warning" id="res-s-warn"></div>
+          <div style="overflow-x:auto">
+            <table class="serial-table" id="serialTable">
+              <thead><tr><th>#</th><th>Dilución</th><th>Exponente</th><th>Concentración</th></tr></thead>
+              <tbody id="serialBody"></tbody>
+            </table>
+          </div>
+          <button class="btn-save-hist" id="btnSaveS">📋 Guardar en historial</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ TAB 3: CONVERSIONES ══════════════ -->
+    <div class="tab-panel" id="tab-convert">
+      <div class="calc-card">
+        <div class="calc-title">⇄ Conversión de Unidades</div>
+        <div class="calc-subtitle">Convierte entre unidades de concentración</div>
+
+        <div class="form-group">
+          <label>Unidad origen</label>
+          <select id="cv-from">
+            <option>mg/dL</option><option>g/L</option><option>g/dL</option>
+            <option>mg/L</option><option>µg/mL</option><option>µg/dL</option>
+            <option>ng/mL</option><option>mg/mL</option><option>ppm</option><option>%</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Valor</label>
+          <input type="number" id="cv-val" placeholder="Ej. 150" step="any">
+        </div>
+        <div class="form-group">
+          <label>Unidad destino</label>
+          <select id="cv-to">
+            <option>g/L</option><option>mg/dL</option><option>g/dL</option>
+            <option>mg/L</option><option>µg/mL</option><option>µg/dL</option>
+            <option>ng/mL</option><option>mg/mL</option><option>ppm</option><option>%</option>
+          </select>
+        </div>
+
+        <button class="btn-calc" id="btnConvert">Convertir</button>
+
+        <div class="result-box" id="res-convert">
+          <div class="result-main" id="res-cv-main"></div>
+          <div class="result-sub" id="res-cv-sub"></div>
+          <button class="btn-save-hist" id="btnSaveCV">📋 Guardar en historial</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ TAB 4: pH ══════════════ -->
+    <div class="tab-panel" id="tab-ph">
+      <div class="calc-card">
+        <div class="calc-title">pH ↔ [H⁺]</div>
+        <div class="calc-subtitle">Conversión entre pH y concentración de iones hidrógeno</div>
+
+        <div class="form-group">
+          <label>pH → [H⁺] &nbsp; <small style="font-size:0.7em;text-transform:none">[H⁺] = 10⁻ᵖᴴ</small></label>
+          <div class="input-with-unit">
+            <input type="number" id="ph-in" placeholder="Ej. 7.4" min="0" max="14" step="0.01">
+            <select disabled style="background:var(--surface-2)"><option>pH</option></select>
+          </div>
+        </div>
+        <button class="btn-calc" id="btnPH2H">Calcular [H⁺]</button>
+        <div class="result-box" id="res-ph2h">
+          <div class="result-main" id="res-ph2h-main"></div>
+          <div class="result-sub" id="res-ph2h-sub"></div>
+          <div class="result-warning" id="res-ph2h-warn"></div>
+          <button class="btn-save-hist" id="btnSavePH2H">📋 Guardar en historial</button>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="form-group">
+          <label>[H⁺] → pH &nbsp; <small style="font-size:0.7em;text-transform:none">pH = −log₁₀[H⁺]</small></label>
+          <div class="input-with-unit">
+            <input type="number" id="h-in" placeholder="Ej. 0.0000001" step="any" min="0">
+            <select disabled style="background:var(--surface-2)"><option>mol/L</option></select>
+          </div>
+        </div>
+        <button class="btn-calc" id="btnH2PH">Calcular pH</button>
+        <div class="result-box" id="res-h2ph">
+          <div class="result-main" id="res-h2ph-main"></div>
+          <div class="result-warning" id="res-h2ph-warn"></div>
+          <button class="btn-save-hist" id="btnSaveH2PH">📋 Guardar en historial</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ TAB 5: CFU/LOG ══════════════ -->
+    <div class="tab-panel" id="tab-cfu">
+      <div class="calc-card">
+        <div class="calc-title">CFU ↔ Log₁₀</div>
+        <div class="calc-subtitle">Conversión entre unidades formadoras de colonias y logaritmo</div>
+
+        <div class="form-group">
+          <label>CFU → Log₁₀</label>
+          <input type="number" id="cfu-in" placeholder="Ej. 1500000" min="1" step="any">
+        </div>
+        <button class="btn-calc" id="btnCFU2Log">Calcular Log</button>
+        <div class="result-box" id="res-cfu2log">
+          <div class="result-main" id="res-cfu2log-main"></div>
+          <div class="result-sub" id="res-cfu2log-sub"></div>
+          <button class="btn-save-hist" id="btnSaveCFU">📋 Guardar en historial</button>
+        </div>
+
+        <div class="section-divider"></div>
+
+        <div class="form-group">
+          <label>Log₁₀ → CFU</label>
+          <input type="number" id="log-in" placeholder="Ej. 6.2" step="any">
+        </div>
+        <button class="btn-calc" id="btnLog2CFU">Calcular CFU</button>
+        <div class="result-box" id="res-log2cfu">
+          <div class="result-main" id="res-log2cfu-main"></div>
+          <div class="result-sub" id="res-log2cfu-sub"></div>
+          <button class="btn-save-hist" id="btnSaveLog">📋 Guardar en historial</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ TAB 6: MOLARIDAD ══════════════ -->
+    <div class="tab-panel" id="tab-molarity">
+      <div class="calc-card">
+        <div class="calc-title">⚗️ Molaridad · Molalidad · Osmolaridad</div>
+        <div class="calc-subtitle">Calcula las tres concentraciones desde masa y PM</div>
+
+        <div class="form-group">
+          <label>Masa del soluto (g)</label>
+          <input type="number" id="mol-masa" placeholder="Ej. 5.85" min="0" step="any">
+        </div>
+        <div class="form-group">
+          <label>Peso molecular (g/mol)</label>
+          <input type="number" id="mol-pm" placeholder="Ej. 58.44 (NaCl)" min="1" step="any">
+        </div>
+        <div class="form-group">
+          <label>Volumen de solución (L)</label>
+          <input type="number" id="mol-vol" placeholder="Ej. 1.0" min="0.001" step="any">
+        </div>
+        <div class="form-group">
+          <label>Solutos iónicos (ej. NaCl = 2)</label>
+          <input type="number" id="mol-ions" placeholder="1" min="1" max="10" value="1">
+        </div>
+
+        <button class="btn-calc" id="btnMolarity">Calcular</button>
+
+        <div class="result-box" id="res-molarity">
+          <div class="result-main" id="res-mol-main"></div>
+          <div class="result-sub" id="res-mol-sub"></div>
+          <button class="btn-save-hist" id="btnSaveMol">📋 Guardar en historial</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══════════════ TAB 7: HISTORIAL ══════════════ -->
+    <div class="tab-panel" id="tab-history">
+      <div class="calc-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+          <div class="calc-title" style="margin-bottom:0">📋 Historial</div>
+          <button id="btnClearHist" style="padding:6px 14px;border-radius:var(--radius-full);border:2px solid var(--danger);background:none;color:var(--danger);font-family:var(--font-d);font-weight:700;font-size:0.75rem;cursor:pointer">Limpiar</button>
+        </div>
+        <div id="historyList"></div>
+      </div>
+    </div>
+
+  </div><!-- /content -->
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module">
+    import {
+      calculateDilution, calculateSerialDilution,
+      convertUnits, calculateHPlus, calculatePH,
+      calculateLog, calculateCFU, calculateMolarity,
+      saveCalculation, getCalculationHistory, clearHistory,
+    } from './js/calculator.js';
+
+    // ── Tab navigation ──────────────────────────────────────────────────────
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(`tab-${btn.dataset.tab}`).classList.add('active');
+        if (btn.dataset.tab === 'history') renderHistory();
+      });
+    });
+
+    // ── Unknown field selector (dilución) ───────────────────────────────────
+    let unknownField = 'V2';
+    document.querySelectorAll('.unknown-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        unknownField = btn.dataset.unkn;
+        document.querySelectorAll('.unknown-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        ['C1','V1','C2','V2'].forEach(f => {
+          const grp   = document.getElementById(`grp-${f}`);
+          const input = document.getElementById(`d-${f}`);
+          if (f === unknownField) {
+            grp.classList.add('unknown-field');
+            input.disabled = true;
+            input.value = '';
+            input.placeholder = '— vacío —';
+          } else {
+            grp.classList.remove('unknown-field');
+            input.disabled = false;
+            input.placeholder = f.startsWith('C') ? 'Ej. 100' : 'Ej. 5';
+          }
+        });
+        document.getElementById('res-dilution').classList.remove('visible');
+      });
+    });
+
+    // ── 1. Dilución simple ───────────────────────────────────────────────────
+    document.getElementById('btnDilution').addEventListener('click', () => {
+      const get = id => { const v = parseFloat(document.getElementById(id).value); return isNaN(v) ? null : v; };
+      const getU = id => document.getElementById(id).value;
+      try {
+        const res = calculateDilution({
+          C1: unknownField === 'C1' ? null : get('d-C1'),
+          V1: unknownField === 'V1' ? null : get('d-V1'),
+          C2: unknownField === 'C2' ? null : get('d-C2'),
+          V2: unknownField === 'V2' ? null : get('d-V2'),
+          unitC1: getU('d-uC1'), unitV1: getU('d-uV1'),
+          unitC2: getU('d-uC2'), unitV2: getU('d-uV2'),
+        });
+        const box = document.getElementById('res-dilution');
+        box.className = 'result-box visible';
+        const unitLabel = unknownField.startsWith('C') ? 'mg/mL' : 'mL';
+        document.getElementById('res-d-main').textContent =
+          `${res.unknown} = ${fmtN(res.result)} ${unitLabel}`;
+        document.getElementById('res-d-sub').innerHTML =
+          `Necesitás <strong>${fmtN(res.finalVolume)} mL</strong> finales — ` +
+          `Añadir <strong>${fmtN(res.solventNeeded)} mL</strong> de disolvente — ` +
+          `Ratio 1:${res.ratio}`;
+        document.getElementById('res-d-warn').innerHTML = res.warnings.join('<br>');
+        const stepsEl = document.getElementById('res-d-steps');
+        stepsEl.innerHTML = `<div class="steps-title">Paso a paso</div>` +
+          res.steps.map(s => `<div class="step-line">${s}</div>`).join('');
+        _lastDilution = res;
+      } catch (e) {
+        showResult('res-dilution', null, e.message, true);
+      }
+    });
+
+    let _lastDilution = null;
+    document.getElementById('btnSaveD').addEventListener('click', () => {
+      if (!_lastDilution) return;
+      saveCalculation('Dilución', { unknownField }, `${_lastDilution.unknown} = ${fmtN(_lastDilution.result)}`);
+      showToast('📋 Guardado en historial');
+    });
+
+    // ── 2. Diluciones en serie ───────────────────────────────────────────────
+    document.getElementById('btnSerial').addEventListener('click', () => {
+      const conc   = parseFloat(document.getElementById('s-conc').value);
+      const factor = parseFloat(document.getElementById('s-factor').value);
+      const steps  = parseInt(document.getElementById('s-steps').value);
+      const unit   = document.getElementById('s-unit').value;
+      if (isNaN(conc) || isNaN(factor) || isNaN(steps)) { showResult('res-serial', null, 'Completá todos los campos', true); return; }
+      try {
+        const rows = calculateSerialDilution(conc, factor, steps);
+        const box  = document.getElementById('res-serial');
+        box.className = 'result-box visible';
+        document.getElementById('res-s-warn').textContent = '';
+        const tbody = document.getElementById('serialBody');
+        tbody.innerHTML = rows.map(r =>
+          `<tr><td>${r.step}</td><td>${r.label}</td><td>10<sup>${r.exponent}</sup></td><td>${r.concFormatted} ${unit}</td></tr>`
+        ).join('');
+        _lastSerial = { rows, unit };
+      } catch (e) {
+        showResult('res-serial', null, e.message, true);
+      }
+    });
+
+    let _lastSerial = null;
+    document.getElementById('btnSaveS').addEventListener('click', () => {
+      if (!_lastSerial) return;
+      saveCalculation('Dilución en serie', {}, `${_lastSerial.rows.length} pasos generados`);
+      showToast('📋 Guardado en historial');
+    });
+
+    // ── 3. Conversión de unidades ────────────────────────────────────────────
+    document.getElementById('btnConvert').addEventListener('click', () => {
+      const val  = parseFloat(document.getElementById('cv-val').value);
+      const from = document.getElementById('cv-from').value;
+      const to   = document.getElementById('cv-to').value;
+      if (isNaN(val)) { showResult('res-convert', null, 'Ingresá un valor', true); return; }
+      try {
+        const result = convertUnits(val, from, to);
+        const box = document.getElementById('res-convert');
+        box.className = 'result-box visible';
+        document.getElementById('res-cv-main').textContent = `${fmtN(result)} ${to}`;
+        document.getElementById('res-cv-sub').textContent  = `${fmtN(val)} ${from} = ${fmtN(result)} ${to}`;
+        _lastConvert = { val, from, to, result };
+      } catch (e) {
+        showResult('res-convert', null, e.message, true);
+      }
+    });
+
+    let _lastConvert = null;
+    document.getElementById('btnSaveCV').addEventListener('click', () => {
+      if (!_lastConvert) return;
+      saveCalculation('Conversión', { from: _lastConvert.from, to: _lastConvert.to }, `${fmtN(_lastConvert.val)} ${_lastConvert.from} = ${fmtN(_lastConvert.result)} ${_lastConvert.to}`);
+      showToast('📋 Guardado en historial');
+    });
+
+    // ── 4. pH ────────────────────────────────────────────────────────────────
+    document.getElementById('btnPH2H').addEventListener('click', () => {
+      const pH = parseFloat(document.getElementById('ph-in').value);
+      if (isNaN(pH)) { showResult('res-ph2h', null, 'Ingresá un valor de pH', true); return; }
+      const res = calculateHPlus(pH);
+      const box = document.getElementById('res-ph2h');
+      box.className = 'result-box visible';
+      document.getElementById('res-ph2h-main').textContent = `[H⁺] = ${res.hPlusFormatted} mol/L`;
+      document.getElementById('res-ph2h-sub').textContent  = `pH ${pH} corresponde a ${res.hPlusFormatted} mol/L`;
+      document.getElementById('res-ph2h-warn').innerHTML   = res.warnings.join('<br>');
+      _lastPH2H = { pH, res };
+    });
+
+    let _lastPH2H = null;
+    document.getElementById('btnSavePH2H').addEventListener('click', () => {
+      if (!_lastPH2H) return;
+      saveCalculation('pH→[H⁺]', { pH: _lastPH2H.pH }, `[H⁺] = ${_lastPH2H.res.hPlusFormatted}`);
+      showToast('📋 Guardado en historial');
+    });
+
+    document.getElementById('btnH2PH').addEventListener('click', () => {
+      const h = parseFloat(document.getElementById('h-in').value);
+      if (isNaN(h) || h <= 0) { showResult('res-h2ph', null, '[H⁺] debe ser > 0', true); return; }
+      try {
+        const res = calculatePH(h);
+        const box = document.getElementById('res-h2ph');
+        box.className = 'result-box visible';
+        document.getElementById('res-h2ph-main').textContent = `pH = ${res.pH}`;
+        document.getElementById('res-h2ph-warn').innerHTML   = res.warnings.join('<br>');
+        _lastH2PH = { h, res };
+      } catch (e) { showResult('res-h2ph', null, e.message, true); }
+    });
+
+    let _lastH2PH = null;
+    document.getElementById('btnSaveH2PH').addEventListener('click', () => {
+      if (!_lastH2PH) return;
+      saveCalculation('[H⁺]→pH', { h: _lastH2PH.h }, `pH = ${_lastH2PH.res.pH}`);
+      showToast('📋 Guardado en historial');
+    });
+
+    // ── 5. CFU / Log ─────────────────────────────────────────────────────────
+    document.getElementById('btnCFU2Log').addEventListener('click', () => {
+      const cfu = parseFloat(document.getElementById('cfu-in').value);
+      if (isNaN(cfu) || cfu <= 0) { showResult('res-cfu2log', null, 'CFU debe ser > 0', true); return; }
+      const res = calculateLog(cfu);
+      const box = document.getElementById('res-cfu2log');
+      box.className = 'result-box visible';
+      document.getElementById('res-cfu2log-main').textContent = `Log₁₀ = ${res.log}`;
+      document.getElementById('res-cfu2log-sub').textContent  = `${fmtN(cfu)} CFU/mL → log ${res.log}`;
+      _lastCFU = { cfu, res };
+    });
+
+    let _lastCFU = null;
+    document.getElementById('btnSaveCFU').addEventListener('click', () => {
+      if (!_lastCFU) return;
+      saveCalculation('CFU→Log', { cfu: _lastCFU.cfu }, `Log = ${_lastCFU.res.log}`);
+      showToast('📋 Guardado en historial');
+    });
+
+    document.getElementById('btnLog2CFU').addEventListener('click', () => {
+      const log = parseFloat(document.getElementById('log-in').value);
+      if (isNaN(log)) { showResult('res-log2cfu', null, 'Ingresá un valor logarítmico', true); return; }
+      const res = calculateCFU(log);
+      const box = document.getElementById('res-log2cfu');
+      box.className = 'result-box visible';
+      document.getElementById('res-log2cfu-main').textContent = `CFU = ${res.cfuFormatted}`;
+      document.getElementById('res-log2cfu-sub').textContent  = `10^${log} = ${res.cfuFormatted} CFU/mL`;
+      _lastLog = { log, res };
+    });
+
+    let _lastLog = null;
+    document.getElementById('btnSaveLog').addEventListener('click', () => {
+      if (!_lastLog) return;
+      saveCalculation('Log→CFU', { log: _lastLog.log }, `CFU = ${_lastLog.res.cfuFormatted}`);
+      showToast('📋 Guardado en historial');
+    });
+
+    // ── 6. Molaridad ─────────────────────────────────────────────────────────
+    document.getElementById('btnMolarity').addEventListener('click', () => {
+      const masa = parseFloat(document.getElementById('mol-masa').value);
+      const pm   = parseFloat(document.getElementById('mol-pm').value);
+      const vol  = parseFloat(document.getElementById('mol-vol').value);
+      const ions = parseInt(document.getElementById('mol-ions').value) || 1;
+      if (isNaN(masa) || isNaN(pm) || isNaN(vol)) { showResult('res-molarity', null, 'Completá masa, PM y volumen', true); return; }
+      try {
+        const res = calculateMolarity({ masaG: masa, pesoMolecular: pm, volumenL: vol, solutosIonicos: ions });
+        const box = document.getElementById('res-molarity');
+        box.className = 'result-box visible';
+        document.getElementById('res-mol-main').textContent = `${res.molaridad} M`;
+        document.getElementById('res-mol-sub').innerHTML =
+          `Molaridad: <b>${res.molaridad} mol/L</b><br>` +
+          `Molalidad: <b>${res.molalidad} mol/kg</b><br>` +
+          `Osmolaridad: <b>${res.osmolaridad} Osm/L</b><br>` +
+          `Moles calculados: <b>${res.moles} mol</b>`;
+        _lastMol = { masa, pm, vol, ions, res };
+      } catch (e) { showResult('res-molarity', null, e.message, true); }
+    });
+
+    let _lastMol = null;
+    document.getElementById('btnSaveMol').addEventListener('click', () => {
+      if (!_lastMol) return;
+      saveCalculation('Molaridad', { masa: _lastMol.masa, pm: _lastMol.pm, vol: _lastMol.vol }, `${_lastMol.res.molaridad} M`);
+      showToast('📋 Guardado en historial');
+    });
+
+    // ── 7. Historial ─────────────────────────────────────────────────────────
+    function renderHistory() {
+      const hist = getCalculationHistory();
+      const el   = document.getElementById('historyList');
+      if (hist.length === 0) {
+        el.innerHTML = '<div class="empty-hist">📋 Sin cálculos guardados aún</div>';
+        return;
+      }
+      el.innerHTML = hist.map(h => {
+        const dt = new Date(h.ts).toLocaleString('es-SV', { dateStyle: 'short', timeStyle: 'short' });
+        return `<div class="hist-item">
+          <div class="hist-type">${h.type}</div>
+          <div class="hist-result">${h.result}</div>
+          <div class="hist-ts">${dt}</div>
+        </div>`;
+      }).join('');
+    }
+
+    document.getElementById('btnClearHist').addEventListener('click', () => {
+      if (!confirm('¿Limpiar todo el historial?')) return;
+      clearHistory();
+      renderHistory();
+    });
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+    function showResult(boxId, main, sub, isError = false) {
+      const box = document.getElementById(boxId);
+      box.className = `result-box visible ${isError ? 'error' : ''}`;
+      const mainEl = box.querySelector('.result-main, .result-error');
+      if (mainEl) mainEl.textContent = isError ? sub : (main || '');
+      const subEl = box.querySelector('.result-sub');
+      if (subEl) subEl.textContent = isError ? '' : (sub || '');
+    }
+
+    function fmtN(n) {
+      if (n == null) return '?';
+      if (!isFinite(n)) return 'N/A';
+      if (Math.abs(n) < 0.001 || Math.abs(n) > 999999) return (+n).toExponential(3);
+      const s = (+n.toFixed(6)).toString();
+      return s.includes('.') ? s.replace(/0+$/, '').replace(/\.$/, '') : s;
+    }
+
+    function showToast(msg, duration = 2500) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className = 'toast';
+      clearTimeout(t._t); clearTimeout(t._f);
+      t._f = setTimeout(() => t.classList.add('fade-out'), duration - 350);
+      t._t = setTimeout(() => t.classList.add('hidden'), duration);
+    }
+  </script>
+</body>
+</html>

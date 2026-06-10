@@ -100,6 +100,23 @@ export function renderDashboard(container, data = null) {
             </div>
           </div>
         </a>
+        <a href="calculator.html" style="text-decoration:none">
+          <div class="materia-card" style="cursor:pointer">
+            <div class="materia-card__accent" style="background:linear-gradient(135deg,#00B894 0%,#00D2D3 100%)"></div>
+            <div class="materia-card__body">
+              <div class="materia-card__header">
+                <span class="badge badge--primary">Herramienta</span>
+              </div>
+              <h3 class="materia-card__name">🧪 Calculadora Lab</h3>
+              <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px">Diluciones, pH, CFU, conversiones y molaridad</p>
+            </div>
+            <div class="materia-card__footer">
+              <span class="btn btn--primary btn--sm" style="background:linear-gradient(135deg,#00B894,#00D2D3)">
+                Abrir →
+              </span>
+            </div>
+          </div>
+        </a>
       </div>
 
       <!-- Grid de materias -->
