@@ -561,6 +561,31 @@
     }
     .btn-reg-loc:disabled { opacity: 0.5; cursor: not-allowed; }
 
+    /* ── Toast ── */
+    .toast {
+      position: fixed;
+      bottom: 88px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--success);
+      color: #fff;
+      padding: 11px 22px;
+      border-radius: var(--radius-full);
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 0.88rem;
+      z-index: 300;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.25);
+      white-space: nowrap;
+      opacity: 1;
+      transition: opacity 0.35s;
+      pointer-events: none;
+    }
+    .toast.error   { background: var(--danger); }
+    .toast.info    { background: var(--primary); }
+    .toast.fade-out { opacity: 0; }
+    .toast.hidden  { display: none; }
+
     .hidden { display: none !important; }
   </style>
 </head>
@@ -743,6 +768,9 @@
 
   </div><!-- /review-modal -->
 
+  <!-- Toast de notificación -->
+  <div id="toast" class="toast hidden"></div>
+
   <script type="module">
     import { getDatabase, ref, onValue, update }
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
@@ -781,16 +809,16 @@
               const radius = parseInt(radiusEl.value, 10) || 50;
               await saveLabLocation(lat, lng, radius);
               coordsEl.textContent = `${lat.toFixed(5)}, ${lng.toFixed(5)} · radio ${radius} m`;
-              alert(`✅ Ubicación del laboratorio actualizada.\n${lat.toFixed(5)}, ${lng.toFixed(5)} — radio ${radius} m`);
+              showToast('✅ Ubicación del laboratorio actualizada');
             } catch (e) {
-              alert(`❌ Error al guardar: ${e.message}`);
+              showToast(`❌ Error: ${e.message}`, 'error', 4000);
             } finally {
               btnReg.disabled = false;
               btnReg.textContent = '📍 Registrar mi ubicación actual';
             }
           },
           err => {
-            alert(`No se pudo obtener GPS: ${err.message}`);
+            showToast(`❌ GPS: ${err.message}`, 'error', 4000);
             btnReg.disabled = false;
             btnReg.textContent = '📍 Registrar mi ubicación actual';
           },
@@ -980,10 +1008,11 @@
 
       try {
         await update(ref(rtdb, `lab_reports/${_currentId}`), updates);
-        btn.textContent = '✔ Guardado';
-        setTimeout(() => { btn.disabled = false; btn.textContent = '💾 Guardar Feedback'; }, 2000);
+        showToast('✅ Feedback guardado');
+        btn.disabled = false;
+        btn.textContent = '💾 Guardar Feedback';
       } catch (e) {
-        alert(`Error: ${e.message}`);
+        showToast(`❌ Error: ${e.message}`, 'error', 4000);
         btn.disabled = false;
         btn.textContent = '💾 Guardar Feedback';
       }
@@ -993,14 +1022,39 @@
     document.getElementById('btnDescargar').addEventListener('click', () => {
       if (!_currentId) return;
       const r = _all.find(x => x.id === _currentId);
-      if (!r?.foto_url) return;
-      const a = document.createElement('a');
-      a.href = r.foto_url;
-      a.target = '_blank';
-      a.rel = 'noopener';
-      a.download = `practica-${r.student_id}-${r.fecha}.jpg`;
-      a.click();
+      if (!r?.foto_url) { showToast('❌ Sin foto disponible', 'error'); return; }
+      downloadPhoto(r.foto_url, r.student_name, r.timestamp);
     });
+
+    // ── Toast ──
+    function showToast(msg, type = 'success', duration = 2800) {
+      const t = document.getElementById('toast');
+      t.textContent = msg;
+      t.className   = `toast ${type}`;
+      clearTimeout(t._timer);
+      clearTimeout(t._fadeTimer);
+      t._fadeTimer = setTimeout(() => t.classList.add('fade-out'), duration - 350);
+      t._timer     = setTimeout(() => t.classList.add('hidden'), duration);
+    }
+
+    // ── Descargar foto ──
+    async function downloadPhoto(fotoUrl, studentName, timestamp) {
+      const fecha    = new Date(timestamp).toISOString().slice(0, 10);
+      const safeName = (studentName || 'alumno').replace(/\s+/g, '_').replace(/[^a-zA-Z0-9_\-]/g, '');
+      const filename = `${safeName}_${fecha}.jpg`;
+      try {
+        const resp = await fetch(fotoUrl);
+        const blob = await resp.blob();
+        const url  = URL.createObjectURL(blob);
+        const a    = document.createElement('a');
+        a.href = url; a.download = filename; a.click();
+        setTimeout(() => URL.revokeObjectURL(url), 5000);
+        showToast('📥 Descarga iniciada');
+      } catch {
+        window.open(fotoUrl, '_blank', 'noopener');
+        showToast('📥 Foto abierta en nueva pestaña', 'info');
+      }
+    }
 
     function esc(s) {
       return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
