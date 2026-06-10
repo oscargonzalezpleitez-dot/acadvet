@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mis Competencias — AcadVet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #6C63FF; --primary-light: #A29BFE; --accent: #00D2D3;
+      --success: #00B894; --danger: #FF6B6B; --warning: #FDCB6E;
+      --bg: #F0F2FF; --surface: #FFFFFF; --surface-2: #ECEEFF;
+      --text: #1A1A2E; --text-2: #4A4A6A; --text-muted: #8888AA;
+      --border: rgba(108,99,255,0.15);
+      --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
+      --font-d:'Poppins',sans-serif; --font-b:'Inter',sans-serif;
+    }
+    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+    body{font-family:var(--font-b);background:var(--bg);color:var(--text);min-height:100vh;padding-bottom:48px}
+
+    .app-header{background:var(--surface);border-bottom:2px solid var(--border);padding:14px 20px;display:flex;align-items:center;gap:12px;position:sticky;top:0;z-index:10}
+    .app-header .logo{font-size:1.5rem}
+    .app-header h1{font-family:var(--font-d);font-size:1rem;font-weight:700;color:var(--primary);line-height:1.2}
+    .app-header h1 span{display:block;font-size:0.7rem;font-weight:500;color:var(--text-muted)}
+
+    .content{max-width:480px;margin:0 auto;padding:20px 16px}
+
+    /* ── Identity card ── */
+    .id-card{background:var(--surface);border-radius:var(--radius-lg);border:1px solid var(--border);padding:18px;margin-bottom:16px}
+    .id-card-title{font-family:var(--font-d);font-weight:700;font-size:0.9rem;margin-bottom:12px;color:var(--text)}
+    .id-row{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+    .id-input{padding:10px 12px;border:2px solid var(--border);border-radius:var(--radius-md);font-family:var(--font-b);font-size:0.9rem;color:var(--text);background:var(--surface);width:100%}
+    .id-input:focus{outline:none;border-color:var(--primary)}
+    .btn-save-id{width:100%;padding:10px;border-radius:var(--radius-full);border:none;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;font-family:var(--font-d);font-weight:700;font-size:0.88rem;cursor:pointer}
+    .id-saved{display:flex;align-items:center;gap:10px;padding:10px 12px;background:rgba(0,184,148,0.08);border-radius:var(--radius-md);border:1px solid rgba(0,184,148,0.25)}
+    .id-saved-text{flex:1}
+    .id-saved-name{font-weight:700;font-size:0.9rem;color:var(--text)}
+    .id-saved-carne{font-size:0.75rem;color:var(--text-muted)}
+    .btn-change-id{font-size:0.75rem;color:var(--primary);background:none;border:none;cursor:pointer;font-family:var(--font-d);font-weight:600;white-space:nowrap}
+
+    /* ── Progress ── */
+    .progress-card{background:linear-gradient(135deg,var(--primary) 0%,var(--accent) 100%);border-radius:var(--radius-lg);padding:20px;margin-bottom:16px;color:#fff}
+    .progress-label{font-size:0.8rem;font-weight:600;opacity:0.85;margin-bottom:4px}
+    .progress-fraction{font-family:var(--font-d);font-size:2rem;font-weight:800;line-height:1}
+    .progress-sub{font-size:0.8rem;opacity:0.8;margin-top:2px;margin-bottom:14px}
+    .progress-bar-bg{height:10px;background:rgba(255,255,255,0.2);border-radius:var(--radius-full);overflow:hidden}
+    .progress-bar-fill{height:100%;background:#fff;border-radius:var(--radius-full);transition:width 0.6s ease}
+
+    /* ── Badges ── */
+    .badges-row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+    .badge-chip{padding:6px 12px;border-radius:var(--radius-full);font-family:var(--font-d);font-weight:700;font-size:0.78rem;display:flex;align-items:center;gap:4px;transition:opacity 0.3s}
+    .badge-chip.earned{background:rgba(108,99,255,0.12);border:2px solid var(--primary);color:var(--primary)}
+    .badge-chip.locked{background:var(--surface-2);border:2px solid var(--border);color:var(--text-muted);opacity:0.5}
+
+    /* ── Competency list ── */
+    .section-title{font-family:var(--font-d);font-weight:700;font-size:0.95rem;color:var(--text);margin-bottom:12px}
+    .comp-card{background:var(--surface);border-radius:var(--radius-md);border:1px solid var(--border);padding:14px 16px;margin-bottom:10px;display:flex;align-items:center;gap:12px;transition:border-color 0.2s}
+    .comp-card.aprobada{border-color:var(--success);background:rgba(0,184,148,0.04)}
+    .comp-card.pendiente{border-color:var(--warning);background:rgba(253,203,110,0.04)}
+    .comp-icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:1.1rem;flex-shrink:0}
+    .comp-icon.none{background:var(--surface-2)}
+    .comp-icon.aprobada{background:rgba(0,184,148,0.15)}
+    .comp-icon.pendiente{background:rgba(253,203,110,0.2)}
+    .comp-body{flex:1;min-width:0}
+    .comp-name{font-weight:600;font-size:0.88rem;color:var(--text)}
+    .comp-meta{font-size:0.72rem;color:var(--text-muted);margin-top:2px;display:flex;gap:6px;align-items:center}
+    .level-dot{width:6px;height:6px;border-radius:50%;background:var(--primary-light);display:inline-block}
+    .comp-obs{font-size:0.75rem;color:var(--text-2);margin-top:4px;font-style:italic}
+    .status-badge{padding:3px 9px;border-radius:var(--radius-full);font-size:0.68rem;font-weight:700;font-family:var(--font-d);white-space:nowrap}
+    .status-badge.aprobada{background:rgba(0,184,148,0.12);color:var(--success)}
+    .status-badge.pendiente{background:rgba(253,203,110,0.2);color:#d4900a}
+    .status-badge.rechazada{background:rgba(255,107,107,0.12);color:var(--danger)}
+    .btn-solicitar{padding:7px 14px;border-radius:var(--radius-full);border:2px solid var(--primary);background:none;color:var(--primary);font-family:var(--font-d);font-weight:700;font-size:0.75rem;cursor:pointer;white-space:nowrap;transition:background 0.15s,color 0.15s}
+    .btn-solicitar:hover{background:var(--primary);color:#fff}
+    .btn-solicitar:disabled{opacity:0.4;cursor:not-allowed}
+
+    /* ── Loading ── */
+    .loading-overlay{position:fixed;inset:0;background:rgba(255,255,255,0.85);z-index:200;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px}
+    .loading-overlay.hidden{display:none}
+    .spinner{width:40px;height:40px;border:4px solid rgba(108,99,255,0.2);border-top-color:var(--primary);border-radius:50%;animation:spin 0.8s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+    .loading-text{font-family:var(--font-d);font-weight:600;font-size:0.9rem;color:var(--text-2)}
+
+    /* ── Toast ── */
+    .toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--success);color:#fff;padding:10px 22px;border-radius:var(--radius-full);font-family:var(--font-d);font-weight:700;font-size:0.85rem;z-index:300;pointer-events:none;transition:opacity 0.35s;white-space:nowrap}
+    .toast.hidden{display:none}.toast.fade-out{opacity:0}.toast.error{background:var(--danger)}
+
+    .hidden{display:none!important}
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="logo">🏆</div>
+    <h1>Mis Competencias<span>Validación de técnicas de laboratorio</span></h1>
+  </header>
+
+  <div class="loading-overlay hidden" id="loadingOverlay">
+    <div class="spinner"></div>
+    <div class="loading-text" id="loadingText">Cargando…</div>
+  </div>
+
+  <div class="content">
+
+    <!-- ── Identidad del estudiante ── -->
+    <div class="id-card" id="idCard">
+      <!-- Formulario de ingreso (si no hay datos) -->
+      <div id="idForm">
+        <div class="id-card-title">👤 ¿Quién sos?</div>
+        <div class="id-row">
+          <div><label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-2);display:block;margin-bottom:4px">Nombre completo</label>
+            <input class="id-input" id="inputName" placeholder="Ej. María López" autocomplete="name"></div>
+          <div><label style="font-size:0.72rem;font-weight:700;text-transform:uppercase;color:var(--text-2);display:block;margin-bottom:4px">Carné</label>
+            <input class="id-input" id="inputCarne" placeholder="UV20210001" autocomplete="off"></div>
+        </div>
+        <button class="btn-save-id" id="btnSaveId">Guardar y ver mis competencias →</button>
+      </div>
+      <!-- Info guardada -->
+      <div id="idSaved" class="hidden">
+        <div class="id-saved">
+          <div class="id-saved-text">
+            <div class="id-saved-name" id="savedName"></div>
+            <div class="id-saved-carne" id="savedCarne"></div>
+          </div>
+          <button class="btn-change-id" id="btnChangeId">Cambiar</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Progreso ── -->
+    <div id="progressSection" class="hidden">
+
+      <div class="progress-card">
+        <div class="progress-label">Competencias validadas</div>
+        <div class="progress-fraction"><span id="progApproved">0</span> <span style="font-size:1.1rem;opacity:0.7">de 10</span></div>
+        <div class="progress-sub" id="progPct">0% completado</div>
+        <div class="progress-bar-bg"><div class="progress-bar-fill" id="progBar" style="width:0%"></div></div>
+      </div>
+
+      <!-- Badges -->
+      <div class="badges-row" id="badgesRow"></div>
+
+      <!-- Lista de competencias -->
+      <div class="section-title">📋 Técnicas de Laboratorio</div>
+      <div id="compList"></div>
+
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module">
+    import {
+      COMPETENCIES, BADGES, sanitizeKey,
+      ensureAuth, requestValidation, listenStudentProgress,
+      getEarnedBadges, countApproved,
+    } from './js/competencies.js';
+
+    const LS_KEY = 'acadvet_student_id';
+    let studentName = '', studentId = '';
+    let _progress = {};
+
+    // ── Cargar identidad guardada ──────────────────────────────────────────
+    const saved = JSON.parse(localStorage.getItem(LS_KEY) || 'null');
+    if (saved?.name && saved?.carne) {
+      studentName = saved.name;
+      studentId   = saved.carne;
+      showSaved();
+      loadProgress();
+    } else {
+      showForm();
+    }
+
+    // ── Guardar identidad ──────────────────────────────────────────────────
+    document.getElementById('btnSaveId').addEventListener('click', () => {
+      const name  = document.getElementById('inputName').value.trim();
+      const carne = document.getElementById('inputCarne').value.trim();
+      if (name.length < 2 || carne.length < 3) {
+        showToast('Ingresá nombre y carné válidos', 'error');
+        return;
+      }
+      studentName = name;
+      studentId   = carne;
+      localStorage.setItem(LS_KEY, JSON.stringify({ name, carne }));
+      showSaved();
+      loadProgress();
+    });
+
+    document.getElementById('btnChangeId').addEventListener('click', () => {
+      document.getElementById('idSaved').classList.add('hidden');
+      document.getElementById('idForm').classList.remove('hidden');
+      document.getElementById('progressSection').classList.add('hidden');
+    });
+
+    function showForm() {
+      document.getElementById('idForm').classList.remove('hidden');
+      document.getElementById('idSaved').classList.add('hidden');
+    }
+    function showSaved() {
+      document.getElementById('idForm').classList.add('hidden');
+      document.getElementById('idSaved').classList.remove('hidden');
+      document.getElementById('savedName').textContent  = studentName;
+      document.getElementById('savedCarne').textContent = `Carné: ${studentId}`;
+    }
+
+    // ── Cargar progreso en tiempo real ─────────────────────────────────────
+    async function loadProgress() {
+      setLoading(true, 'Cargando competencias…');
+      await ensureAuth();
+      listenStudentProgress(studentId, progress => {
+        _progress = progress;
+        renderProgress();
+        setLoading(false);
+      });
+    }
+
+    // ── Render ─────────────────────────────────────────────────────────────
+    function renderProgress() {
+      const approved = countApproved(_progress);
+      const pct      = Math.round((approved / COMPETENCIES.length) * 100);
+
+      document.getElementById('progressSection').classList.remove('hidden');
+      document.getElementById('progApproved').textContent = approved;
+      document.getElementById('progPct').textContent      = `${pct}% completado`;
+      document.getElementById('progBar').style.width      = `${pct}%`;
+
+      // Badges
+      const earned = getEarnedBadges(approved);
+      const earnedIds = new Set(earned.map(b => b.id));
+      document.getElementById('badgesRow').innerHTML = BADGES.map(b =>
+        `<div class="badge-chip ${earnedIds.has(b.id) ? 'earned' : 'locked'}" title="${b.desc}">${b.label}</div>`
+      ).join('');
+
+      // Competency list
+      document.getElementById('compList').innerHTML = COMPETENCIES.map(comp => {
+        const entry  = _progress[comp.id];
+        const status = entry?.status ?? 'none';
+        const icons  = { none:'⬜', pendiente:'⏳', aprobada:'✅', rechazada:'❌' };
+        const labels = { none:'Sin solicitar', pendiente:'⏳ Pendiente', aprobada:'✓ Aprobada', rechazada:'✗ Rechazada' };
+        const levels = ['', '●', '●●', '●●●'];
+
+        return `
+          <div class="comp-card ${status}" data-id="${comp.id}">
+            <div class="comp-icon ${status}">${icons[status]}</div>
+            <div class="comp-body">
+              <div class="comp-name">${esc(comp.name)}</div>
+              <div class="comp-meta">
+                <span>${esc(comp.category)}</span>
+                <span style="color:var(--primary)">${levels[comp.level]}</span>
+              </div>
+              ${entry?.observation ? `<div class="comp-obs">💬 ${esc(entry.observation)}</div>` : ''}
+            </div>
+            ${status === 'aprobada' || status === 'pendiente'
+              ? `<span class="status-badge ${status}">${labels[status]}</span>`
+              : `<button class="btn-solicitar" data-comp="${comp.id}">Solicitar</button>`
+            }
+          </div>`;
+      }).join('');
+
+      document.querySelectorAll('.btn-solicitar').forEach(btn => {
+        btn.addEventListener('click', () => handleRequest(btn.dataset.comp, btn));
+      });
+    }
+
+    // ── Solicitar validación ────────────────────────────────────────────────
+    async function handleRequest(compId, btn) {
+      btn.disabled = true;
+      btn.textContent = '⏳ Enviando…';
+      try {
+        await requestValidation(studentId, studentName, compId);
+        showToast('✅ Solicitud enviada al docente');
+      } catch (e) {
+        showToast(`❌ ${e.message}`, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Solicitar';
+      }
+    }
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function setLoading(on, msg = '') {
+      const el = document.getElementById('loadingOverlay');
+      el.classList.toggle('hidden', !on);
+      if (msg) document.getElementById('loadingText').textContent = msg;
+    }
+
+    function showToast(msg, type = 'success', dur = 2800) {
+      const t = document.getElementById('toast');
+      t.textContent = msg; t.className = `toast ${type}`;
+      clearTimeout(t._f); clearTimeout(t._t);
+      t._f = setTimeout(() => t.classList.add('fade-out'), dur - 350);
+      t._t = setTimeout(() => t.classList.add('hidden'), dur);
+    }
+
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+  </script>
+</body>
+</html>

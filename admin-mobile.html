@@ -497,6 +497,38 @@
     .btn-action.download { background: var(--surface-2); border: 2px solid var(--border); color: var(--text-2); }
     .btn-action.save     { background: linear-gradient(135deg, var(--primary), var(--accent)); color: #fff; }
 
+    /* ── Competencias tab ── */
+    .comp-section { padding: 12px 12px 0; }
+    .comp-section-title { font-family: var(--font-display); font-weight: 700; font-size: 0.88rem; color: var(--text); margin-bottom: 10px; }
+
+    /* Matrix */
+    .matrix-wrap { overflow-x: auto; border-radius: var(--radius-md); border: 1px solid var(--border); background: var(--surface); margin-bottom: 16px; }
+    .matrix-table { border-collapse: collapse; font-size: 0.72rem; white-space: nowrap; }
+    .matrix-table th, .matrix-table td { padding: 7px 8px; border-bottom: 1px solid var(--border); text-align: center; }
+    .matrix-table th { background: var(--surface-2); font-weight: 700; color: var(--text-2); text-transform: uppercase; font-size: 0.65rem; }
+    .matrix-table th:first-child, .matrix-table td:first-child { text-align: left; min-width: 130px; position: sticky; left: 0; background: var(--surface); z-index: 1; }
+    .matrix-table th:first-child { background: var(--surface-2); }
+    .matrix-table tr:last-child td { border-bottom: none; }
+    .matrix-table tr:hover td { background: rgba(108,99,255,0.03); }
+    .matrix-cell-ok   { color: var(--success);  font-weight: 700; }
+    .matrix-cell-pend { color: var(--warning);  }
+    .matrix-cell-none { color: var(--text-muted); }
+    .matrix-cell-rej  { color: var(--danger); }
+    .pct-row td { font-weight: 700; color: var(--primary); background: var(--surface-2) !important; font-size: 0.7rem; }
+
+    /* Pending requests list */
+    .req-card { background: var(--surface); border-radius: var(--radius-md); border: 1px solid var(--border); padding: 12px 14px; margin-bottom: 8px; }
+    .req-student { font-weight: 700; font-size: 0.88rem; color: var(--text); }
+    .req-comp { font-size: 0.78rem; color: var(--text-2); margin-top: 2px; }
+    .req-time { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .req-actions { display: flex; gap: 8px; margin-top: 10px; }
+    .btn-approve { flex: 1; padding: 8px; border-radius: var(--radius-full); border: none; background: var(--success); color: #fff; font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+    .btn-reject  { flex: 1; padding: 8px; border-radius: var(--radius-full); border: 2px solid var(--danger); background: none; color: var(--danger); font-family: var(--font-display); font-weight: 700; font-size: 0.78rem; cursor: pointer; }
+    .req-obs { width: 100%; padding: 8px 10px; border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: 0.8rem; color: var(--text); font-family: var(--font-body); margin-top: 8px; resize: none; }
+    .req-obs:focus { outline: none; border-color: var(--primary); }
+
+    .comp-empty { text-align: center; padding: 32px 16px; color: var(--text-muted); font-size: 0.85rem; }
+
     /* ── GPS Location Card ── */
     .gps-loc-card {
       margin: 12px 12px 0;
@@ -601,6 +633,7 @@
   <!-- ── Tab bar ── -->
   <div class="tab-bar">
     <button class="tab-btn active" data-tab="reportes">📋 Reportes Laboratorio</button>
+    <button class="tab-btn" data-tab="competencias">🏆 Competencias</button>
   </div>
 
   <!-- ── Contenido ── -->
@@ -697,7 +730,30 @@
         </div>
       </div>
 
-    </div><!-- /tab-panel -->
+    </div><!-- /tab-panel reportes -->
+
+    <!-- ══ TAB: COMPETENCIAS ══ -->
+    <div class="tab-panel" id="tab-competencias">
+
+      <!-- Solicitudes pendientes -->
+      <div class="comp-section">
+        <div class="comp-section-title">⏳ Solicitudes pendientes</div>
+        <div id="pendingList"><div class="comp-empty">Cargando…</div></div>
+      </div>
+
+      <!-- Matriz de progreso -->
+      <div class="comp-section" style="margin-top:8px">
+        <div class="comp-section-title">📊 Matriz de progreso</div>
+        <div class="matrix-wrap">
+          <table class="matrix-table" id="matrixTable">
+            <thead id="matrixHead"></thead>
+            <tbody id="matrixBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div><!-- /tab-panel competencias -->
+
   </div><!-- /tab-content -->
 
   <!-- ── Modal de revisión ── -->
@@ -776,6 +832,10 @@
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
     import { app } from './js/firebase-config.js';
     import { getLabLocation, saveLabLocation } from './js/lab-reports.js';
+    import {
+      COMPETENCIES, sanitizeKey,
+      listenAllProgress, validateCompetency, countApproved,
+    } from './js/competencies.js';
 
     // ── Auth guard ──
     if (sessionStorage.getItem('acadvet_auth') !== 'admin') {
@@ -1054,6 +1114,146 @@
         window.open(fotoUrl, '_blank', 'noopener');
         showToast('📥 Foto abierta en nueva pestaña', 'info');
       }
+    }
+
+    // ══════════════════════════════════════════════════════════
+    // COMPETENCIAS
+    // ══════════════════════════════════════════════════════════
+    let _compData = {}; // { [carnet_key]: { [compId]: entry } }
+
+    // Abreviaturas para cabeceras de la matriz
+    const COMP_ABBR = {
+      c01:'Gram', c02:'Mont.', c03:'Placas', c04:'Hemog.',
+      c05:'Orina', c06:'Cultivo', c07:'Hongos', c08:'Prep.',
+      c09:'Ester.', c10:'Inocu.',
+    };
+
+    // Arrancar listener solo cuando se abre el tab
+    let _compLoaded = false;
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      if (btn.dataset.tab === 'competencias') {
+        btn.addEventListener('click', () => {
+          if (!_compLoaded) {
+            _compLoaded = true;
+            listenAllProgress(data => {
+              _compData = data || {};
+              renderCompetencias();
+            });
+          }
+        }, { once: true });
+      }
+    });
+
+    function renderCompetencias() {
+      renderPending();
+      renderMatrix();
+    }
+
+    // ── Solicitudes pendientes ──────────────────────────────────────────────
+    function renderPending() {
+      const list = document.getElementById('pendingList');
+      const pending = [];
+
+      Object.entries(_compData).forEach(([key, comps]) => {
+        Object.entries(comps).forEach(([compId, entry]) => {
+          if (entry.status === 'pendiente') pending.push({ key, compId, ...entry });
+        });
+      });
+
+      pending.sort((a, b) => a.requested_at - b.requested_at);
+
+      if (pending.length === 0) {
+        list.innerHTML = '<div class="comp-empty">✅ Sin solicitudes pendientes</div>';
+        return;
+      }
+
+      list.innerHTML = pending.map(p => {
+        const dt = new Date(p.requested_at).toLocaleString('es-SV', { dateStyle:'short', timeStyle:'short' });
+        return `
+          <div class="req-card" data-key="${esc(p.key)}" data-comp="${esc(p.compId)}">
+            <div class="req-student">👤 ${esc(p.student_name)} <span style="color:var(--text-muted);font-weight:400;font-size:0.75rem">· ${esc(p.student_id)}</span></div>
+            <div class="req-comp">🔬 ${esc(p.comp_name)} <span style="color:var(--text-muted)">· ${esc(p.category)}</span></div>
+            <div class="req-time">${dt}</div>
+            <textarea class="req-obs" rows="2" placeholder="Observación (opcional)…"></textarea>
+            <div class="req-actions">
+              <button class="btn-approve">✓ Aprobar</button>
+              <button class="btn-reject">✗ Rechazar</button>
+            </div>
+          </div>`;
+      }).join('');
+
+      list.querySelectorAll('.req-card').forEach(card => {
+        const key    = card.dataset.key;
+        const compId = card.dataset.comp;
+        const obs    = () => card.querySelector('.req-obs').value;
+
+        card.querySelector('.btn-approve').addEventListener('click', async () => {
+          await doValidate(key, compId, true, obs(), card);
+        });
+        card.querySelector('.btn-reject').addEventListener('click', async () => {
+          await doValidate(key, compId, false, obs(), card);
+        });
+      });
+    }
+
+    async function doValidate(studentId, compId, approved, observation, card) {
+      const btns = card.querySelectorAll('button');
+      btns.forEach(b => b.disabled = true);
+      try {
+        await validateCompetency(studentId, compId, approved, observation);
+        showToast(approved ? '✅ Competencia aprobada' : '❌ Competencia rechazada');
+      } catch (e) {
+        showToast(`Error: ${e.message}`, 'error', 4000);
+        btns.forEach(b => b.disabled = false);
+      }
+    }
+
+    // ── Matriz de progreso ──────────────────────────────────────────────────
+    function renderMatrix() {
+      const head   = document.getElementById('matrixHead');
+      const body   = document.getElementById('matrixBody');
+      const students = Object.entries(_compData);
+
+      if (students.length === 0) {
+        head.innerHTML = '';
+        body.innerHTML = '<tr><td colspan="11" class="comp-empty">Sin datos de competencias aún</td></tr>';
+        return;
+      }
+
+      // Cabecera con abreviaturas
+      head.innerHTML = `<tr>
+        <th>Estudiante</th>
+        ${COMPETENCIES.map(c => `<th title="${esc(c.name)}">${COMP_ABBR[c.id]}</th>`).join('')}
+        <th>%</th>
+      </tr>`;
+
+      // Filas por estudiante
+      const icons = { aprobada:'✅', pendiente:'⏳', rechazada:'❌', none:'·' };
+      const cls   = { aprobada:'matrix-cell-ok', pendiente:'matrix-cell-pend', rechazada:'matrix-cell-rej', none:'matrix-cell-none' };
+
+      body.innerHTML = students.map(([key, comps]) => {
+        const first  = Object.values(comps)[0];
+        const name   = first?.student_name ?? key;
+        const approved = countApproved(comps);
+        const pct    = Math.round((approved / COMPETENCIES.length) * 100);
+        const cells  = COMPETENCIES.map(c => {
+          const s = comps[c.id]?.status ?? 'none';
+          return `<td class="${cls[s]}" title="${c.name}">${icons[s]}</td>`;
+        }).join('');
+        return `<tr>
+          <td style="font-size:0.75rem;font-weight:600">${esc(name)}</td>
+          ${cells}
+          <td style="font-weight:700;color:var(--primary)">${pct}%</td>
+        </tr>`;
+      }).join('');
+
+      // Fila de porcentajes por columna
+      const pctRow = COMPETENCIES.map(c => {
+        const total    = students.length;
+        const approved = students.filter(([, comps]) => comps[c.id]?.status === 'aprobada').length;
+        return `<td>${total ? Math.round(approved / total * 100) : 0}%</td>`;
+      }).join('');
+      body.innerHTML += `<tr class="pct-row"><td>Aprobación</td>${pctRow}<td></td></tr>`;
     }
 
     function esc(s) {

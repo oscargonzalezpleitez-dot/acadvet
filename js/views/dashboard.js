@@ -100,6 +100,21 @@ export function renderDashboard(container, data = null) {
             </div>
           </div>
         </a>
+        <a href="competencies.html" style="text-decoration:none">
+          <div class="materia-card" style="cursor:pointer">
+            <div class="materia-card__accent" style="background:linear-gradient(135deg,#6C63FF 0%,#A29BFE 100%)"></div>
+            <div class="materia-card__body">
+              <div class="materia-card__header">
+                <span class="badge badge--primary">Evaluación</span>
+              </div>
+              <h3 class="materia-card__name">🏆 Competencias</h3>
+              <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px">Registro y validación de técnicas de laboratorio</p>
+            </div>
+            <div class="materia-card__footer">
+              <span class="btn btn--primary btn--sm">Ver →</span>
+            </div>
+          </div>
+        </a>
         <a href="reference-tables.html" style="text-decoration:none">
           <div class="materia-card" style="cursor:pointer">
             <div class="materia-card__accent" style="background:linear-gradient(135deg,#FF6B6B 0%,#FDCB6E 100%)"></div>

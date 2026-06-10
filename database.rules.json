@@ -105,6 +105,17 @@
       "$reportId": {
         ".validate": "newData.hasChildren(['student_name', 'student_id', 'tipo_preparacion', 'timestamp', 'foto_url'])"
       }
+    },
+
+    "student_competencies": {
+      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      "$studentKey": {
+        ".read":  "auth != null",
+        "$compId": {
+          ".write": "auth != null",
+          ".validate": "newData.hasChildren(['student_id', 'student_name', 'comp_id', 'comp_name', 'status'])"
+        }
+      }
     }
 
   }
