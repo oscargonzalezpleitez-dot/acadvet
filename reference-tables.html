@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tabla de Referencia — AcadVet</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary:       #6C63FF;
+      --primary-light: #A29BFE;
+      --accent:        #00D2D3;
+      --success:       #00B894;
+      --danger:        #FF6B6B;
+      --warning:       #FDCB6E;
+      --low:           #74B9FF;
+      --bg:            #F0F2FF;
+      --surface:       #FFFFFF;
+      --surface-2:     #ECEEFF;
+      --text:          #1A1A2E;
+      --text-2:        #4A4A6A;
+      --text-muted:    #8888AA;
+      --border:        rgba(108,99,255,0.15);
+      --radius-sm:     6px;
+      --radius-md:     12px;
+      --radius-lg:     20px;
+      --radius-full:   9999px;
+      --font-d:        'Poppins', sans-serif;
+      --font-b:        'Inter', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-b); background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 40px; }
+
+    /* ── Header ── */
+    .app-header {
+      background: var(--surface); border-bottom: 2px solid var(--border);
+      padding: 14px 20px; display: flex; align-items: center; gap: 12px;
+      position: sticky; top: 0; z-index: 10;
+    }
+    .app-header .logo { font-size: 1.5rem; }
+    .app-header h1 { font-family: var(--font-d); font-size: 1rem; font-weight: 700; color: var(--primary); line-height: 1.2; }
+    .app-header span { display: block; font-size: 0.7rem; color: var(--text-muted); }
+    .btn-back { padding: 8px 14px; border-radius: var(--radius-full); border: 2px solid var(--border); background: var(--surface-2); color: var(--primary); font-family: var(--font-d); font-weight: 600; font-size: 0.82rem; text-decoration: none; margin-left: auto; white-space: nowrap; }
+
+    /* ── Controls bar ── */
+    .controls {
+      background: var(--surface); border-bottom: 2px solid var(--border);
+      padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center;
+      position: sticky; top: 60px; z-index: 9;
+    }
+    .species-select, .search-input {
+      padding: 9px 12px; border: 2px solid var(--border); border-radius: var(--radius-md);
+      font-family: var(--font-b); font-size: 0.88rem; color: var(--text);
+      background: var(--surface); -webkit-appearance: none;
+    }
+    .species-select { width: 130px; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%238888AA' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 10px center; padding-right: 28px; }
+    .search-input { flex: 1; min-width: 150px; }
+    .search-input:focus, .species-select:focus { outline: none; border-color: var(--primary); }
+    .search-input::placeholder { color: var(--text-muted); }
+
+    /* ── Category tabs ── */
+    .cat-scroll { overflow-x: auto; white-space: nowrap; background: var(--surface); border-bottom: 2px solid var(--border); padding: 0 12px; -webkit-overflow-scrolling: touch; }
+    .cat-scroll::-webkit-scrollbar { display: none; }
+    .cat-btn {
+      display: inline-block; padding: 10px 14px;
+      font-family: var(--font-d); font-weight: 600; font-size: 0.78rem;
+      color: var(--text-muted); cursor: pointer; border: none; background: none;
+      border-bottom: 3px solid transparent; transition: color 0.2s, border-color 0.2s;
+    }
+    .cat-btn .cat-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+    .cat-btn.active { color: var(--text); border-bottom-color: var(--primary); }
+
+    /* ── Valor checker ── */
+    .checker-bar {
+      background: var(--surface-2); border-bottom: 1px solid var(--border);
+      padding: 10px 16px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .checker-label { font-size: 0.75rem; font-weight: 700; color: var(--text-2); text-transform: uppercase; white-space: nowrap; }
+    .checker-input { width: 110px; padding: 8px 10px; border: 2px solid var(--border); border-radius: var(--radius-md); font-size: 0.88rem; color: var(--text); background: var(--surface); }
+    .checker-input:focus { outline: none; border-color: var(--accent); }
+    .checker-param { flex: 1; min-width: 160px; padding: 8px 10px; border: 2px solid var(--border); border-radius: var(--radius-md); font-size: 0.82rem; color: var(--text); background: var(--surface); -webkit-appearance: none; }
+    .checker-result { font-family: var(--font-d); font-weight: 700; font-size: 0.85rem; padding: 6px 14px; border-radius: var(--radius-full); display: none; }
+    .checker-result.visible { display: inline-block; }
+    .checker-result.normal { background: rgba(0,184,148,0.12); color: var(--success); }
+    .checker-result.high   { background: rgba(255,107,107,0.12); color: var(--danger); }
+    .checker-result.low    { background: rgba(116,185,255,0.15); color: #0984e3; }
+
+    /* ── Content ── */
+    .content { max-width: 700px; margin: 0 auto; padding: 16px; }
+
+    /* ── Tabla ── */
+    .ref-table-wrap { overflow-x: auto; border-radius: var(--radius-lg); border: 1px solid var(--border); background: var(--surface); }
+    .ref-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+    .ref-table thead { position: sticky; top: 0; }
+    .ref-table th {
+      background: var(--surface-2); padding: 10px 12px;
+      text-align: left; font-weight: 700; color: var(--text-2);
+      font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.04em;
+      border-bottom: 2px solid var(--border); white-space: nowrap;
+    }
+    .ref-table th:first-child { min-width: 180px; }
+    .ref-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+    .ref-table tr:last-child td { border-bottom: none; }
+    .ref-table tr:hover td { background: rgba(108,99,255,0.03); }
+
+    .param-name { font-weight: 600; color: var(--text); }
+    .param-unit { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+    .range-cell { white-space: nowrap; }
+    .range-min-max { color: var(--text-2); }
+    .range-normal { font-weight: 700; color: var(--success); font-size: 0.78rem; }
+
+    /* Highlight del valor chequeado */
+    tr.highlight-normal td { background: rgba(0,184,148,0.06) !important; }
+    tr.highlight-high   td { background: rgba(255,107,107,0.06) !important; }
+    tr.highlight-low    td { background: rgba(116,185,255,0.08) !important; }
+
+    .status-badge {
+      display: inline-block; padding: 2px 8px; border-radius: var(--radius-full);
+      font-family: var(--font-d); font-weight: 700; font-size: 0.7rem; white-space: nowrap;
+    }
+    .status-badge.normal { background: rgba(0,184,148,0.12); color: var(--success); }
+    .status-badge.high   { background: rgba(255,107,107,0.12); color: var(--danger); }
+    .status-badge.low    { background: rgba(116,185,255,0.15); color: #0984e3; }
+
+    .note-badge { font-size: 0.7rem; color: var(--text-muted); font-style: italic; margin-top: 2px; }
+
+    /* Count badge */
+    .count-badge { background: var(--surface-2); border: 1px solid var(--border); border-radius: var(--radius-full); padding: 4px 12px; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 12px; display: inline-block; }
+
+    /* ── Empty ── */
+    .empty-state { text-align: center; padding: 48px 16px; color: var(--text-muted); }
+    .empty-icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+    /* ── Toast ── */
+    .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--success); color: #fff; padding: 10px 22px; border-radius: var(--radius-full); font-family: var(--font-d); font-weight: 700; font-size: 0.85rem; z-index: 300; pointer-events: none; transition: opacity 0.35s; }
+    .toast.hidden { display: none; }
+    .toast.fade-out { opacity: 0; }
+
+    @media (max-width: 480px) {
+      .ref-table th, .ref-table td { padding: 8px 8px; font-size: 0.77rem; }
+      .controls { padding: 10px 12px; }
+    }
+  </style>
+</head>
+<body>
+
+  <header class="app-header">
+    <div class="logo">📊</div>
+    <h1>Valores de Referencia<span>Laboratorio Clínico Veterinario</span></h1>
+    <a href="app.html" class="btn-back">← Volver</a>
+  </header>
+
+  <!-- Controls: especie + búsqueda -->
+  <div class="controls">
+    <select class="species-select" id="speciesSel">
+      <option>Perro</option>
+      <option>Gato</option>
+      <option>Bovino</option>
+      <option>Equino</option>
+      <option>Aviar</option>
+    </select>
+    <input type="search" class="search-input" id="searchInput" placeholder="🔍 Buscar parámetro…">
+  </div>
+
+  <!-- Category tabs -->
+  <div class="cat-scroll" id="catTabs"></div>
+
+  <!-- Checker de valor -->
+  <div class="checker-bar">
+    <span class="checker-label">Verificar valor:</span>
+    <select class="checker-param" id="checkerParam"></select>
+    <input type="number" class="checker-input" id="checkerVal" placeholder="Ingresá valor" step="any">
+    <span class="checker-result" id="checkerResult"></span>
+  </div>
+
+  <div class="content">
+    <div class="count-badge" id="countBadge"></div>
+    <div class="ref-table-wrap">
+      <table class="ref-table">
+        <thead id="tableHead"></thead>
+        <tbody id="tableBody"></tbody>
+      </table>
+    </div>
+    <div class="empty-state hidden" id="emptyState">
+      <div class="empty-icon">🔍</div>
+      <p>Sin resultados para "<span id="emptyQuery"></span>"</p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script type="module">
+    import {
+      SPECIES, getCategories, getTable,
+      validateValue, searchParameters, getCategoryColor,
+    } from './js/reference-tables.js';
+
+    const speciesSel   = document.getElementById('speciesSel');
+    const searchInput  = document.getElementById('searchInput');
+    const catTabsEl    = document.getElementById('catTabs');
+    const tableHead    = document.getElementById('tableHead');
+    const tableBody    = document.getElementById('tableBody');
+    const emptyState   = document.getElementById('emptyState');
+    const countBadge   = document.getElementById('countBadge');
+    const checkerParam = document.getElementById('checkerParam');
+    const checkerVal   = document.getElementById('checkerVal');
+    const checkerResult= document.getElementById('checkerResult');
+
+    const CATEGORIES = getCategories();
+    let activeCategory = CATEGORIES[0];
+    let currentData    = [];
+
+    // ── Category tabs ──────────────────────────────────────────────────────
+    catTabsEl.innerHTML = CATEGORIES.map(cat => {
+      const color = getCategoryColor(cat);
+      return `<button class="cat-btn${cat === activeCategory ? ' active' : ''}" data-cat="${cat}">
+        <span class="cat-dot" style="background:${color}"></span>${cat}
+      </button>`;
+    }).join('');
+
+    catTabsEl.querySelectorAll('.cat-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        catTabsEl.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeCategory = btn.dataset.cat;
+        searchInput.value = '';
+        checkerVal.value  = '';
+        checkerResult.className = 'checker-result';
+        render();
+      });
+    });
+
+    // ── Species change ─────────────────────────────────────────────────────
+    speciesSel.addEventListener('change', () => {
+      checkerVal.value = '';
+      checkerResult.className = 'checker-result';
+      render();
+    });
+
+    // ── Search ─────────────────────────────────────────────────────────────
+    searchInput.addEventListener('input', render);
+
+    // ── Render ─────────────────────────────────────────────────────────────
+    function render() {
+      const species = speciesSel.value;
+      const query   = searchInput.value;
+      currentData   = searchParameters(query, activeCategory);
+
+      updateCheckerDropdown(currentData, species);
+      renderTable(currentData, species);
+    }
+
+    function renderTable(params, species) {
+      const color = getCategoryColor(activeCategory);
+
+      // Head
+      tableHead.innerHTML = `<tr>
+        <th>Parámetro</th>
+        <th>Unidad</th>
+        <th>Rango normal</th>
+        <th>Valor típico</th>
+      </tr>`;
+
+      // Empty state
+      if (params.length === 0) {
+        tableBody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        document.getElementById('emptyQuery').textContent = searchInput.value;
+        countBadge.textContent = '0 parámetros';
+        return;
+      }
+      emptyState.classList.add('hidden');
+      countBadge.textContent = `${params.length} parámetro${params.length !== 1 ? 's' : ''} · ${species}`;
+
+      const checkedParam = checkerParam.value;
+      const checkedValN  = parseFloat(checkerVal.value);
+
+      tableBody.innerHTML = params.map(p => {
+        const sv     = p.values?.[species];
+        const isZero = sv && sv.min === 0 && sv.max === 0;
+        const rangeStr = sv
+          ? (isZero ? '—' : `${sv.min} – ${sv.max}`)
+          : '<span style="color:var(--text-muted)">N/D</span>';
+        const normalStr = sv
+          ? (isZero ? '<span style="color:var(--text-muted)">Negativa</span>' : `<span class="range-normal">${sv.normal}</span>`)
+          : '—';
+
+        // Status del checker
+        let rowClass = '';
+        let statusHtml = '';
+        if (checkedParam === p.name && !isNaN(checkedValN) && sv) {
+          const status = validateValue(checkedValN, p, species);
+          rowClass = `highlight-${status}`;
+          const labels = { normal: '✓ Normal', high: '↑ Elevado', low: '↓ Bajo' };
+          statusHtml = `<span class="status-badge ${status}">${labels[status] ?? ''}</span>`;
+        }
+
+        return `<tr class="${rowClass}">
+          <td>
+            <div class="param-name">${esc(p.name)}</div>
+            ${p.note ? `<div class="note-badge">${esc(p.note)}</div>` : ''}
+          </td>
+          <td class="param-unit">${esc(p.unit)}</td>
+          <td class="range-cell"><span class="range-min-max">${rangeStr}</span></td>
+          <td>${normalStr} ${statusHtml}</td>
+        </tr>`;
+      }).join('');
+    }
+
+    // ── Checker de valor ───────────────────────────────────────────────────
+    function updateCheckerDropdown(params, species) {
+      const prev = checkerParam.value;
+      checkerParam.innerHTML = '<option value="">— Seleccioná parámetro —</option>' +
+        params.filter(p => p.values?.[species]).map(p =>
+          `<option value="${esc(p.name)}">${esc(p.name)}</option>`
+        ).join('');
+      checkerParam.value = prev;
+    }
+
+    function checkValue() {
+      const species = speciesSel.value;
+      const paramName = checkerParam.value;
+      const val = checkerVal.value;
+      if (!paramName || val === '') {
+        checkerResult.className = 'checker-result';
+        renderTable(currentData, species);
+        return;
+      }
+      const param  = currentData.find(p => p.name === paramName);
+      const status = param ? validateValue(val, param, species) : 'unknown';
+      const labels = { normal: '✅ Normal', high: '⬆️ Elevado', low: '⬇️ Bajo', unknown: '—' };
+      const classes= { normal: 'normal', high: 'high', low: 'low' };
+      checkerResult.textContent = labels[status];
+      checkerResult.className   = `checker-result visible ${classes[status] ?? ''}`;
+      renderTable(currentData, species);
+    }
+
+    checkerParam.addEventListener('change', checkValue);
+    checkerVal.addEventListener('input',  checkValue);
+
+    // ── Helpers ────────────────────────────────────────────────────────────
+    function esc(s) {
+      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    // ── Init ───────────────────────────────────────────────────────────────
+    render();
+  </script>
+</body>
+</html>

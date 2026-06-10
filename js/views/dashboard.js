@@ -100,6 +100,23 @@ export function renderDashboard(container, data = null) {
             </div>
           </div>
         </a>
+        <a href="reference-tables.html" style="text-decoration:none">
+          <div class="materia-card" style="cursor:pointer">
+            <div class="materia-card__accent" style="background:linear-gradient(135deg,#FF6B6B 0%,#FDCB6E 100%)"></div>
+            <div class="materia-card__body">
+              <div class="materia-card__header">
+                <span class="badge badge--primary">Referencia</span>
+              </div>
+              <h3 class="materia-card__name">📊 Valores Normales</h3>
+              <p style="font-size:0.8rem;color:var(--color-text-secondary);margin-top:4px">Hemograma, bioquímica y urianálisis por especie</p>
+            </div>
+            <div class="materia-card__footer">
+              <span class="btn btn--primary btn--sm" style="background:linear-gradient(135deg,#FF6B6B,#FDCB6E)">
+                Consultar →
+              </span>
+            </div>
+          </div>
+        </a>
         <a href="calculator.html" style="text-decoration:none">
           <div class="materia-card" style="cursor:pointer">
             <div class="materia-card__accent" style="background:linear-gradient(135deg,#00B894 0%,#00D2D3 100%)"></div>
