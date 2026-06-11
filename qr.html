@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QR Portal Estudiantes — AcadVet USAM</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Poppins', sans-serif;
+      background: #F0F2FF;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+    }
+
+    .card {
+      background: #fff;
+      border-radius: 28px;
+      box-shadow: 0 12px 48px rgba(108,99,255,0.18);
+      padding: 40px 44px 36px;
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+
+    /* ── Header ── */
+    .brand {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin-bottom: 6px;
+    }
+    .brand-logo { font-size: 2rem; }
+    .brand-name { font-size: 1.5rem; font-weight: 800; color: #1A1A2E; }
+    .brand-tag  {
+      background: linear-gradient(135deg, #6C63FF, #00D2D3);
+      color: #fff;
+      font-size: 0.65rem;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 9999px;
+      vertical-align: middle;
+    }
+    .faculty {
+      font-size: 0.75rem;
+      color: #8888AA;
+      margin-bottom: 28px;
+    }
+
+    /* ── QR wrapper ── */
+    .qr-wrap {
+      display: inline-block;
+      background: #fff;
+      border: 3px solid #ECEEFF;
+      border-radius: 20px;
+      padding: 16px;
+      margin-bottom: 22px;
+      position: relative;
+    }
+    /* Corner accents */
+    .qr-wrap::before,
+    .qr-wrap::after {
+      content: '';
+      position: absolute;
+      width: 24px; height: 24px;
+      border-color: #6C63FF;
+      border-style: solid;
+    }
+    .qr-wrap::before { top: -3px; left: -3px; border-width: 4px 0 0 4px; border-radius: 6px 0 0 0; }
+    .qr-wrap::after  { bottom: -3px; right: -3px; border-width: 0 4px 4px 0; border-radius: 0 0 6px 0; }
+
+    #qrcode canvas, #qrcode img {
+      display: block;
+      border-radius: 8px;
+    }
+
+    /* ── Text below QR ── */
+    .instruction {
+      font-size: 1rem;
+      font-weight: 700;
+      color: #1A1A2E;
+      margin-bottom: 6px;
+    }
+    .sub {
+      font-size: 0.75rem;
+      color: #8888AA;
+      margin-bottom: 18px;
+    }
+    .url-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: #F0F2FF;
+      border: 1px solid rgba(108,99,255,0.2);
+      border-radius: 9999px;
+      padding: 7px 18px;
+      font-size: 0.8rem;
+      font-weight: 600;
+      color: #6C63FF;
+      margin-bottom: 26px;
+      word-break: break-all;
+    }
+    .url-chip .dot {
+      width: 7px; height: 7px;
+      background: #00D2D3;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    /* ── Modules row ── */
+    .modules {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: 28px;
+    }
+    .mod-chip {
+      background: #F0F2FF;
+      color: #4A4A6A;
+      font-size: 0.65rem;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      border: 1px solid rgba(108,99,255,0.12);
+    }
+
+    /* ── Print button ── */
+    .btn-print {
+      background: linear-gradient(135deg, #6C63FF, #00D2D3);
+      color: #fff;
+      border: none;
+      border-radius: 9999px;
+      padding: 12px 32px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .btn-print:hover  { opacity: 0.9; transform: translateY(-1px); }
+    .btn-print:active { transform: scale(0.97); }
+
+    /* ── Print mode ── */
+    @media print {
+      body        { background: #fff; padding: 0; }
+      .card       { box-shadow: none; max-width: 100%; border-radius: 0; }
+      .btn-print  { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="card">
+
+    <div class="brand">
+      <span class="brand-logo">🐾</span>
+      <span class="brand-name">AcadVet</span>
+      <span class="brand-tag">USAM</span>
+    </div>
+    <div class="faculty">Facultad de Medicina Veterinaria</div>
+
+    <div class="qr-wrap">
+      <div id="qrcode"></div>
+    </div>
+
+    <div class="instruction">Escaneá el código QR</div>
+    <div class="sub">Accedé a todos los módulos del curso</div>
+
+    <div class="url-chip">
+      <span class="dot"></span>
+      acadvet-usam.web.app/student.html
+    </div>
+
+    <div class="modules">
+      <span class="mod-chip">🔔 Avisos</span>
+      <span class="mod-chip">📋 Reportes</span>
+      <span class="mod-chip">🏆 Competencias</span>
+      <span class="mod-chip">🧩 Quiz</span>
+      <span class="mod-chip">🔬 Galería</span>
+      <span class="mod-chip">📊 Referencia</span>
+      <span class="mod-chip">🧪 Calculadora</span>
+    </div>
+
+    <button class="btn-print" onclick="window.print()">🖨️ Imprimir / Guardar PDF</button>
+
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <script>
+    new QRCode(document.getElementById('qrcode'), {
+      text: 'https://acadvet-usam.web.app/student.html',
+      width: 280,
+      height: 280,
+      colorDark: '#1A1A2E',
+      colorLight: '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.H,
+    });
+  </script>
+
+</body>
+</html>
