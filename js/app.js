@@ -81,7 +81,12 @@ if (isEPS()) {
     roleEl.insertAdjacentHTML('beforeend', '<span class="eps-badge">EPS</span>');
   }
   const nameEl = document.querySelector('.user-name');
-  if (nameEl) nameEl.textContent = 'Sesión EPS';
+  if (nameEl) {
+    const h = new Date().getHours();
+    nameEl.textContent = h >= 6 && h < 12 ? 'Buenos días'
+                       : h >= 12 && h < 19 ? 'Buenas tardes'
+                       : 'Buenas noches';
+  }
 }
 
 // ---------------------------------------------------------------------------
