@@ -43,7 +43,7 @@ export function renderDashboard(container, data = null) {
       <!-- Encabezado de bienvenida -->
       <div class="view-header">
         <div>
-          <h2 class="view-title">${greeting()}, Óscar 👋</h2>
+          <h2 class="view-title">${greeting()}${sessionStorage.getItem('acadvet_auth') === 'eps' ? '' : ', Óscar'} 👋</h2>
           <p class="view-subtitle">
             Ciclo I 2026 &nbsp;·&nbsp; ${activas.length} materia${activas.length !== 1 ? 's' : ''} activa${activas.length !== 1 ? 's' : ''}
           </p>
