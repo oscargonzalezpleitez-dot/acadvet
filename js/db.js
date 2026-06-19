@@ -580,6 +580,14 @@ export async function getCuestionariosResultados() {
   return snapToArray(s).sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
 }
 
+export async function getLabReportsByCarnet(carnet) {
+  const norm = (carnet ?? '').toLowerCase().trim().replace(/-/g, '');
+  const s    = await get(ref(db, 'lab_reports'));
+  return snapToArray(s)
+    .filter(r => ((r.student_id ?? '').toLowerCase().trim().replace(/-/g, '')) === norm)
+    .sort((a, b) => (b.timestamp || 0) - (a.timestamp || 0));
+}
+
 export async function getCuestionariosResultadosByCarnet(carnet) {
   const norm = (carnet ?? '').toLowerCase().trim().replace(/-/g, '');
   const s    = await get(ref(db, 'cuestionarios_resultados'));

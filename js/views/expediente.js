@@ -12,6 +12,7 @@ import {
   updateParciales, updateObservaciones,
   getTareas, deleteTarea,
   getCuestionariosResultadosByCarnet,
+  getLabReportsByCarnet,
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
@@ -35,6 +36,7 @@ const TABS = [
   { id: 'exposiciones', label: 'Exposiciones',     icon: '🎤' },
   { id: 'observaciones',label: 'Observaciones',    icon: '📌' },
   { id: 'tareas',       label: 'Tareas',           icon: '📋' },
+  { id: 'labreports',   label: 'Prácticas',        icon: '🔬' },
 ];
 
 // ---------------------------------------------------------------------------
@@ -247,6 +249,7 @@ function paintTabContent() {
     case 'exposiciones':  paintExposiciones(el);  break;
     case 'observaciones': paintObservaciones(el); break;
     case 'tareas':        paintTareas(el);        break;
+    case 'labreports':    paintLabReports(el);    break;
   }
 }
 
@@ -1079,6 +1082,107 @@ function confirmDeleteTarea(tarea) {
       }
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// TAB: PRÁCTICAS DE LABORATORIO
+// ---------------------------------------------------------------------------
+
+async function paintLabReports(el) {
+  el.innerHTML = `
+    <div class="tab-section">
+      <div style="text-align:center;padding:24px;color:var(--color-text-muted);font-size:var(--text-sm)">
+        <div style="font-size:28px;margin-bottom:8px">⏳</div>
+        Cargando reportes…
+      </div>
+    </div>`;
+
+  try {
+    const reports = await getLabReportsByCarnet(_alumno.carnet);
+
+    if (!reports.length) {
+      el.innerHTML = `
+        <div class="tab-section">
+          <div class="empty-state">
+            <div class="empty-state__icon">🔬</div>
+            <h3 class="empty-state__title">Sin prácticas registradas</h3>
+            <p class="empty-state__text">Este alumno aún no ha enviado reportes de práctica.</p>
+          </div>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = `
+      <div class="tab-section">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--space-4)">
+          <span style="font-size:var(--text-sm);font-weight:700;color:var(--color-text-secondary)">
+            🔬 Reportes de práctica
+          </span>
+          <span class="badge badge--outline">${reports.length} reporte${reports.length !== 1 ? 's' : ''}</span>
+        </div>
+        <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+          ${reports.map(r => {
+            const fecha   = r.fecha ?? (r.timestamp ? new Date(r.timestamp).toLocaleDateString('es-SV') : '—');
+            const hora    = r.timestamp ? new Date(r.timestamp).toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' }) : '';
+            const revisado = r.estado === 'revisado';
+            return `
+              <div style="background:var(--color-surface);border:1px solid var(--color-border);
+                   border-left:4px solid ${revisado ? 'var(--color-success)' : 'var(--color-warning)'};
+                   border-radius:var(--radius-md);overflow:hidden">
+                <div style="display:flex;gap:var(--space-3);padding:var(--space-4)">
+                  ${r.foto_url ? `
+                    <a href="${r.foto_url}" target="_blank" style="flex-shrink:0">
+                      <img src="${r.foto_url}" alt="Foto práctica"
+                           style="width:72px;height:72px;object-fit:cover;border-radius:var(--radius-sm);
+                                  border:1px solid var(--color-border)">
+                    </a>` : `
+                    <div style="width:72px;height:72px;background:var(--color-surface-2);
+                         border-radius:var(--radius-sm);display:flex;align-items:center;
+                         justify-content:center;font-size:24px;flex-shrink:0">🔬</div>`}
+
+                  <div style="flex:1;min-width:0">
+                    <div style="font-weight:700;font-size:var(--text-sm);color:var(--color-text-primary);
+                         margin-bottom:3px">${escHtml(r.tipo_preparacion || '—')}</div>
+                    <div style="font-size:var(--text-xs);color:var(--color-text-secondary);margin-bottom:3px">
+                      📚 ${escHtml(r.asignatura || '—')}
+                    </div>
+                    <div style="font-size:var(--text-xs);color:var(--color-text-muted)">
+                      📅 ${fecha}${hora ? ' · ' + hora : ''}
+                    </div>
+                    <div style="margin-top:6px">
+                      <span style="display:inline-flex;align-items:center;gap:4px;font-size:0.65rem;
+                           font-weight:700;padding:2px 8px;border-radius:99px;
+                           background:${revisado ? 'var(--color-success-dim)' : 'var(--color-warning-dim)'};
+                           color:${revisado ? 'var(--color-success)' : '#B7791F'}">
+                        ${revisado ? '✅ Revisada' : '⏳ Pendiente'}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                ${r.feedback ? `
+                  <div style="border-top:1px solid var(--color-border);padding:var(--space-3) var(--space-4);
+                       background:var(--color-surface-2)">
+                    <span style="font-size:var(--text-xs);font-weight:700;color:var(--color-text-secondary)">
+                      💬 Feedback del docente:
+                    </span>
+                    <p style="font-size:var(--text-xs);color:var(--color-text-secondary);
+                         margin-top:3px;line-height:1.5">${escHtml(r.feedback)}</p>
+                  </div>` : ''}
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } catch (err) {
+    console.error('[Expediente] Error cargando prácticas:', err);
+    el.innerHTML = `
+      <div class="tab-section">
+        <div class="empty-state">
+          <div class="empty-state__icon">⚠️</div>
+          <h3 class="empty-state__title">Error al cargar</h3>
+          <p class="empty-state__text">No se pudieron cargar los reportes de práctica.</p>
+        </div>
+      </div>`;
+  }
 }
 
 // ---------------------------------------------------------------------------
