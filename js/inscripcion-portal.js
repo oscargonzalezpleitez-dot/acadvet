@@ -50,7 +50,7 @@ async function cargarMaterias() {
 
     listEl.innerHTML = _materias.map(m => `
       <label class="materia-check">
-        <input type="checkbox" name="materia" value="${escHtml(m.id)}" data-nombre="${escHtml(m.nombre)}">
+        <input type="radio" name="materia" value="${escHtml(m.id)}" data-nombre="${escHtml(m.nombre)}">
         <span class="materia-check-label">
           <span class="materia-check-nombre">${escHtml(m.nombre)}</span>
           <span class="materia-check-ciclo">${escHtml(m.ciclo)}${m.seccion ? ' · Sec. ' + m.seccion : ''}</span>
@@ -186,7 +186,7 @@ async function enviarSolicitud() {
                    showErr(document.getElementById('errEmail'),    'El correo debe ser institucional (@usam.edu.sv).'); ok = false; }
   if (!telefono) { showErr(document.getElementById('errTelefono'), 'El teléfono es obligatorio.');                                      ok = false; }
   if (checkedMaterias.length === 0) {
-    showErr(document.getElementById('errMaterias'), 'Seleccioná al menos una materia.'); ok = false;
+    showErr(document.getElementById('errMaterias'), 'Seleccioná una materia.'); ok = false;
   }
   if (!_fotoB64) {
     showErr(document.getElementById('errFoto'), 'La foto de perfil es obligatoria. Tocá "Tomar foto" para capturarla.'); ok = false;
