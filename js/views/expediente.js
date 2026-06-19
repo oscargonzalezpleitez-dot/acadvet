@@ -242,7 +242,7 @@ function paintTabContent() {
   if (!el) return;
   switch (_tab) {
     case 'asistencias':   paintAsistencias(el);   break;
-    case 'quizzes':       paintQuizzes(el);       break;
+    case 'quizzes':       paintQuizzes(el);       break; // async, fire-and-forget OK
     case 'parciales':     paintParciales(el);     break;
     case 'exposiciones':  paintExposiciones(el);  break;
     case 'observaciones': paintObservaciones(el); break;
@@ -480,8 +480,10 @@ async function paintQuizzes(el) {
   // Cargar resultados de cuestionarios en línea para este alumno
   try {
     const resultados = await getCuestionariosResultadosByCarnet(_alumno.carnet);
+    console.log('[Expediente] Carné alumno:', _alumno.carnet, '| Resultados encontrados:', resultados.length);
     paintCuestionariosEnLinea(resultados);
-  } catch {
+  } catch (err) {
+    console.error('[Expediente] Error cargando cuestionarios en línea:', err);
     document.getElementById('cuestionariosEnLinea').innerHTML = '';
   }
 }

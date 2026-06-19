@@ -581,10 +581,14 @@ export async function getCuestionariosResultados() {
 }
 
 export async function getCuestionariosResultadosByCarnet(carnet) {
-  const norm = (carnet ?? '').toLowerCase().trim();
-  const s    = await get(ref(db, 'cuestionarios_resultados'));
+  // Normaliza: minúsculas, sin espacios, sin guiones para comparar
+  const norm  = (carnet ?? '').toLowerCase().trim().replace(/-/g, '');
+  const s     = await get(ref(db, 'cuestionarios_resultados'));
   return snapToArray(s)
-    .filter(r => (r.carnet ?? '').toLowerCase().trim() === norm)
+    .filter(r => {
+      const rc = (r.carnet ?? '').toLowerCase().trim().replace(/-/g, '');
+      return rc === norm;
+    })
     .sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
 }
 
