@@ -11,6 +11,7 @@ import { renderExpediente }         from './views/expediente.js';
 import { renderSolicitudes }        from './views/solicitudes.js';
 import { renderArchivo }            from './views/archivo.js';
 import { renderCuestionarios }      from './views/cuestionarios.js';
+import { renderReminders }          from './views/reminders.js';
 import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
 import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
@@ -172,6 +173,11 @@ on('/archivo', () => {
 on('/cuestionarios', () => {
   document.getElementById('topbarTitle').textContent = 'Cuestionarios';
   renderCuestionarios(mainContent);
+});
+
+on('/avisos', () => {
+  document.getElementById('topbarTitle').textContent = 'Avisos';
+  renderReminders(mainContent);
 });
 
 // ---------------------------------------------------------------------------
