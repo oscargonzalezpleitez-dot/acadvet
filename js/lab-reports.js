@@ -19,12 +19,13 @@ export const LAB_LNG       = -89.1872;
 export const RADIUS_METERS = 50;
 
 export const TIPOS_PREPARACION = [
-  'Tinción Gram',
-  'Cultivo bacteriano',
-  'Hemograma',
-  'Urianálisis',
-  'Examen micológico (Hongos)',
-  'Otra preparación'
+  'Práctica 1. Esterilización y desinfección microbiológica',
+  'Práctica 2. Preparación de medios de cultivo',
+  'Práctica 3. Técnicas de siembra bacteriana',
+  'Práctica 4. Tinción de Gram y observación bacteriana',
+  'Práctica 5. Cultivo e identificación básica de hongos',
+  'Práctica 6. Pruebas bioquímicas bacterianas básicas',
+  'Práctica 7. Necropsia aviar y cultivo microbiológico de órganos',
 ];
 
 const rtdb    = getDatabase(app);

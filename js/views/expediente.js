@@ -1142,7 +1142,7 @@ async function paintLabReports(el) {
 
                   <div style="flex:1;min-width:0">
                     <div style="font-weight:700;font-size:var(--text-sm);color:var(--color-text-primary);
-                         margin-bottom:3px">${escHtml(r.tipo_preparacion || '—')}</div>
+                         margin-bottom:3px">${escHtml(r.tipo_preparacion || r.tipo_preparacion || '—')}</div>
                     <div style="font-size:var(--text-xs);color:var(--color-text-secondary);margin-bottom:3px">
                       📚 ${escHtml(r.asignatura || '—')}
                     </div>

@@ -654,7 +654,7 @@
         </div>
         <div class="stat-card top">
           <div class="stat-num" id="statTop">—</div>
-          <div class="stat-label">Top preparación</div>
+          <div class="stat-label">Top práctica</div>
         </div>
       </div>
 
@@ -672,15 +672,16 @@
             </select>
           </div>
           <div class="filter-item">
-            <label>Preparación</label>
+            <label>Práctica</label>
             <select id="fTipo">
               <option value="">Todas</option>
-              <option>Tinción Gram</option>
-              <option>Cultivo bacteriano</option>
-              <option>Hemograma</option>
-              <option>Urianálisis</option>
-              <option>Examen micológico (Hongos)</option>
-              <option>Otra preparación</option>
+              <option>Práctica 1. Esterilización y desinfección microbiológica</option>
+              <option>Práctica 2. Preparación de medios de cultivo</option>
+              <option>Práctica 3. Técnicas de siembra bacteriana</option>
+              <option>Práctica 4. Tinción de Gram y observación bacteriana</option>
+              <option>Práctica 5. Cultivo e identificación básica de hongos</option>
+              <option>Práctica 6. Pruebas bioquímicas bacterianas básicas</option>
+              <option>Práctica 7. Necropsia aviar y cultivo microbiológico de órganos</option>
             </select>
           </div>
           <div class="filter-item">
@@ -865,7 +866,7 @@
             <span class="info-value" id="infoCarne">—</span>
           </div>
           <div class="info-item">
-            <span class="info-label">Preparación</span>
+            <span class="info-label">Práctica</span>
             <span class="info-value" id="infoTipo">—</span>
           </div>
           <div class="info-item">
@@ -988,7 +989,7 @@
       const counts = {};
       _all.forEach(r => { if (r.tipo_preparacion) counts[r.tipo_preparacion] = (counts[r.tipo_preparacion] || 0) + 1; });
       const top = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
-      const topLabel = top ? top[0].replace('bacteriano','').replace('micológico (Hongos)','(Hongos)').replace('preparación','prep.').trim() : '—';
+      const topLabel = top ? top[0].replace(/^Práctica \d+\.\s*/,'').trim().split(' ').slice(0,3).join(' ') : '—';
 
       document.getElementById('statHoy').textContent  = hoy;
       document.getElementById('statRev').textContent  = rev;
