@@ -29,13 +29,20 @@ export const COMPETENCIES = [
   { id: 'c13', name: 'Parámetros críticos del ciclo de esterilización',                          category: 'Nivel 3 — Aplicación', level: 3 },
   { id: 'c14', name: 'Preparación correcta del material antes del autoclave',                    category: 'Nivel 3 — Aplicación', level: 3 },
   { id: 'c15', name: 'Empaque de instrumental',                                                  category: 'Nivel 3 — Aplicación', level: 3 },
+  // Nivel 4 — Análisis
+  { id: 'c16', name: 'Controles físicos de esterilización',                                     category: 'Nivel 4 — Análisis', level: 4 },
+  { id: 'c17', name: 'Controles químicos',                                                      category: 'Nivel 4 — Análisis', level: 4 },
+  { id: 'c18', name: 'Controles biológicos',                                                    category: 'Nivel 4 — Análisis', level: 4 },
+  { id: 'c19', name: 'Geobacillus stearothermophilus como indicador biológico',                 category: 'Nivel 4 — Análisis', level: 4 },
+  { id: 'c20', name: 'Causas de fallas en la esterilización',                                   category: 'Nivel 4 — Análisis', level: 4 },
 ];
 
 export const BADGES = [
   { id: 'b01', label: '🌱 Primer paso',       threshold: 1,  desc: 'Primera competencia validada'          },
   { id: 'b02', label: '📚 Nivel 1 completo',  threshold: 5,  desc: 'Todos los conocimientos básicos'       },
   { id: 'b03', label: '🔬 Nivel 2 completo',  threshold: 10, desc: 'Todas las competencias de comprensión' },
-  { id: 'b04', label: '🏆 Nivel 3 completo',  threshold: 15, desc: 'Todas las competencias de aplicación'  },
+  { id: 'b04', label: '⚙️ Nivel 3 completo',  threshold: 15, desc: 'Todas las competencias de aplicación'  },
+  { id: 'b05', label: '🏆 Nivel 4 completo',  threshold: 20, desc: 'Todas las competencias de análisis'    },
 ];
 
 // ── Sanitizar carné para clave RTDB (sin . # $ [ ]) ──────────────────────────
