@@ -7,27 +7,27 @@
 /* Poppins: display/headings | Inter: body/UI */
 
 :root {
-  /* --- Colores primarios --- */
-  --color-primary:        #6C63FF;
-  --color-primary-light:  #A29BFE;
-  --color-primary-dark:   #5A52E0;
-  --color-primary-dim:    rgba(108, 99, 255, 0.12);
+  /* --- Colores primarios (azul institucional USAM) --- */
+  --color-primary:        #0056A6;
+  --color-primary-light:  #4A9AD4;
+  --color-primary-dark:   #003D7A;
+  --color-primary-dim:    rgba(0, 86, 166, 0.12);
 
-  /* --- Colores de acento --- */
-  --color-accent:         #00D2D3;
-  --color-accent-light:   #81ECEC;
+  /* --- Colores de acento (azul medio) --- */
+  --color-accent:         #007BCC;
+  --color-accent-light:   #7EC8F0;
   --color-accent-alt:     #FF6B6B;
 
-  /* --- Fondos --- */
-  --color-bg:             #F0F2FF;
+  /* --- Fondos (blanco y azul muy claro) --- */
+  --color-bg:             #F2F6FB;
   --color-surface:        #FFFFFF;
-  --color-surface-2:      #ECEEFF;
-  --color-surface-3:      #E4E6F8;
+  --color-surface-2:      #E8EFF8;
+  --color-surface-3:      #D8E6F2;
 
-  /* --- Texto --- */
-  --color-text-primary:   #1A1A2E;
-  --color-text-secondary: #4A4A6A;
-  --color-text-muted:     #8888AA;
+  /* --- Texto (negro y azul oscuro) --- */
+  --color-text-primary:   #0A1628;
+  --color-text-secondary: #2D4A6B;
+  --color-text-muted:     #6B8BAD;
   --color-text-on-dark:   #FFFFFF;
 
   /* --- Estados semánticos --- */
@@ -37,12 +37,12 @@
   --color-warning-dim:    rgba(253, 203, 110, 0.15);
   --color-danger:         #FF6B6B;
   --color-danger-dim:     rgba(255, 107, 107, 0.12);
-  --color-info:           #74B9FF;
-  --color-info-dim:       rgba(116, 185, 255, 0.12);
+  --color-info:           #4A9AD4;
+  --color-info-dim:       rgba(74, 154, 212, 0.12);
 
   /* --- Bordes --- */
-  --color-border:         rgba(108, 99, 255, 0.12);
-  --color-border-strong:  rgba(108, 99, 255, 0.25);
+  --color-border:         rgba(0, 86, 166, 0.14);
+  --color-border-strong:  rgba(0, 86, 166, 0.28);
 
   /* --- Tipografía --- */
   --font-display: 'Poppins', -apple-system, sans-serif;
@@ -78,12 +78,12 @@
   --radius-2xl: 36px;
   --radius-full: 9999px;
 
-  /* --- Sombras (tintadas con el primario) --- */
-  --shadow-xs:  0 1px 4px  rgba(108, 99, 255, 0.06);
-  --shadow-sm:  0 2px 8px  rgba(108, 99, 255, 0.08);
-  --shadow-md:  0 4px 20px rgba(108, 99, 255, 0.14);
-  --shadow-lg:  0 8px 40px rgba(108, 99, 255, 0.18);
-  --shadow-xl:  0 16px 64px rgba(108, 99, 255, 0.22);
+  /* --- Sombras (tintadas con azul institucional) --- */
+  --shadow-xs:  0 1px 4px  rgba(0, 86, 166, 0.07);
+  --shadow-sm:  0 2px 8px  rgba(0, 86, 166, 0.10);
+  --shadow-md:  0 4px 20px rgba(0, 86, 166, 0.15);
+  --shadow-lg:  0 8px 40px rgba(0, 86, 166, 0.18);
+  --shadow-xl:  0 16px 64px rgba(0, 86, 166, 0.22);
 
   /* --- Transiciones --- */
   --transition-fast:   120ms ease;
@@ -193,15 +193,15 @@ h6 { font-size: var(--text-base); }
 .btn--primary {
   background: linear-gradient(135deg, var(--color-primary), var(--color-primary-dark));
   color: var(--color-text-on-dark);
-  box-shadow: 0 3px 12px rgba(108, 99, 255, 0.35);
+  box-shadow: 0 3px 12px rgba(0, 86, 166, 0.35);
 }
 .btn--primary:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(108, 99, 255, 0.45);
+  box-shadow: 0 6px 20px rgba(0, 86, 166, 0.45);
 }
 .btn--primary:active:not(:disabled) {
   transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(108, 99, 255, 0.3);
+  box-shadow: 0 2px 8px rgba(0, 86, 166, 0.3);
 }
 
 /* Secondary */
@@ -239,13 +239,13 @@ h6 { font-size: var(--text-base); }
 
 /* Accent */
 .btn--accent {
-  background: linear-gradient(135deg, var(--color-accent), #00B4B5);
-  color: var(--color-text-primary);
-  box-shadow: 0 3px 12px rgba(0, 210, 211, 0.3);
+  background: linear-gradient(135deg, var(--color-accent), var(--color-primary));
+  color: var(--color-text-on-dark);
+  box-shadow: 0 3px 12px rgba(0, 123, 204, 0.30);
 }
 .btn--accent:hover:not(:disabled) {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 210, 211, 0.4);
+  box-shadow: 0 6px 20px rgba(0, 123, 204, 0.40);
 }
 
 /* Sizes */
