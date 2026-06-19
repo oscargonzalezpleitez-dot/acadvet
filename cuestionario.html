@@ -529,7 +529,7 @@
         </div>
         <div class="form-group">
           <label class="form-label">Número de carnet *</label>
-          <input class="form-input" id="rCarnet" type="text" placeholder="Ej. 2024-0001" maxlength="20" autocomplete="off">
+          <input class="form-input" id="rCarnet" type="text" placeholder="Ej. 170964" maxlength="20" autocomplete="off">
           <div class="form-error hidden" id="errCarnet"></div>
         </div>
         <div class="form-group">
@@ -610,8 +610,8 @@
 
     const db = getDatabase(app);
 
-    // Validación de carnet: formato YYYY-NNNN
-    const CARNET_RE = /^\d{4}-\d{4}$/;
+    // Carnet USAM: 6 dígitos (ej. 170964) o YYYY-NNNN (ej. 2024-0001)
+    const CARNET_RE = /^\d{6}$|^\d{4}-\d{4}$/;
     // Límite de foto base64 (~150 KB)
     const MAX_FOTO_BYTES = 150 * 1024;
     // Número máximo de salidas antes de entrega automática
@@ -818,7 +818,7 @@
       else if (nombre.length > 120) showErr('errNombre', 'El nombre no puede superar 120 caracteres.');
 
       if (!carnet)               showErr('errCarnet', 'El carnet es obligatorio.');
-      else if (!CARNET_RE.test(carnet)) showErr('errCarnet', 'El carnet debe tener el formato YYYY-NNNN (ej. 2024-0001).');
+      else if (!CARNET_RE.test(carnet)) showErr('errCarnet', 'El carné debe tener 6 dígitos (ej. 170964).');
 
       if (!email)                showErr('errEmail',  'El correo es obligatorio.');
       else if (!/^[^\s@]+@usam\.edu\.sv$/i.test(email))
