@@ -11,18 +11,25 @@ const auth = getAuth(app);
 
 // ── Catálogo de competencias ──────────────────────────────────────────────────
 export const COMPETENCIES = [
-  { id: 'c01', name: 'Historia de la esterilización en microbiología',                        category: 'Nivel 1 — Conocimientos básicos', level: 1 },
-  { id: 'c02', name: 'Concepto de esterilización',                                            category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  // Nivel 1 — Conocimientos básicos
+  { id: 'c01', name: 'Historia de la esterilización en microbiología',                           category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  { id: 'c02', name: 'Concepto de esterilización',                                               category: 'Nivel 1 — Conocimientos básicos', level: 1 },
   { id: 'c03', name: 'Diferencia entre esterilización, desinfección, antisepsia y sanitización', category: 'Nivel 1 — Conocimientos básicos', level: 1 },
-  { id: 'c04', name: 'Tipos de microorganismos y resistencia al calor',                       category: 'Nivel 1 — Conocimientos básicos', level: 1 },
-  { id: 'c05', name: 'Esporas bacterianas y su importancia',                                  category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  { id: 'c04', name: 'Tipos de microorganismos y resistencia al calor',                          category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  { id: 'c05', name: 'Esporas bacterianas y su importancia',                                     category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  // Nivel 2 — Comprensión
+  { id: 'c06', name: 'Principios físicos del calor húmedo',                                      category: 'Nivel 2 — Comprensión', level: 2 },
+  { id: 'c07', name: 'Principios del calor seco',                                                category: 'Nivel 2 — Comprensión', level: 2 },
+  { id: 'c08', name: 'Mecanismo de acción del vapor a presión',                                  category: 'Nivel 2 — Comprensión', level: 2 },
+  { id: 'c09', name: 'Métodos químicos de desinfección',                                         category: 'Nivel 2 — Comprensión', level: 2 },
+  { id: 'c10', name: 'Factores que afectan la eficacia de un desinfectante',                     category: 'Nivel 2 — Comprensión', level: 2 },
 ];
 
 export const BADGES = [
-  { id: 'b01', label: '🌱 Primer paso',  threshold: 1, desc: 'Primera competencia validada'    },
-  { id: 'b02', label: '⚗️ En progreso',  threshold: 2, desc: '2 competencias validadas'         },
-  { id: 'b03', label: '🔬 Avanzando',    threshold: 4, desc: '4 competencias validadas'         },
-  { id: 'b04', label: '🏆 Nivel 1 completo', threshold: 5, desc: 'Todas las competencias validadas' },
+  { id: 'b01', label: '🌱 Primer paso',       threshold: 1,  desc: 'Primera competencia validada'       },
+  { id: 'b02', label: '📚 Nivel 1 completo',  threshold: 5,  desc: 'Todos los conocimientos básicos'    },
+  { id: 'b03', label: '🔬 Nivel 2 completo',  threshold: 10, desc: 'Todas las competencias de comprensión' },
+  { id: 'b04', label: '🏆 Experto',           threshold: 10, desc: 'Todas las competencias validadas'   },
 ];
 
 // ── Sanitizar carné para clave RTDB (sin . # $ [ ]) ──────────────────────────
