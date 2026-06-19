@@ -11,23 +11,18 @@ const auth = getAuth(app);
 
 // ── Catálogo de competencias ──────────────────────────────────────────────────
 export const COMPETENCIES = [
-  { id: 'c01', name: 'Teñido Gram',                   category: 'Bacteriología',  level: 1 },
-  { id: 'c02', name: 'Montaje de preparaciones',       category: 'Bacteriología',  level: 1 },
-  { id: 'c03', name: 'Lectura de placas de cultivo',   category: 'Bacteriología',  level: 2 },
-  { id: 'c04', name: 'Hemograma manual',               category: 'Lab Clínico',    level: 2 },
-  { id: 'c05', name: 'Análisis de orina',              category: 'Lab Clínico',    level: 1 },
-  { id: 'c06', name: 'Cultivo microbiológico',         category: 'Bacteriología',  level: 2 },
-  { id: 'c07', name: 'Identificación de hongos',       category: 'Micología',      level: 3 },
-  { id: 'c08', name: 'Preparación de muestras',        category: 'Lab Clínico',    level: 1 },
-  { id: 'c09', name: 'Esterilización de material',     category: 'Bacteriología',  level: 1 },
-  { id: 'c10', name: 'Inoculación de cultivos',        category: 'Bacteriología',  level: 3 },
+  { id: 'c01', name: 'Historia de la esterilización en microbiología',                        category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  { id: 'c02', name: 'Concepto de esterilización',                                            category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  { id: 'c03', name: 'Diferencia entre esterilización, desinfección, antisepsia y sanitización', category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  { id: 'c04', name: 'Tipos de microorganismos y resistencia al calor',                       category: 'Nivel 1 — Conocimientos básicos', level: 1 },
+  { id: 'c05', name: 'Esporas bacterianas y su importancia',                                  category: 'Nivel 1 — Conocimientos básicos', level: 1 },
 ];
 
 export const BADGES = [
-  { id: 'b01', label: '🌱 Primer paso',  threshold: 1,  desc: 'Primera competencia validada'   },
-  { id: 'b02', label: '⚗️ Practicante',  threshold: 3,  desc: '3 técnicas validadas'            },
-  { id: 'b03', label: '🔬 Analista',     threshold: 6,  desc: '6 técnicas validadas'            },
-  { id: 'b04', label: '🏆 Experto Lab',  threshold: 10, desc: 'Todas las competencias validadas' },
+  { id: 'b01', label: '🌱 Primer paso',  threshold: 1, desc: 'Primera competencia validada'    },
+  { id: 'b02', label: '⚗️ En progreso',  threshold: 2, desc: '2 competencias validadas'         },
+  { id: 'b03', label: '🔬 Avanzando',    threshold: 4, desc: '4 competencias validadas'         },
+  { id: 'b04', label: '🏆 Nivel 1 completo', threshold: 5, desc: 'Todas las competencias validadas' },
 ];
 
 // ── Sanitizar carné para clave RTDB (sin . # $ [ ]) ──────────────────────────
