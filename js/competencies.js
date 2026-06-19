@@ -35,6 +35,12 @@ export const COMPETENCIES = [
   { id: 'c18', name: 'Controles biológicos',                                                    category: 'Nivel 4 — Análisis', level: 4 },
   { id: 'c19', name: 'Geobacillus stearothermophilus como indicador biológico',                 category: 'Nivel 4 — Análisis', level: 4 },
   { id: 'c20', name: 'Causas de fallas en la esterilización',                                   category: 'Nivel 4 — Análisis', level: 4 },
+  // Nivel 5 — Evaluación
+  { id: 'c21', name: 'Interpretación de una falla del autoclave',                               category: 'Nivel 5 — Evaluación', level: 5 },
+  { id: 'c22', name: 'Investigación de contaminación por mala esterilización',                  category: 'Nivel 5 — Evaluación', level: 5 },
+  { id: 'c23', name: 'Elaboración de un procedimiento normalizado (POE)',                        category: 'Nivel 5 — Evaluación', level: 5 },
+  { id: 'c24', name: 'Validación de un proceso de esterilización',                              category: 'Nivel 5 — Evaluación', level: 5 },
+  { id: 'c25', name: 'Análisis de riesgo microbiológico',                                       category: 'Nivel 5 — Evaluación', level: 5 },
 ];
 
 export const BADGES = [
@@ -42,7 +48,8 @@ export const BADGES = [
   { id: 'b02', label: '📚 Nivel 1 completo',  threshold: 5,  desc: 'Todos los conocimientos básicos'       },
   { id: 'b03', label: '🔬 Nivel 2 completo',  threshold: 10, desc: 'Todas las competencias de comprensión' },
   { id: 'b04', label: '⚙️ Nivel 3 completo',  threshold: 15, desc: 'Todas las competencias de aplicación'  },
-  { id: 'b05', label: '🏆 Nivel 4 completo',  threshold: 20, desc: 'Todas las competencias de análisis'    },
+  { id: 'b05', label: '🧪 Nivel 4 completo',  threshold: 20, desc: 'Todas las competencias de análisis'    },
+  { id: 'b06', label: '🏆 Experto completo',  threshold: 25, desc: 'Todas las competencias de evaluación'  },
 ];
 
 // ── Sanitizar carné para clave RTDB (sin . # $ [ ]) ──────────────────────────
