@@ -6,9 +6,12 @@
 
 import { getDatabase, ref, get, push, set }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
+import { getAuth, signInAnonymously }
+  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { app } from './firebase-config.js';
 
-const db = getDatabase(app);
+const db   = getDatabase(app);
+const auth = getAuth(app);
 
 // ---------------------------------------------------------------------------
 // Parámetros de la URL
@@ -39,6 +42,7 @@ async function init() {
   if (!sessionId) return showError('URL inválida. Pedile al docente un nuevo QR.');
 
   try {
+    if (!auth.currentUser) await signInAnonymously(auth);
     const snap = await get(ref(db, `qr_sessions/${sessionId}`));
     if (!snap.exists()) return showError('La sesión no existe.');
 
