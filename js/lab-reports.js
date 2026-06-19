@@ -96,7 +96,7 @@ export async function validateLocation() {
 // ---------------------------------------------------------------------------
 // Watermark sobre canvas
 // ---------------------------------------------------------------------------
-export function drawWatermark(canvas, studentName, studentId, coords) {
+export function drawWatermark(canvas, studentName, studentId) {
   const ctx      = canvas.getContext('2d');
   const fontSize = Math.max(13, Math.floor(canvas.width / 32));
   const pad      = 14;
@@ -108,7 +108,7 @@ export function drawWatermark(canvas, studentName, studentId, coords) {
 
   const now   = new Date().toLocaleString('es-SV');
   const line1 = `${studentName}  |  ${studentId}`;
-  const line2 = `${now}  |  GPS: ${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)}`;
+  const line2 = `AcadVet USAM  |  ${now}`;
 
   [line1, line2].forEach((text, i) => {
     const y = canvas.height - pad - lineH * (1 - i);
@@ -142,7 +142,7 @@ export function uploadPhoto(canvas, studentId) {
 // ---------------------------------------------------------------------------
 // Guardar reporte en RTDB
 // ---------------------------------------------------------------------------
-export async function saveReport({ studentName, studentId, asignatura, tipoPreparacion, coords, distance, fotoUrl }) {
+export async function saveReport({ studentName, studentId, asignatura, tipoPreparacion, fotoUrl }) {
   await ensureAnonymousAuth();
   const rRef = push(ref(rtdb, 'lab_reports'));
   const now  = new Date();
@@ -153,9 +153,6 @@ export async function saveReport({ studentName, studentId, asignatura, tipoPrepa
     tipo_preparacion: tipoPreparacion,
     timestamp:        now.getTime(),
     fecha:            now.toISOString().slice(0, 10),
-    gps_lat:          coords.latitude,
-    gps_lng:          coords.longitude,
-    gps_distancia:    Math.round(distance),
     foto_url:         fotoUrl,
     estado:           'pendiente',
     feedback:         '',

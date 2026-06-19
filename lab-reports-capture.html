@@ -77,52 +77,6 @@
       padding: 20px 16px;
     }
 
-    /* ── GPS Card ── */
-    .gps-card {
-      border-radius: var(--radius-lg);
-      padding: 16px 20px;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      margin-bottom: 20px;
-      border: 2px solid;
-      transition: background 0.3s, border-color 0.3s;
-    }
-    .gps-card.detecting  { background: var(--surface-2); border-color: var(--border); }
-    .gps-card.in-range   { background: rgba(0,184,148,0.08); border-color: var(--success); }
-    .gps-card.out-range  { background: rgba(255,107,107,0.08); border-color: var(--danger); }
-    .gps-card.gps-error  { background: rgba(253,203,110,0.12); border-color: var(--warning); }
-
-    .gps-dot {
-      width: 18px; height: 18px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .detecting  .gps-dot { background: var(--text-muted); animation: pulse-gray 1.4s infinite; }
-    .in-range   .gps-dot { background: var(--success);    animation: pulse-green 1.8s infinite; }
-    .out-range  .gps-dot { background: var(--danger);     animation: pulse-red 1.2s infinite; }
-    .gps-error  .gps-dot { background: var(--warning); }
-
-    @keyframes pulse-gray  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.4;transform:scale(.8)} }
-    @keyframes pulse-green { 0%,100%{box-shadow:0 0 0 0 rgba(0,184,148,.5)} 50%{box-shadow:0 0 0 8px rgba(0,184,148,0)} }
-    @keyframes pulse-red   { 0%,100%{box-shadow:0 0 0 0 rgba(255,107,107,.5)} 50%{box-shadow:0 0 0 8px rgba(255,107,107,0)} }
-
-    .gps-info {}
-    .gps-status-text {
-      font-family: var(--font-display);
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-    .detecting  .gps-status-text { color: var(--text-muted); }
-    .in-range   .gps-status-text { color: var(--success); }
-    .out-range  .gps-status-text { color: var(--danger); }
-    .gps-error  .gps-status-text { color: var(--warning); }
-    .gps-distance {
-      font-size: 0.78rem;
-      color: var(--text-2);
-      margin-top: 2px;
-    }
-
     /* ── Form Section ── */
     .section-card {
       background: var(--surface);
@@ -399,15 +353,6 @@
   <div id="mainView">
     <div class="content">
 
-      <!-- GPS Status -->
-      <div class="gps-card detecting" id="gpsCard">
-        <div class="gps-dot"></div>
-        <div class="gps-info">
-          <div class="gps-status-text" id="gpsStatusText">Obteniendo ubicación…</div>
-          <div class="gps-distance" id="gpsDistanceText">Activá el GPS de tu dispositivo</div>
-        </div>
-      </div>
-
       <!-- Formulario -->
       <div class="section-card">
         <div class="section-title">📋 Datos del Estudiante</div>
@@ -478,9 +423,8 @@
 
   <script type="module">
     import {
-      validateLocation, drawWatermark, uploadPhoto, saveReport,
-      getLabLocation, haversineMeters,
-      TIPOS_PREPARACION, LAB_LAT, LAB_LNG, RADIUS_METERS
+      drawWatermark, uploadPhoto, saveReport,
+      TIPOS_PREPARACION
     } from './js/lab-reports.js';
 
     // ── Poblar dropdown de tipos ──
@@ -492,17 +436,10 @@
     });
 
     // ── Estado global ──
-    let gpsOk     = false;
-    let gpsCoords = null;
-    let gpsDist   = null;
     let cameraStream   = null;
     let capturedCanvas = null;
-    let labLoc = { lat: LAB_LAT, lng: LAB_LNG, radius: RADIUS_METERS };
 
     // ── Refs DOM ──
-    const gpsCard        = document.getElementById('gpsCard');
-    const gpsStatusText  = document.getElementById('gpsStatusText');
-    const gpsDistanceText= document.getElementById('gpsDistanceText');
     const btnCapturar    = document.getElementById('btnCapturar');
     const cameraModal    = document.getElementById('cameraModal');
     const cameraVideo    = document.getElementById('cameraVideo');
@@ -513,47 +450,6 @@
     const successSection = document.getElementById('successSection');
     const loadingOverlay = document.getElementById('loadingOverlay');
 
-    // ── GPS watchPosition ──
-    function startGpsWatch() {
-      if (!navigator.geolocation) {
-        setGpsState('error', 'GPS no disponible en este dispositivo', '');
-        return;
-      }
-      navigator.geolocation.watchPosition(
-        pos => updateGps(pos.coords),
-        err => setGpsState('error', 'No se pudo obtener GPS', err.message),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 20000 }
-      );
-    }
-
-    function updateGps(coords) {
-      const dist = haversineMeters(coords.latitude, coords.longitude, labLoc.lat, labLoc.lng);
-
-      gpsCoords = coords;
-      gpsDist   = dist;
-
-      if (dist <= labLoc.radius) {
-        gpsOk = true;
-        setGpsState('in-range',
-          `✅ Estás en el laboratorio`,
-          `Distancia: ${dist.toFixed(0)} m — dentro del rango`
-        );
-      } else {
-        gpsOk = false;
-        setGpsState('out-range',
-          `❌ Fuera del laboratorio`,
-          `Distancia: ${dist.toFixed(0)} m — se requieren ≤ ${labLoc.radius} m`
-        );
-      }
-      checkFormReady();
-    }
-
-    function setGpsState(state, status, detail) {
-      gpsCard.className = `gps-card ${state}`;
-      gpsStatusText.textContent  = status;
-      gpsDistanceText.textContent = detail;
-    }
-
     // ── Validación del formulario ──
     const formInputs = ['studentName', 'studentId', 'asignatura'].map(id => document.getElementById(id));
     formInputs.forEach(el => el.addEventListener('input', checkFormReady));
@@ -562,7 +458,7 @@
     function checkFormReady() {
       const filled = formInputs.every(el => el.value.trim().length >= 2)
                    && tipoPrepSel.value !== '';
-      btnCapturar.disabled = !(gpsOk && filled);
+      btnCapturar.disabled = !filled;
     }
 
     // ── Abrir cámara ──
@@ -606,7 +502,7 @@
 
       const name = document.getElementById('studentName').value.trim();
       const id   = document.getElementById('studentId').value.trim();
-      drawWatermark(photoCanvas, name, id, gpsCoords);
+      drawWatermark(photoCanvas, name, id);
 
       capturedCanvas = photoCanvas;
       stopCamera();
@@ -617,8 +513,7 @@
       const asig = document.getElementById('asignatura').value.trim();
       previewMeta.innerHTML = `
         <strong>Tipo:</strong> ${tipo}<br>
-        <strong>Asignatura:</strong> ${asig}<br>
-        <strong>GPS:</strong> ${gpsCoords.latitude.toFixed(4)}, ${gpsCoords.longitude.toFixed(4)} (${Math.round(gpsDist)} m del lab)
+        <strong>Asignatura:</strong> ${asig}
       `;
       previewSection.classList.remove('hidden');
     });
@@ -648,7 +543,7 @@
         document.getElementById('loadingText').textContent = 'Guardando reporte…';
         await saveReport({
           studentName, studentId, asignatura, tipoPreparacion,
-          coords: gpsCoords, distance: gpsDist, fotoUrl
+          fotoUrl
         });
 
         loadingOverlay.classList.add('hidden');
@@ -674,11 +569,8 @@
       mainView.classList.remove('hidden');
     });
 
-    // ── Cargar ubicación del lab desde RTDB y arrancar GPS ──
-    getLabLocation().then(loc => {
-      labLoc = loc;
-      startGpsWatch();
-    }).catch(() => startGpsWatch());
+    // Habilitar botón inicial si el form ya tiene datos
+    checkFormReady();
   </script>
 </body>
 </html>
