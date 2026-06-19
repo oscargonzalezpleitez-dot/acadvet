@@ -571,7 +571,7 @@ export async function saveCuestionarioResultado(quizId, carnet, resultado) {
 
   // Guardar resultado
   const newRef = push(ref(db, 'cuestionarios_resultados'));
-  await set(newRef, { ...resultado, guardado_en: Date.now() });
+  await set(newRef, { ...resultado, carnet, guardado_en: Date.now() });
   return newRef.key;
 }
 
@@ -581,12 +581,12 @@ export async function getCuestionariosResultados() {
 }
 
 export async function getCuestionariosResultadosByCarnet(carnet) {
-  // Normaliza: minúsculas, sin espacios, sin guiones para comparar
-  const norm  = (carnet ?? '').toLowerCase().trim().replace(/-/g, '');
-  const s     = await get(ref(db, 'cuestionarios_resultados'));
+  const norm = (carnet ?? '').toLowerCase().trim().replace(/-/g, '');
+  const s    = await get(ref(db, 'cuestionarios_resultados'));
   return snapToArray(s)
     .filter(r => {
-      const rc = (r.carnet ?? '').toLowerCase().trim().replace(/-/g, '');
+      // El carné puede estar en r.carnet (raíz) o en r.alumno.carnet (anidado)
+      const rc = ((r.carnet ?? r.alumno?.carnet) ?? '').toLowerCase().trim().replace(/-/g, '');
       return rc === norm;
     })
     .sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
