@@ -23,13 +23,19 @@ export const COMPETENCIES = [
   { id: 'c08', name: 'Mecanismo de acción del vapor a presión',                                  category: 'Nivel 2 — Comprensión', level: 2 },
   { id: 'c09', name: 'Métodos químicos de desinfección',                                         category: 'Nivel 2 — Comprensión', level: 2 },
   { id: 'c10', name: 'Factores que afectan la eficacia de un desinfectante',                     category: 'Nivel 2 — Comprensión', level: 2 },
+  // Nivel 3 — Aplicación
+  { id: 'c11', name: 'Funcionamiento del autoclave',                                             category: 'Nivel 3 — Aplicación', level: 3 },
+  { id: 'c12', name: 'Partes del autoclave',                                                     category: 'Nivel 3 — Aplicación', level: 3 },
+  { id: 'c13', name: 'Parámetros críticos del ciclo de esterilización',                          category: 'Nivel 3 — Aplicación', level: 3 },
+  { id: 'c14', name: 'Preparación correcta del material antes del autoclave',                    category: 'Nivel 3 — Aplicación', level: 3 },
+  { id: 'c15', name: 'Empaque de instrumental',                                                  category: 'Nivel 3 — Aplicación', level: 3 },
 ];
 
 export const BADGES = [
-  { id: 'b01', label: '🌱 Primer paso',       threshold: 1,  desc: 'Primera competencia validada'       },
-  { id: 'b02', label: '📚 Nivel 1 completo',  threshold: 5,  desc: 'Todos los conocimientos básicos'    },
+  { id: 'b01', label: '🌱 Primer paso',       threshold: 1,  desc: 'Primera competencia validada'          },
+  { id: 'b02', label: '📚 Nivel 1 completo',  threshold: 5,  desc: 'Todos los conocimientos básicos'       },
   { id: 'b03', label: '🔬 Nivel 2 completo',  threshold: 10, desc: 'Todas las competencias de comprensión' },
-  { id: 'b04', label: '🏆 Experto',           threshold: 10, desc: 'Todas las competencias validadas'   },
+  { id: 'b04', label: '🏆 Nivel 3 completo',  threshold: 15, desc: 'Todas las competencias de aplicación'  },
 ];
 
 // ── Sanitizar carné para clave RTDB (sin . # $ [ ]) ──────────────────────────
