@@ -11,6 +11,7 @@ import {
   addExposicion, updateExposicion, deleteExposicion,
   updateParciales, updateObservaciones,
   getTareas, deleteTarea,
+  getCuestionariosResultadosByCarnet,
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
@@ -449,7 +450,7 @@ function confirmDeleteAsist(asist) {
 // TAB: EXÁMENES CORTOS (T08)
 // ---------------------------------------------------------------------------
 
-function paintQuizzes(el) {
+async function paintQuizzes(el) {
   const allQuizzes = snapToArray(_insc.quizzes);
   const byArea = n => allQuizzes.filter(q => Number(q.area) === n).sort(sortByFechaDesc);
   const a1 = byArea(1), a2 = byArea(2), a3 = byArea(3);
@@ -463,6 +464,11 @@ function paintQuizzes(el) {
         Área 3 también incluye la exposición — registrala en la pestaña Exposiciones.
       </p>
     </div>
+    <div id="cuestionariosEnLinea" style="margin-top:var(--space-6)">
+      <div style="text-align:center;padding:16px;color:var(--color-text-muted);font-size:var(--text-sm)">
+        Cargando cuestionarios en línea…
+      </div>
+    </div>
   `;
 
   [1, 2, 3].forEach(n => {
@@ -470,6 +476,14 @@ function paintQuizzes(el) {
       ?.addEventListener('click', () => openNotaModal('quiz', null, n));
   });
   wireNotaActions(el, 'quiz', allQuizzes);
+
+  // Cargar resultados de cuestionarios en línea para este alumno
+  try {
+    const resultados = await getCuestionariosResultadosByCarnet(_alumno.carnet);
+    paintCuestionariosEnLinea(resultados);
+  } catch {
+    document.getElementById('cuestionariosEnLinea').innerHTML = '';
+  }
 }
 
 function quizAreaHTML(areaNum, pct, quizzes, maxCount) {
@@ -492,6 +506,123 @@ function quizAreaHTML(areaNum, pct, quizzes, maxCount) {
         : `<div class="nota-list">${quizzes.map(q => notaRowHTML(q, 'quiz')).join('')}</div>`}
     </div>
   `;
+}
+
+// ---------------------------------------------------------------------------
+// Cuestionarios en línea — sección dentro del tab Ex. Cortos
+// ---------------------------------------------------------------------------
+
+function paintCuestionariosEnLinea(resultados) {
+  const el = document.getElementById('cuestionariosEnLinea');
+  if (!el) return;
+
+  if (!resultados.length) {
+    el.innerHTML = '';
+    return;
+  }
+
+  el.innerHTML = `
+    <div style="border-top:2px solid var(--color-border);padding-top:var(--space-5)">
+      <div style="display:flex;align-items:center;gap:var(--space-3);margin-bottom:var(--space-4)">
+        <span style="font-size:var(--text-sm);font-weight:700;color:var(--color-text-secondary)">
+          💻 Cuestionarios en línea completados
+        </span>
+        <span class="badge badge--outline">${resultados.length}</span>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:var(--space-3)">
+        ${resultados.map((r, i) => {
+          const notaConvertida = Math.round((r.porcentaje ?? 0) / 10 * 10) / 10;
+          const cls  = notaConvertida >= 6 ? 'nota--great' : 'nota--low';
+          const fecha = r.submitTime
+            ? new Date(r.submitTime).toLocaleDateString('es-SV')
+            : '—';
+          return `
+            <div style="display:flex;align-items:center;gap:var(--space-3);
+                 background:var(--color-surface-2);border:1px solid var(--color-border);
+                 border-radius:var(--radius-md);padding:12px 14px">
+              <div style="flex:1;min-width:0">
+                <div style="font-weight:600;font-size:var(--text-sm);color:var(--color-text-primary);
+                     white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+                  ${escHtml(r.cuestionarioNombre || '—')}
+                </div>
+                <div style="font-size:var(--text-xs);color:var(--color-text-muted);margin-top:2px">
+                  📅 ${fecha} &nbsp;·&nbsp; ${r.puntos ?? '—'}/${r.puntosTotal ?? '—'} pts (${r.porcentaje ?? 0}%)
+                </div>
+              </div>
+              <span class="${cls}" style="font-weight:800;font-size:var(--text-sm);flex-shrink:0">
+                ${notaConvertida.toFixed(1)}
+              </span>
+              <div style="flex-shrink:0;display:flex;gap:var(--space-2)">
+                <button class="btn btn--secondary btn--sm cuest-reg-btn"
+                  data-idx="${i}"
+                  data-nombre="${escHtml(r.cuestionarioNombre || 'Cuestionario en línea')}"
+                  data-nota="${notaConvertida}"
+                  data-fecha="${r.submitTime ? new Date(r.submitTime).toISOString().slice(0,10) : ''}">
+                  Registrar en área…
+                </button>
+              </div>
+            </div>`;
+        }).join('')}
+      </div>
+    </div>
+  `;
+
+  el.querySelectorAll('.cuest-reg-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const nombre = btn.dataset.nombre;
+      const nota   = parseFloat(btn.dataset.nota);
+      const fecha  = btn.dataset.fecha || null;
+      openRegistrarCuestionarioModal(nombre, nota, fecha);
+    });
+  });
+}
+
+function openRegistrarCuestionarioModal(nombre, nota, fecha) {
+  openModal({
+    title: 'Registrar cuestionario en Ex. Cortos',
+    size:  'sm',
+    body: `
+      <p style="font-size:var(--text-sm);color:var(--color-text-secondary);margin-bottom:var(--space-4)">
+        <strong>${escHtml(nombre)}</strong><br>
+        Nota calculada: <strong>${nota.toFixed(1)} / 10</strong>
+      </p>
+      <div class="form-group" style="margin-bottom:var(--space-4)">
+        <label class="form-label">Registrar en</label>
+        <select class="form-input" id="cuest-area-sel">
+          <option value="1">Área 1 (15%)</option>
+          <option value="2">Área 2 (15%)</option>
+          <option value="3">Área 3 (20%)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nota (0–10) <span class="text-muted">— ajustá si es necesario</span></label>
+        <input class="form-input" id="cuest-nota-inp" type="number" min="0" max="10" step="0.1" value="${nota}">
+        <span class="form-error hidden" id="cuest-nota-err">Ingresá una nota entre 0 y 10.</span>
+      </div>`,
+    confirmLabel: 'Registrar',
+    async onConfirm() {
+      const area     = Number(document.getElementById('cuest-area-sel')?.value ?? 1);
+      const notaFinal = parseFloat(document.getElementById('cuest-nota-inp')?.value ?? nota);
+      const errEl    = document.getElementById('cuest-nota-err');
+
+      if (isNaN(notaFinal) || notaFinal < 0 || notaFinal > 10) {
+        errEl?.classList.remove('hidden');
+        return;
+      }
+
+      try {
+        await addQuiz(_alumnoId, _materiaId, { nombre, nota: notaFinal, fecha, area });
+        closeModal();
+        showToast('Quiz registrado en Ex. Cortos');
+        await reloadInsc();
+        refreshStats();
+        paintTabContent();
+      } catch (err) {
+        showToast('Error al registrar', 'error');
+        console.error(err);
+      }
+    },
+  });
 }
 
 // ---------------------------------------------------------------------------

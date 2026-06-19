@@ -580,6 +580,14 @@ export async function getCuestionariosResultados() {
   return snapToArray(s).sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
 }
 
+export async function getCuestionariosResultadosByCarnet(carnet) {
+  const norm = (carnet ?? '').toLowerCase().trim();
+  const s    = await get(ref(db, 'cuestionarios_resultados'));
+  return snapToArray(s)
+    .filter(r => (r.carnet ?? '').toLowerCase().trim() === norm)
+    .sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
+}
+
 export async function deleteResultado(id) {
   await remove(ref(db, `cuestionarios_resultados/${id}`));
 }
