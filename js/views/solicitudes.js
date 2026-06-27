@@ -42,17 +42,36 @@ async function paint() {
       <div class="view-header">
         <div>
           <h2 class="view-title">Solicitudes de Inscripción</h2>
-          <p class="view-subtitle text-muted text-sm">
-            Los alumnos se registran en
-            <code style="font-size:var(--text-xs)">${escHtml(registroUrl)}</code>
-          </p>
         </div>
-        <button class="btn btn--secondary btn--sm" id="btnCopyRegLink">
-          <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
-          </svg>
-          Copiar enlace
-        </button>
+      </div>
+
+      <!-- QR de inscripción -->
+      <div style="display:flex;align-items:center;gap:var(--space-5);
+                  background:var(--color-surface-2);border:1px solid var(--color-border);
+                  border-radius:var(--radius-lg);padding:var(--space-4) var(--space-5);
+                  margin-bottom:var(--space-5)">
+        <div id="solQrCode" style="flex-shrink:0;width:100px;height:100px;
+             background:#fff;border-radius:var(--radius-md);
+             display:flex;align-items:center;justify-content:center;
+             font-size:var(--text-xs);color:var(--color-text-muted)">
+          Cargando…
+        </div>
+        <div>
+          <div style="font-weight:700;font-size:var(--text-sm);color:var(--color-text-primary);margin-bottom:4px">
+            Enlace de registro para alumnos
+          </div>
+          <code style="font-size:var(--text-xs);color:var(--color-text-secondary);word-break:break-all">
+            ${escHtml(registroUrl)}
+          </code>
+          <div style="margin-top:var(--space-3)">
+            <button class="btn btn--secondary btn--sm" id="btnCopyRegLink2">
+              <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/>
+              </svg>
+              Copiar enlace
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Tabs -->
@@ -89,14 +108,18 @@ async function paint() {
   });
 
   // Copiar enlace
-  document.getElementById('btnCopyRegLink')?.addEventListener('click', async () => {
+  const copyHandler = async () => {
     try {
       await navigator.clipboard.writeText(registroUrl);
       showToast('Enlace copiado');
     } catch (_) {
       showToast('No se pudo copiar: ' + registroUrl, 'error');
     }
-  });
+  };
+  document.getElementById('btnCopyRegLink2')?.addEventListener('click', copyHandler);
+
+  // Generar QR
+  generateQR(registroUrl);
 
   wireCards(pendientes, historial);
 }
@@ -305,6 +328,40 @@ async function updateBadge() {
       badge.classList.add('hidden');
     }
   } catch (_) {}
+}
+
+// ---------------------------------------------------------------------------
+// QR de inscripción
+// ---------------------------------------------------------------------------
+
+async function generateQR(url) {
+  const container = document.getElementById('solQrCode');
+  if (!container) return;
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js');
+    container.innerHTML = '';
+    new QRCode(container, {
+      text:         url,
+      width:        100,
+      height:       100,
+      colorDark:    '#1A1A2E',
+      colorLight:   '#FFFFFF',
+      correctLevel: QRCode.CorrectLevel.M,
+    });
+  } catch {
+    container.innerHTML = `<span style="font-size:.65rem;color:var(--color-text-muted);text-align:center;padding:4px">Error al generar QR</span>`;
+  }
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error('No se pudo cargar: ' + src));
+    document.head.appendChild(s);
+  });
 }
 
 // ---------------------------------------------------------------------------
