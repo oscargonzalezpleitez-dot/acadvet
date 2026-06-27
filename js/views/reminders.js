@@ -322,7 +322,7 @@ function buildMailtoData() {
     _currentReminder.message ? `\n📝 ${_currentReminder.message}` : '',
     ``,
     `Saludos,`,
-    `Prof. Óscar González`,
+    `Docente: Lic. Óscar González`,
     `Facultad de Medicina Veterinaria · USAM`,
   ].filter(l => l !== null).join('\n');
 
