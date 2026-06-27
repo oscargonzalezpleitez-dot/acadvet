@@ -18,6 +18,12 @@ import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Auth helper
+// ---------------------------------------------------------------------------
+const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
+
+// ---------------------------------------------------------------------------
 // Estado del módulo
 // ---------------------------------------------------------------------------
 let _container = null;
@@ -356,7 +362,7 @@ function asistRowHTML(asist) {
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
         </button>
-        <button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
+        ${!isEPS() ? `<button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
           data-asist-action="delete" data-asist-id="${asist.id}"
           aria-label="Eliminar asistencia">
           <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -364,7 +370,7 @@ function asistRowHTML(asist) {
             <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
             <path d="M9 6V4h6v2"/>
           </svg>
-        </button>
+        </button>` : ''}
       </div>
     </div>
   `;
@@ -760,9 +766,9 @@ function paintObservaciones(el) {
       <div class="obs-footer">
         <span class="obs-saved-hint" id="obsSavedHint">Guardado ✓</span>
         <div style="display:flex;gap:var(--space-2)">
-          <button class="btn btn--ghost btn--sm" id="btnClearObs" style="color:var(--color-danger)" ${!obs ? 'disabled' : ''}>
+          ${!isEPS() ? `<button class="btn btn--ghost btn--sm" id="btnClearObs" style="color:var(--color-danger)" ${!obs ? 'disabled' : ''}>
             Borrar
-          </button>
+          </button>` : ''}
           <button class="btn btn--primary" id="btnSaveObs">Guardar observaciones</button>
         </div>
       </div>
@@ -849,7 +855,7 @@ function notaRowHTML(item, type) {
             <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
           </svg>
         </button>
-        <button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
+        ${!isEPS() ? `<button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
           data-nota-action="delete" data-nota-type="${type}" data-nota-id="${escHtml(item.id)}"
           aria-label="Eliminar">
           <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -857,7 +863,7 @@ function notaRowHTML(item, type) {
             <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
             <path d="M9 6V4h6v2"/>
           </svg>
-        </button>
+        </button>` : ''}
       </div>
     </div>
   `;
@@ -1075,7 +1081,7 @@ function tareaRowHTML(t) {
           </svg>
           Abrir en Teams
         </button>
-        <button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
+        ${!isEPS() ? `<button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
           data-tarea-action="delete" data-tarea-id="${escHtml(t.id)}"
           aria-label="Eliminar entrega">
           <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1083,7 +1089,7 @@ function tareaRowHTML(t) {
             <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
             <path d="M9 6V4h6v2"/>
           </svg>
-        </button>
+        </button>` : ''}
       </div>
     </div>
   `;
@@ -1189,7 +1195,7 @@ async function paintLabReports(el) {
                     </div>
                   </div>
 
-                  <button class="btn btn--ghost btn--sm lab-del-btn"
+                  ${!isEPS() ? `<button class="btn btn--ghost btn--sm lab-del-btn"
                     data-lab-id="${escHtml(r.id)}"
                     data-lab-tipo="${escHtml(r.tipo_preparacion || r.tipo || '—')}"
                     style="color:var(--color-danger);align-self:flex-start;flex-shrink:0"
@@ -1199,7 +1205,7 @@ async function paintLabReports(el) {
                       <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
                       <path d="M9 6V4h6v2"/>
                     </svg>
-                  </button>
+                  </button>` : ''}
                 </div>
                 ${r.feedback ? `
                   <div style="border-top:1px solid var(--color-border);padding:var(--space-3) var(--space-4);

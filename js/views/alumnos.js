@@ -13,6 +13,8 @@ import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
 import { openQRSession } from '../qr-session.js';
 
+const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
+
 // --- Estado del módulo ---
 let _container = null;
 let _materiaId = null;
@@ -127,7 +129,7 @@ function paint() {
             Excel grupal
           </button>
           <button class="btn btn--primary" id="btnAgregarAlumno">+ Agregar alumno</button>
-          <button class="btn btn--ghost btn--sm" id="btnEliminarAlumno" style="color:var(--color-danger);border-color:var(--color-danger)">− Eliminar alumno</button>
+          ${!isEPS() ? `<button class="btn btn--ghost btn--sm" id="btnEliminarAlumno" style="color:var(--color-danger);border-color:var(--color-danger)">− Eliminar alumno</button>` : ''}
         </div>
       </div>
 
@@ -225,7 +227,7 @@ function rowHTML(alumno, num) {
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          <button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
+          ${!isEPS() ? `<button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
             data-action="remove" data-id="${alumno.id}"
             aria-label="Quitar alumno de esta materia">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -234,7 +236,7 @@ function rowHTML(alumno, num) {
               <path d="M10 11v6M14 11v6"/>
               <path d="M9 6V4h6v2"/>
             </svg>
-          </button>
+          </button>` : ''}
         </div>
       </td>
     </tr>

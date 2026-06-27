@@ -6,6 +6,8 @@
 import { getQRSessions, getQRSessionAsistentes, deleteQRSession, updateQRSession } from '../db.js';
 import { showToast, openModal, closeModal } from '../ui.js';
 
+const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
+
 let _container  = null;
 let _sessions   = [];
 let _filtered   = [];
@@ -119,14 +121,14 @@ function cardHtml(s) {
             <svg class="arch-chevron" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </button>
-        ${s.active ? `
+        ${(s.active && !isEPS()) ? `
         <button class="btn btn--sm arch-finalizar-btn"
           data-fin="${esc(s.id)}"
           title="Finalizar sesión atascada"
           style="font-size:.7rem;background:var(--color-warning);color:#7a4800;border:none;padding:4px 10px">
           ■ Finalizar
         </button>` : ''}
-        <button class="arch-delete-btn${s.active ? ' arch-delete-btn--disabled' : ''}"
+        ${!isEPS() ? `<button class="arch-delete-btn${s.active ? ' arch-delete-btn--disabled' : ''}"
           data-del="${esc(s.id)}"
           ${s.active ? 'disabled title="Finalizá la sesión antes de eliminarla"' : 'title="Eliminar sesión"'}
           aria-label="Eliminar sesión">
@@ -136,7 +138,7 @@ function cardHtml(s) {
             <path d="M10 11v6"/><path d="M14 11v6"/>
             <path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>
           </svg>
-        </button>
+        </button>` : ''}
       </div>
       ${isOpen ? `<div class="arch-card-body" id="archBody-${esc(s.id)}">
         <div class="loading-state" style="padding:var(--space-6)">

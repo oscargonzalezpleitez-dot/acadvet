@@ -173,6 +173,7 @@ function cardHTML(s, isPending) {
     ? `<img src="${fotoSrc}" alt="${escHtml(s.nombre)}" class="sol-avatar sol-avatar--photo" loading="lazy">`
     : `<div class="sol-avatar sol-avatar--initials">${escHtml(initials)}</div>`;
 
+  const isEPS = sessionStorage.getItem('acadvet_auth') === 'eps';
   const actions = isPending ? `
     <div class="sol-actions">
       <button class="btn btn--primary btn--sm sol-aprobar" data-id="${escHtml(s.id)}">
@@ -181,7 +182,7 @@ function cardHTML(s, isPending) {
       <button class="btn btn--ghost btn--sm sol-rechazar" data-id="${escHtml(s.id)}" style="color:var(--color-danger)">
         ✕ Rechazar
       </button>
-    </div>` : `
+    </div>` : !isEPS ? `
     <div class="sol-actions">
       <button class="btn btn--ghost btn--sm sol-eliminar" data-id="${escHtml(s.id)}" style="color:var(--color-danger)">
         <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px">
@@ -191,7 +192,7 @@ function cardHTML(s, isPending) {
         </svg>
         Eliminar registro
       </button>
-    </div>`;
+    </div>` : '';
 
   return `
     <div class="sol-card" data-id="${escHtml(s.id)}">
