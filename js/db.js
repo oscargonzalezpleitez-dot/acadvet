@@ -406,6 +406,10 @@ export async function rechazarSolicitud(solicitudId) {
   });
 }
 
+export async function deleteSolicitud(solicitudId) {
+  await remove(ref(db, `solicitudes_registro/${solicitudId}`));
+}
+
 // ---------------------------------------------------------------------------
 // ARCHIVO — sesiones QR para la vista de historial
 // ---------------------------------------------------------------------------
@@ -557,27 +561,33 @@ export async function checkYaRespondio(quizId, carnet) {
 }
 
 /**
- * Guarda un resultado de cuestionario de forma atómica:
- * 1. Escribe en cuestionarios_enviados/{quizId}/{carnetKey} — falla si ya existe (regla !data.exists())
- * 2. Escribe el resultado en cuestionarios_resultados
+ * Guarda un resultado de cuestionario de forma atómica usando multi-path update:
+ * - cuestionarios_enviados/{quizId}/{carnetKey} — falla si ya existe (regla !data.exists())
+ * - cuestionarios_resultados/{newId}             — el resultado completo
  *
- * Si el paso 1 falla con PERMISSION_DENIED, el alumno ya entregó antes.
+ * Al ser un solo update(), ambas escrituras son atómicas: si cualquiera falla
+ * (incluyendo PERMISSION_DENIED por duplicado), ninguna se aplica.
  */
 export async function saveCuestionarioResultado(quizId, carnet, resultado) {
-  const key = sanitizeKey(carnet);
+  const key    = sanitizeKey(carnet);
+  const newRef = push(ref(db, 'cuestionarios_resultados')); // genera key sin escribir
 
-  // Reclamar el slot — la regla Firebase impide sobrescribir
-  await set(ref(db, `cuestionarios_enviados/${quizId}/${key}`), Date.now());
+  const updates = {};
+  updates[`cuestionarios_enviados/${quizId}/${key}`]  = Date.now();
+  updates[`cuestionarios_resultados/${newRef.key}`]   = { ...resultado, carnet, guardado_en: Date.now() };
 
-  // Guardar resultado
-  const newRef = push(ref(db, 'cuestionarios_resultados'));
-  await set(newRef, { ...resultado, carnet, guardado_en: Date.now() });
+  // update() en la raíz aplica ambas rutas atómicamente
+  await update(ref(db), updates);
   return newRef.key;
 }
 
 export async function getCuestionariosResultados() {
   const s = await get(ref(db, 'cuestionarios_resultados'));
   return snapToArray(s).sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
+}
+
+export async function deleteLabReport(id) {
+  await remove(ref(db, `lab_reports/${id}`));
 }
 
 export async function getLabReportsByCarnet(carnet) {
@@ -601,14 +611,31 @@ export async function getCuestionariosResultadosByCarnet(carnet) {
 }
 
 export async function deleteResultado(id) {
-  await remove(ref(db, `cuestionarios_resultados/${id}`));
+  // Leer el resultado para obtener quizId y carnet antes de borrarlo
+  const snap = await get(ref(db, `cuestionarios_resultados/${id}`));
+  const updates = {};
+  updates[`cuestionarios_resultados/${id}`] = null;
+  if (snap.exists()) {
+    const { cuestionarioId, carnet } = snap.val();
+    if (cuestionarioId && carnet) {
+      // Limpiar el slot en cuestionarios_enviados para que el alumno pueda retomar
+      updates[`cuestionarios_enviados/${cuestionarioId}/${sanitizeKey(carnet)}`] = null;
+    }
+  }
+  await update(ref(db), updates);
 }
 
 export async function deleteResultadosByQuiz(quizId) {
-  const s    = await get(ref(db, 'cuestionarios_resultados'));
-  const ids  = snapToArray(s)
+  const s   = await get(ref(db, 'cuestionarios_resultados'));
+  const ids = snapToArray(s)
     .filter(r => r.cuestionarioId === quizId)
     .map(r => r.id);
-  await Promise.all(ids.map(id => remove(ref(db, `cuestionarios_resultados/${id}`))));
+
+  const updates = {};
+  ids.forEach(id => { updates[`cuestionarios_resultados/${id}`] = null; });
+  // Limpiar todos los slots de entrega del quiz para que los alumnos puedan retomarlo
+  updates[`cuestionarios_enviados/${quizId}`] = null;
+
+  if (Object.keys(updates).length > 0) await update(ref(db), updates);
   return ids.length;
 }

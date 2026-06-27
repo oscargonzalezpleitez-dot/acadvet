@@ -12,7 +12,7 @@ import {
   updateParciales, updateObservaciones,
   getTareas, deleteTarea,
   getCuestionariosResultadosByCarnet,
-  getLabReportsByCarnet,
+  getLabReportsByCarnet, deleteLabReport,
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
@@ -242,14 +242,17 @@ function wireShellEvents() {
 function paintTabContent() {
   const el = document.getElementById('tabContent');
   if (!el) return;
+  const _catchTab = p => Promise.resolve(p).catch(err =>
+    console.error('[AcadVet] Error renderizando tab:', err)
+  );
   switch (_tab) {
-    case 'asistencias':   paintAsistencias(el);   break;
-    case 'quizzes':       paintQuizzes(el);       break; // async, fire-and-forget OK
-    case 'parciales':     paintParciales(el);     break;
-    case 'exposiciones':  paintExposiciones(el);  break;
-    case 'observaciones': paintObservaciones(el); break;
-    case 'tareas':        paintTareas(el);        break;
-    case 'labreports':    paintLabReports(el);    break;
+    case 'asistencias':   paintAsistencias(el);          break;
+    case 'quizzes':       _catchTab(paintQuizzes(el));   break;
+    case 'parciales':     paintParciales(el);            break;
+    case 'exposiciones':  paintExposiciones(el);         break;
+    case 'observaciones': paintObservaciones(el);        break;
+    case 'tareas':        _catchTab(paintTareas(el));    break;
+    case 'labreports':    _catchTab(paintLabReports(el));break;
   }
 }
 
@@ -756,12 +759,39 @@ function paintObservaciones(el) {
       </div>
       <div class="obs-footer">
         <span class="obs-saved-hint" id="obsSavedHint">Guardado ✓</span>
-        <button class="btn btn--primary" id="btnSaveObs">Guardar observaciones</button>
+        <div style="display:flex;gap:var(--space-2)">
+          <button class="btn btn--ghost btn--sm" id="btnClearObs" style="color:var(--color-danger)" ${!obs ? 'disabled' : ''}>
+            Borrar
+          </button>
+          <button class="btn btn--primary" id="btnSaveObs">Guardar observaciones</button>
+        </div>
       </div>
     </div>
   `;
 
   document.getElementById('btnSaveObs')?.addEventListener('click', saveObservaciones);
+
+  document.getElementById('btnClearObs')?.addEventListener('click', () => {
+    openModal({
+      title: 'Borrar observaciones',
+      size:  'sm',
+      body:  `<p class="text-secondary">¿Borrar todas las observaciones de <strong>${escHtml(_alumno.nombre)}</strong>?</p>`,
+      confirmLabel:   'Borrar',
+      confirmVariant: 'danger',
+      async onConfirm() {
+        try {
+          await updateObservaciones(_alumnoId, _materiaId, '');
+          _insc = { ..._insc, observaciones: '' };
+          closeModal();
+          showToast('Observaciones borradas');
+          paintTabContent();
+        } catch (err) {
+          showToast('Error al borrar observaciones', 'error');
+          console.error(err);
+        }
+      },
+    });
+  });
 }
 
 async function saveObservaciones() {
@@ -996,7 +1026,7 @@ async function paintTareas(el) {
     </div>
   `;
 
-  document.getElementById('btnCopyTareasLink')?.addEventListener('click', async (btn) => {
+  document.getElementById('btnCopyTareasLink')?.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(portalUrl);
       showToast('Enlace copiado al portapapeles');
@@ -1142,7 +1172,7 @@ async function paintLabReports(el) {
 
                   <div style="flex:1;min-width:0">
                     <div style="font-weight:700;font-size:var(--text-sm);color:var(--color-text-primary);
-                         margin-bottom:3px">${escHtml(r.tipo_preparacion || r.tipo_preparacion || '—')}</div>
+                         margin-bottom:3px">${escHtml(r.tipo_preparacion || r.tipo || '—')}</div>
                     <div style="font-size:var(--text-xs);color:var(--color-text-secondary);margin-bottom:3px">
                       📚 ${escHtml(r.asignatura || '—')}
                     </div>
@@ -1158,6 +1188,18 @@ async function paintLabReports(el) {
                       </span>
                     </div>
                   </div>
+
+                  <button class="btn btn--ghost btn--sm lab-del-btn"
+                    data-lab-id="${escHtml(r.id)}"
+                    data-lab-tipo="${escHtml(r.tipo_preparacion || r.tipo || '—')}"
+                    style="color:var(--color-danger);align-self:flex-start;flex-shrink:0"
+                    aria-label="Eliminar reporte">
+                    <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                      <polyline points="3 6 5 6 21 6"/>
+                      <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+                      <path d="M9 6V4h6v2"/>
+                    </svg>
+                  </button>
                 </div>
                 ${r.feedback ? `
                   <div style="border-top:1px solid var(--color-border);padding:var(--space-3) var(--space-4);
@@ -1172,6 +1214,34 @@ async function paintLabReports(el) {
           }).join('')}
         </div>
       </div>`;
+    el.querySelectorAll('.lab-del-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const id   = btn.dataset.labId;
+        const tipo = btn.dataset.labTipo;
+        openModal({
+          title: 'Eliminar reporte de práctica',
+          size:  'sm',
+          body:  `<p class="text-secondary">
+            ¿Eliminar el reporte <strong>${escHtml(tipo)}</strong>?<br>
+            <span class="text-muted text-sm">Esta acción no se puede deshacer.</span>
+          </p>`,
+          confirmLabel:   'Eliminar',
+          confirmVariant: 'danger',
+          async onConfirm() {
+            try {
+              await deleteLabReport(id);
+              closeModal();
+              showToast('Reporte eliminado');
+              paintLabReports(el);
+            } catch (err) {
+              showToast('Error al eliminar el reporte', 'error');
+              console.error(err);
+            }
+          },
+        });
+      });
+    });
+
   } catch (err) {
     console.error('[Expediente] Error cargando prácticas:', err);
     el.innerHTML = `
@@ -1326,7 +1396,6 @@ function calcAsistSummary(asists) {
 // ---------------------------------------------------------------------------
 
 async function reloadInsc() {
-  const { getInscripcion } = await import('../db.js');
   _insc = await getInscripcion(_alumnoId, _materiaId) ?? _insc;
 }
 

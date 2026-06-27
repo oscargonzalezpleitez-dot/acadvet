@@ -127,6 +127,7 @@ function paint() {
             Excel grupal
           </button>
           <button class="btn btn--primary" id="btnAgregarAlumno">+ Agregar alumno</button>
+          <button class="btn btn--ghost btn--sm" id="btnEliminarAlumno" style="color:var(--color-danger);border-color:var(--color-danger)">− Eliminar alumno</button>
         </div>
       </div>
 
@@ -269,6 +270,7 @@ function emptyTable() {
 function wireEvents() {
   document.getElementById('btnAgregarAlumno')?.addEventListener('click', openCreateModal);
   document.getElementById('btnAgregarAlumnoEmpty')?.addEventListener('click', openCreateModal);
+  document.getElementById('btnEliminarAlumno')?.addEventListener('click', openRemoveStudentModal);
 
   document.getElementById('btnImportarQR')?.addEventListener('click', openImportModal);
 
@@ -351,6 +353,108 @@ function openEditModal(alumno) {
       }
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Modal de selección: elegir qué alumno eliminar
+// ---------------------------------------------------------------------------
+
+function openRemoveStudentModal() {
+  if (_alumnos.length === 0) {
+    showToast('No hay alumnos inscritos en esta materia', 'error');
+    return;
+  }
+
+  let _selected = null;
+
+  const listItems = () => {
+    const q = document.getElementById('removeSearch')?.value.toLowerCase() ?? '';
+    const filtered = _alumnos.filter(a =>
+      !q ||
+      (a.nombre ?? '').toLowerCase().includes(q) ||
+      (a.carnet  ?? '').toLowerCase().includes(q)
+    );
+    return filtered;
+  };
+
+  const renderList = () => {
+    const items = listItems();
+    const el = document.getElementById('removeAlumnoList');
+    if (!el) return;
+
+    if (items.length === 0) {
+      el.innerHTML = `<p class="text-sm text-muted" style="padding:var(--space-3)">Sin resultados.</p>`;
+      return;
+    }
+
+    el.innerHTML = items.map(a => {
+      const initials = getInitials(a.nombre);
+      const bg       = AVATAR_PALETTE[strHash(a.id) % AVATAR_PALETTE.length];
+      const isActive = _selected?.id === a.id;
+      return `
+        <div class="remove-alumno-item${isActive ? ' remove-alumno-item--selected' : ''}"
+             data-rid="${escHtml(a.id)}"
+             style="display:flex;align-items:center;gap:var(--space-3);padding:10px 12px;
+                    border-radius:var(--radius-md);cursor:pointer;
+                    background:${isActive ? 'var(--color-danger-dim, rgba(255,107,107,.12))' : 'transparent'};
+                    border:1.5px solid ${isActive ? 'var(--color-danger)' : 'transparent'};
+                    transition:background .15s">
+          <div style="width:32px;height:32px;border-radius:50%;background:${bg};
+               display:flex;align-items:center;justify-content:center;
+               font-size:.7rem;font-weight:700;color:#fff;flex-shrink:0">
+            ${escHtml(initials)}
+          </div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:var(--text-sm);color:var(--color-text-primary);
+                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${escHtml(a.nombre)}</div>
+            <div style="font-size:var(--text-xs);color:var(--color-text-muted)">${escHtml(a.carnet ?? '—')}</div>
+          </div>
+          ${isActive ? `<svg viewBox="0 0 24 24" width="16" height="16" stroke="var(--color-danger)" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+        </div>`;
+    }).join('');
+
+    el.querySelectorAll('.remove-alumno-item').forEach(row => {
+      row.addEventListener('click', () => {
+        const id = row.dataset.rid;
+        _selected = _alumnos.find(a => a.id === id) ?? null;
+        renderList();
+        const confirmBtn = document.getElementById('modalConfirmBtn');
+        if (confirmBtn) confirmBtn.disabled = !_selected;
+      });
+    });
+  };
+
+  openModal({
+    title: 'Eliminar alumno de la materia',
+    size: 'sm',
+    body: `
+      <p class="text-secondary text-sm" style="margin-bottom:var(--space-3)">
+        Seleccioná al alumno que deseas quitar de <strong>${escHtml(_materia.nombre)}</strong>:
+      </p>
+      <div class="search-input-wrap" style="margin-bottom:var(--space-3)">
+        <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input class="search-input" id="removeSearch" type="search"
+          placeholder="Buscar por nombre o carné…" autocomplete="off">
+      </div>
+      <div id="removeAlumnoList"
+           style="max-height:260px;overflow-y:auto;display:flex;flex-direction:column;gap:4px;
+                  border:1px solid var(--color-border);border-radius:var(--radius-md);padding:6px">
+      </div>`,
+    confirmLabel: 'Eliminar seleccionado',
+    confirmVariant: 'danger',
+    async onConfirm() {
+      if (!_selected) return;
+      confirmRemove(_selected);
+    },
+  });
+
+  // Inicializar lista y búsqueda después de que el modal esté en el DOM
+  setTimeout(() => {
+    renderList();
+    document.getElementById('removeSearch')?.addEventListener('input', renderList);
+    const confirmBtn = document.getElementById('modalConfirmBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
+  }, 0);
 }
 
 // ---------------------------------------------------------------------------

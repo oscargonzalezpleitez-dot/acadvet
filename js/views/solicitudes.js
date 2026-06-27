@@ -2,7 +2,7 @@
 // AcadVet USAM — Vista: Solicitudes de auto-inscripción
 // =============================================================================
 
-import { getSolicitudes, aprobarSolicitud, rechazarSolicitud } from '../db.js';
+import { getSolicitudes, aprobarSolicitud, rechazarSolicitud, deleteSolicitud } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 
 let _container = null;
@@ -158,7 +158,17 @@ function cardHTML(s, isPending) {
       <button class="btn btn--ghost btn--sm sol-rechazar" data-id="${escHtml(s.id)}" style="color:var(--color-danger)">
         ✕ Rechazar
       </button>
-    </div>` : '';
+    </div>` : `
+    <div class="sol-actions">
+      <button class="btn btn--ghost btn--sm sol-eliminar" data-id="${escHtml(s.id)}" style="color:var(--color-danger)">
+        <svg viewBox="0 0 24 24" width="13" height="13" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right:4px">
+          <polyline points="3 6 5 6 21 6"/>
+          <path d="M19 6l-1 14H6L5 6"/><path d="M10 11v6M14 11v6"/>
+          <path d="M9 6V4h6v2"/>
+        </svg>
+        Eliminar registro
+      </button>
+    </div>`;
 
   return `
     <div class="sol-card" data-id="${escHtml(s.id)}">
@@ -241,6 +251,35 @@ function wireCards(pendientes, historial) {
             await paint();
           } catch (err) {
             showToast('Error al rechazar', 'error');
+            console.error(err);
+          }
+        },
+      });
+    });
+  });
+
+  _container.querySelectorAll('.sol-eliminar').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const id  = btn.dataset.id;
+      const sol = historial.find(s => s.id === id);
+      if (!sol) return;
+      openModal({
+        title: 'Eliminar registro',
+        size:  'sm',
+        body:  `<p class="text-secondary">
+          ¿Eliminar el registro de <strong>${escHtml(sol.nombre)}</strong> del historial?<br>
+          <span class="text-muted text-sm">Esta acción no deshace la aprobación ni el rechazo previo.</span>
+        </p>`,
+        confirmLabel:   'Eliminar',
+        confirmVariant: 'danger',
+        async onConfirm() {
+          try {
+            await deleteSolicitud(id);
+            closeModal();
+            showToast('Registro eliminado del historial');
+            await paint();
+          } catch (err) {
+            showToast('Error al eliminar', 'error');
             console.error(err);
           }
         },
