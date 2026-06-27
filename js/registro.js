@@ -408,10 +408,8 @@ async function submitRegistro() {
 // ---------------------------------------------------------------------------
 // Lógica de tardíos
 // ---------------------------------------------------------------------------
-function computeEstado(email) {
+function computeEstado(_email) {
   if (!_cfg.markLate) return 'presente';
-  // Tardío solo aplica a correos @usam.edu.sv
-  if (!email?.toLowerCase().endsWith('@usam.edu.sv')) return 'presente';
   const startedAt = _cfg.sessionStartedAt ?? Date.now();
   const elapsed   = Date.now() - startedAt;
   return elapsed > ((_cfg.lateMinutes ?? 10) * 60_000) ? 'tardio' : 'presente';

@@ -396,7 +396,8 @@ async function rotateToken() {
 // Countdown
 // ---------------------------------------------------------------------------
 function startCountdown() {
-  _s.rotatedAt = Date.now();
+  // _s.rotatedAt ya fue seteado por openQRSession() o rotateToken() — no resetear aquí
+  // para que el tiempo local coincida con el valor guardado en Firebase.
 
   const tick = () => {
     if (!_s) return;
