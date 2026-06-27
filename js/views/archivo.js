@@ -3,7 +3,7 @@
 // Lista historial de sesiones con lista de asistentes y exportación.
 // =============================================================================
 
-import { getQRSessions, getQRSessionAsistentes, deleteQRSession } from '../db.js';
+import { getQRSessions, getQRSessionAsistentes, deleteQRSession, updateQRSession } from '../db.js';
 import { showToast, openModal, closeModal } from '../ui.js';
 
 let _container  = null;
@@ -119,9 +119,16 @@ function cardHtml(s) {
             <svg class="arch-chevron" viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" fill="none" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
           </div>
         </button>
+        ${s.active ? `
+        <button class="btn btn--sm arch-finalizar-btn"
+          data-fin="${esc(s.id)}"
+          title="Finalizar sesión atascada"
+          style="font-size:.7rem;background:var(--color-warning);color:#7a4800;border:none;padding:4px 10px">
+          ■ Finalizar
+        </button>` : ''}
         <button class="arch-delete-btn${s.active ? ' arch-delete-btn--disabled' : ''}"
           data-del="${esc(s.id)}"
-          ${s.active ? 'disabled title="No se puede borrar una sesión activa"' : 'title="Eliminar sesión"'}
+          ${s.active ? 'disabled title="Finalizá la sesión antes de eliminarla"' : 'title="Eliminar sesión"'}
           aria-label="Eliminar sesión">
           <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <polyline points="3 6 5 6 21 6"/>
@@ -145,6 +152,43 @@ function wireList() {
   });
   _container.querySelectorAll('.arch-delete-btn[data-del]').forEach(btn => {
     btn.addEventListener('click', () => confirmDelete(btn.dataset.del));
+  });
+  _container.querySelectorAll('.arch-finalizar-btn[data-fin]').forEach(btn => {
+    btn.addEventListener('click', () => confirmFinalizar(btn.dataset.fin));
+  });
+}
+
+function confirmFinalizar(id) {
+  const session = _sessions.find(s => s.id === id);
+  if (!session) return;
+  openModal({
+    title: 'Finalizar sesión',
+    size: 'sm',
+    body: `
+      <p class="text-secondary">
+        ¿Marcar como finalizada la sesión de <strong>${esc(session.materiaNombre || '—')}</strong>
+        del <strong>${fmtFecha(session.fecha, session.startedAt)}</strong>?
+      </p>
+      <p class="text-muted text-sm" style="margin-top:var(--space-2)">
+        La sesión quedó activa porque el navegador se cerró sin detenerla.
+        Finalizarla no elimina los registros de asistencia.
+      </p>`,
+    confirmLabel: 'Finalizar',
+    async onConfirm() {
+      try {
+        await updateQRSession(id, { active: false, stoppedAt: Date.now() });
+        closeModal();
+        const s = _sessions.find(x => x.id === id);
+        if (s) s.active = false;
+        _filtered = _filterMat ? _sessions.filter(s => s.materiaId === _filterMat) : _sessions;
+        document.getElementById('archList').innerHTML = renderList();
+        wireList();
+        showToast('Sesión finalizada');
+      } catch (err) {
+        console.error('[AcadVet] Error finalizando sesión:', err);
+        showToast('Error al finalizar la sesión', 'error');
+      }
+    },
   });
 }
 
