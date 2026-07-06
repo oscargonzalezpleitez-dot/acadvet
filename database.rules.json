@@ -2,16 +2,17 @@
   "rules": {
 
     "config": {
-      ".read": true,
+      ".read": false,
       ".write": false,
       "lab_location": {
+        ".read": true,
         ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'"
       }
     },
 
     "login_lockout": {
       ".read": false,
-      ".write": true
+      ".write": false
     },
 
     "materias": {
@@ -50,10 +51,11 @@
 
     "qr_sessions": {
       ".read":  "auth != null",
-      ".write": "auth != null",
       "$sessionId": {
+        ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
         "asistentes": {
           "$asistenteId": {
+            ".write":    "auth != null && !data.exists()",
             ".validate": "newData.hasChildren(['nombre', 'carnet', 'ts'])"
           }
         }

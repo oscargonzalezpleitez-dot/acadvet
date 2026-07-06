@@ -68,7 +68,20 @@ Y el contenido de `storage.rules` en:
 
 ## Notas de seguridad
 
-- El PIN sigue siendo el secreto principal. El hash SHA-256 se usa también como password de Firebase.
-- Si cambiás el PIN en Firebase (campo `config/pin_hash`), debés también actualizar la contraseña de la cuenta en Firebase Auth.
-- Las reglas de la base de datos ahora requieren autenticación para todas las operaciones.
-  Si un usuario anónimo (alumno en cuestionario/inscripción) intenta acceder a datos de alumnos o notas, Firebase lo deniega.
+- El PIN es el secreto principal. El SHA-256 del PIN es la contraseña de la cuenta de Firebase Auth.
+- **La verificación del PIN la hace Firebase Auth del lado servidor.** La app ya NO lee ningún
+  hash desde la base de datos: el nodo `config` tiene `".read": false`, así que el hash no es
+  público ni se puede romper offline. Si intentás iniciar sesión con un PIN incorrecto, Firebase
+  devuelve `auth/invalid-credential` y se aplica el bloqueo por intentos.
+- El nodo `config/pin_hash` ya no se usa para login; podés dejarlo (queda privado) o eliminarlo.
+- Si cambiás el PIN, actualizá **únicamente** la contraseña de la cuenta en Firebase Auth
+  (Console → Authentication → Users) al nuevo `sha256(PIN)`.
+- Recomendación: usá un PIN de 6 o más dígitos. El mínimo que exige la app es 4, pero un PIN más
+  largo dificulta cualquier intento de fuerza bruta en línea (que además Firebase limita).
+- Las reglas de la base de datos requieren autenticación para todas las operaciones. Los alumnos
+  (auth anónima) sólo pueden **agregar** su asistencia en una sesión QR, nunca modificar la sesión
+  ni borrar asistencias ajenas.
+
+> ⚠️ **Importante:** estos cambios de seguridad sólo surten efecto una vez que despliegues las
+> reglas nuevas (`firebase deploy --only database,storage`, ver Paso 4). Hasta entonces, la base
+> sigue con las reglas viejas.

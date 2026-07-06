@@ -13,13 +13,8 @@ import { renderArchivo }            from './views/archivo.js';
 import { renderCuestionarios }      from './views/cuestionarios.js';
 import { renderReminders }          from './views/reminders.js';
 import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
-import { onAuthStateChanged, signOut, signInWithEmailAndPassword } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-import { getDatabase, ref, get } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-import { auth, app } from './firebase-config.js';
-
-const _rtdb = getDatabase(app);
-const _FB_EMAIL = { admin: 'docente@acadvet-usam.edu.sv', eps: 'eps@acadvet-usam.edu.sv', true: 'docente@acadvet-usam.edu.sv' };
-const _FB_HASH  = { admin: 'config/pin_hash', eps: 'config/eps_pin_hash', true: 'config/pin_hash' };
+import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { auth } from './firebase-config.js';
 
 // --- Guard de sesión ---
 const _auth = sessionStorage.getItem('acadvet_auth');
@@ -205,30 +200,17 @@ async function refreshSolicitudesBadge() {
 }
 
 // ---------------------------------------------------------------------------
-// Init — esperar a que Firebase Auth restaure la sesión antes de arrancar
-// el router, para que las reglas de RTDB vean al usuario autenticado.
+// Init — Firebase Auth persiste la sesión (browserLocalPersistence) y restaura
+// al usuario antes del primer callback. Si no hay sesión Firebase válida se
+// exige re-login (ingresar el PIN). No se lee ningún hash público de la base.
 // ---------------------------------------------------------------------------
-onAuthStateChanged(auth, async (user) => {
+onAuthStateChanged(auth, (user) => {
   if (user) {
-    // Sesión Firebase Auth activa — arrancar normal
     refreshSolicitudesBadge();
     initRouter();
     return;
   }
-
-  // Sin sesión Firebase Auth. Intentar re-autenticación silenciosa
-  // usando el pin_hash del nodo público /config (readable sin auth).
-  const role = sessionStorage.getItem('acadvet_auth');
-  if (!role) { window.location.replace('index.html'); return; }
-
-  try {
-    const snap = await get(ref(_rtdb, _FB_HASH[role] ?? 'config/pin_hash'));
-    if (!snap.exists()) throw new Error('no-hash');
-    await signInWithEmailAndPassword(auth, _FB_EMAIL[role] ?? _FB_EMAIL.admin, snap.val());
-    // onAuthStateChanged volverá a dispararse con el usuario autenticado
-  } catch (_) {
-    // Re-auth falló → forzar login para que el usuario ingrese el PIN
-    sessionStorage.removeItem('acadvet_auth');
-    window.location.replace('index.html');
-  }
+  // Sin sesión Firebase Auth (nunca autenticado o token expirado) → login.
+  sessionStorage.removeItem('acadvet_auth');
+  window.location.replace('index.html');
 });
