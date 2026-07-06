@@ -339,7 +339,7 @@ function buildQCard(q, i) {
 
   const imagenBlock = q.tipo === 'imagen' ? `
     <div class="cuest-img-upload-wrap">
-      ${q.imagen ? `<img src="${q.imagen}" class="cuest-img-preview" alt="Imagen de la pregunta">` : ''}
+      ${q.imagen ? `<img src="${esc(q.imagen)}" class="cuest-img-preview" alt="Imagen de la pregunta">` : ''}
       <label class="cuest-img-upload-label">
         <input type="file" accept="image/*" class="cuest-img-file" data-qi="${i}" style="display:none">
         <span class="btn btn--secondary btn--sm">${q.imagen ? '🔄 Cambiar imagen' : '🖼 Subir imagen *'}</span>
@@ -811,7 +811,7 @@ function paintResultados(el) {
                     <td>
                       <div class="alumno-cell">
                         ${r.alumno?.foto
-                          ? `<img src="${r.alumno.foto}" class="cuest-thumb" alt="Foto">`
+                          ? `<img src="${esc(r.alumno.foto)}" class="cuest-thumb" alt="Foto">`
                           : `<div class="alumno-avatar" style="background:linear-gradient(135deg,var(--color-primary),var(--color-accent))">${initials(r.alumno?.nombre)}</div>`
                         }
                         <span class="alumno-nombre">${esc(r.alumno?.nombre || '—')}</span>
@@ -943,7 +943,7 @@ function openResultadoModal(r) {
     body: `
       <div class="cuest-modal-result">
         <div class="cuest-modal-header-info">
-          ${r.alumno?.foto ? `<img src="${r.alumno.foto}" class="cuest-modal-photo" alt="Foto">` : ''}
+          ${r.alumno?.foto ? `<img src="${esc(r.alumno.foto)}" class="cuest-modal-photo" alt="Foto">` : ''}
           <div>
             <p><strong>${esc(r.alumno?.nombre || '—')}</strong></p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Carnet: ${esc(r.alumno?.carnet || '—')}</p>

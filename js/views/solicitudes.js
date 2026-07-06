@@ -167,7 +167,7 @@ function cardHTML(s, isPending) {
   const fotoSrc = s.fotoUrl
     ? escHtml(s.fotoUrl)
     : s.fotoB64
-      ? `data:image/jpeg;base64,${s.fotoB64}`
+      ? `data:image/jpeg;base64,${escHtml(s.fotoB64)}`
       : null;
   const avatar = fotoSrc
     ? `<img src="${fotoSrc}" alt="${escHtml(s.nombre)}" class="sol-avatar sol-avatar--photo" loading="lazy">`

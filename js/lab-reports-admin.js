@@ -82,7 +82,7 @@ function renderGrid(reports) {
   grid.innerHTML = reports.map(r => `
     <div class="report-card ${r.estado}" data-id="${r.id}" tabindex="0" role="button" aria-label="Ver reporte de ${r.student_name}">
       <div class="report-thumb">
-        <img src="${r.foto_url}" alt="Foto de práctica" loading="lazy" onerror="this.style.display='none'">
+        <img src="${escHtml(r.foto_url)}" alt="Foto de práctica" loading="lazy" onerror="this.style.display='none'">
         <div class="report-estado-badge ${r.estado}">${r.estado === 'revisado' ? '✅ Revisado' : '🔴 Pendiente'}</div>
       </div>
       <div class="report-info">
@@ -129,7 +129,7 @@ export function openDetail(reportId) {
 
   const modal = document.getElementById('detailModal');
 
-  setHtml('detailPhoto',    `<img src="${r.foto_url}" alt="Foto práctica">`);
+  setHtml('detailPhoto',    `<img src="${escHtml(r.foto_url)}" alt="Foto práctica">`);
   setText('detailName',     r.student_name);
   setText('detailStudentId',r.student_id);
   setText('detailTipo',     r.tipo_preparacion);

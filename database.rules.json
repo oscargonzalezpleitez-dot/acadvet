@@ -66,7 +66,12 @@
       ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
       ".write": "auth != null",
       "$solicitudId": {
-        ".validate": "newData.hasChildren(['nombre', 'carnet', 'email', 'materias'])"
+        ".validate": "newData.hasChildren(['nombre', 'carnet', 'email', 'materias'])",
+        "nombre":   { ".validate": "newData.isString() && newData.val().length <= 200" },
+        "carnet":   { ".validate": "newData.isString() && newData.val().length <= 40" },
+        "email":    { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 120)" },
+        "telefono": { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 40)" },
+        "fotoB64":  { ".validate": "newData.val() === null || (newData.isString() && newData.val().length <= 400000)" }
       }
     },
 
@@ -125,7 +130,7 @@
         ".read":  "auth != null",
         "$compId": {
           ".write": "auth != null",
-          ".validate": "newData.hasChildren(['student_id', 'student_name', 'comp_id', 'comp_name', 'status'])"
+          ".validate": "newData.hasChildren(['student_id', 'student_name', 'comp_id', 'comp_name', 'status']) && (auth.token.firebase.sign_in_provider === 'password' || (newData.child('status').val() === 'pendiente' && !newData.child('validated_by').exists() && !newData.child('validated_at').exists()))"
         }
       }
     }

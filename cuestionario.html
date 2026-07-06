@@ -969,7 +969,7 @@
         const LETRAS = ['A','B','C','D','E','F'];
         const opts   = Array.isArray(q.opciones) ? q.opciones : Object.values(q.opciones || {});
         bodyHtml = `
-          ${q.imagen ? `<img src="${q.imagen}" class="q-img" alt="Imagen de la pregunta">` : ''}
+          ${q.imagen ? `<img src="${escHtml(q.imagen)}" class="q-img" alt="Imagen de la pregunta">` : ''}
           <div class="q-options">
             ${opts.map((o, j) => `
               <div class="q-option" data-qi="${i}" data-val="${j}">

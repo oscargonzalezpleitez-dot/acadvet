@@ -1036,7 +1036,7 @@
           <div class="report-item ${r.estado}" data-id="${r.id}">
             <div class="report-thumb">
               ${r.foto_url
-                ? `<img src="${r.foto_url}" alt="foto" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'report-thumb-empty\\'>🔬</div>'">`
+                ? `<img src="${esc(r.foto_url)}" alt="foto" loading="lazy" onerror="this.parentElement.innerHTML='<div class=\\'report-thumb-empty\\'>🔬</div>'">`
                 : '<div class="report-thumb-empty">🔬</div>'}
             </div>
             <div class="report-body">

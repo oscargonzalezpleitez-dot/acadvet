@@ -1167,8 +1167,8 @@ async function paintLabReports(el) {
                    border-radius:var(--radius-md);overflow:hidden">
                 <div style="display:flex;gap:var(--space-3);padding:var(--space-4)">
                   ${r.foto_url ? `
-                    <a href="${r.foto_url}" target="_blank" style="flex-shrink:0">
-                      <img src="${r.foto_url}" alt="Foto práctica"
+                    <a href="${escHtml(r.foto_url)}" target="_blank" style="flex-shrink:0">
+                      <img src="${escHtml(r.foto_url)}" alt="Foto práctica"
                            style="width:72px;height:72px;object-fit:cover;border-radius:var(--radius-sm);
                                   border:1px solid var(--color-border)">
                     </a>` : `
