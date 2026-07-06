@@ -19,7 +19,9 @@
       "PLAN.md",
       "SPEC.md",
       "CONSTITUTION.md",
-      "TASKS.md"
+      "TASKS.md",
+      "DEPLOY.md",
+      "SETUP_FIREBASE_AUTH.md"
     ],
     "headers": [
       {
