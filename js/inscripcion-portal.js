@@ -211,10 +211,8 @@ async function enviarSolicitud() {
     showSuccess(nombre);
   } catch (err) {
     console.error('[Inscripción] Error:', err);
-    if (err.message === 'DUPLICADO_PENDIENTE') {
-      showErr(document.getElementById('errCarnet'), 'Ya existe una solicitud pendiente con este carné.');
-    } else if (err.message === 'YA_REGISTRADO') {
-      showErr(document.getElementById('errCarnet'), 'Este carné ya está registrado en el sistema.');
+    if (err.message === 'DUPLICADO_PENDIENTE' || err.message === 'YA_REGISTRADO') {
+      showErr(document.getElementById('errCarnet'), 'Este carné ya tiene una solicitud enviada o ya está registrado. Si creés que es un error, avisale al docente.');
     } else {
       showErr(document.getElementById('errGlobal'), 'Error al enviar la solicitud. Verificá tu conexión e intentá de nuevo.');
     }

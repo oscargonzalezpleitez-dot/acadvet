@@ -318,26 +318,17 @@ export async function addTarea(alumnoId, materiaId, { nombre, archivoNombre, url
 // ---------------------------------------------------------------------------
 
 export async function createSolicitud({ nombre, carnet, email, telefono, fotoUrl, storagePath, fotoB64 = null, materias, fecha }) {
-  // Evitar duplicados: buscar solicitud pendiente o alumno con mismo carné
-  const [solSnap, alSnap] = await Promise.all([
-    get(ref(db, 'solicitudes_registro')),
-    get(ref(db, 'alumnos')),
-  ]);
-
+  // Anti-duplicados sin leer datos privados: el alumno anónimo no puede leer
+  // solicitudes_registro ni alumnos, así que se reclama un índice write-once
+  // por carné. Las reglas rechazan la escritura si el carné ya fue reclamado.
   const carnetNorm = (carnet ?? '').toLowerCase().trim();
-
-  if (solSnap.exists()) {
-    const dup = Object.values(solSnap.val()).find(s =>
-      (s.carnet ?? '').toLowerCase().trim() === carnetNorm && s.estado === 'pendiente'
-    );
-    if (dup) throw new Error('DUPLICADO_PENDIENTE');
-  }
-
-  if (alSnap.exists()) {
-    const exists = Object.values(alSnap.val()).find(a =>
-      (a.carnet ?? '').toLowerCase().trim() === carnetNorm
-    );
-    if (exists) throw new Error('YA_REGISTRADO');
+  try {
+    await set(ref(db, `solicitudes_idx/${carnetNorm}`), true);
+  } catch (err) {
+    if (String(err?.message ?? err).toUpperCase().includes('PERMISSION_DENIED')) {
+      throw new Error('DUPLICADO_PENDIENTE');
+    }
+    throw err;
   }
 
   const newRef = push(ref(db, 'solicitudes_registro'));
@@ -404,10 +395,26 @@ export async function rechazarSolicitud(solicitudId) {
     estado:      'rechazado',
     procesadoEn: Date.now(),
   });
+  await liberarCarnetIdx(solicitudId);
 }
 
 export async function deleteSolicitud(solicitudId) {
+  await liberarCarnetIdx(solicitudId);
   await remove(ref(db, `solicitudes_registro/${solicitudId}`));
+}
+
+/** Libera el carné en solicitudes_idx para que el alumno pueda volver a
+ *  solicitar. No se libera si la solicitud fue aprobada: el carné queda
+ *  bloqueado porque ya existe como alumno. */
+async function liberarCarnetIdx(solicitudId) {
+  try {
+    const s = await get(ref(db, `solicitudes_registro/${solicitudId}`));
+    if (!s.exists() || s.val().estado === 'aprobado') return;
+    const carnetNorm = (s.val().carnet ?? '').toLowerCase().trim();
+    if (carnetNorm) await remove(ref(db, `solicitudes_idx/${carnetNorm}`));
+  } catch (err) {
+    console.warn('[db] No se pudo liberar el carné del índice:', err);
+  }
 }
 
 // ---------------------------------------------------------------------------
