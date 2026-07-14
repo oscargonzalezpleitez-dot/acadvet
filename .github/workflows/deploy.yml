@@ -1,4 +1,4 @@
-name: Deploy to GitHub Pages
+name: Deploy (GitHub Pages + Firebase Hosting)
 
 on:
   push:
@@ -10,13 +10,15 @@ permissions:
   pages: write
   id-token: write
 
-concurrency:
-  group: pages
-  cancel-in-progress: false
-
 jobs:
-  deploy:
+  # ---------------------------------------------------------------------------
+  # GitHub Pages — https://oscargonzalezpleitez-dot.github.io/acadvet/
+  # ---------------------------------------------------------------------------
+  github-pages:
     runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
@@ -35,3 +37,30 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  # ---------------------------------------------------------------------------
+  # Firebase Hosting — https://acadvet-usam.web.app y .firebaseapp.com
+  # Solo despliega hosting; las reglas de database/storage siguen siendo
+  # manuales (ver DEPLOY.md). Requiere el secret FIREBASE_TOKEN en el repo.
+  # ---------------------------------------------------------------------------
+  firebase-hosting:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: firebase-hosting
+      cancel-in-progress: false
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Firebase CLI
+        run: npm install -g firebase-tools@13
+
+      - name: Deploy to Firebase Hosting
+        run: firebase deploy --only hosting --project acadvet-usam --non-interactive
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
