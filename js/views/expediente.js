@@ -11,7 +11,7 @@ import {
   addExposicion, updateExposicion, deleteExposicion,
   updateParciales, updateObservaciones, updateNotaDiagnostico,
   getTareas, deleteTarea,
-  getCuestionariosResultadosByCarnet,
+  getCuestionariosResultadosByCarnet, getCuestionarioCorrect,
   getLabReportsByCarnet, deleteLabReport,
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
@@ -76,6 +76,7 @@ export async function renderExpediente(container, alumnoId, materiaId) {
     _insc    = insc;
 
     paintShell();
+    syncNotaDiagnostico(); // autocompleta la nota de diagnóstico si falta (en segundo plano)
   } catch (err) {
     console.error('[AcadVet] Error cargando expediente:', err);
     container.innerHTML = `
@@ -1420,6 +1421,66 @@ function calcStats() {
     estadoLabel,
     estadoCls,
   };
+}
+
+// Autocompleta la nota del examen de diagnóstico si el alumno aún no la tiene:
+// busca su resultado del cuestionario de diagnóstico (por carné), lo califica y
+// lo guarda. Corre en segundo plano al abrir el perfil; si algo falla, no molesta.
+async function syncNotaDiagnostico() {
+  if (isEPS()) return;                                   // no escribir en sesión visitante
+  if (typeof _insc.nota_diagnostico === 'number') return; // ya tiene nota
+  if (!_alumno.carnet) return;
+
+  const alumnoId = _alumnoId, materiaId = _materiaId;    // fijar por si cambia la vista
+  try {
+    const resultados = await getCuestionariosResultadosByCarnet(_alumno.carnet);
+    const dx = resultados.find(r => /diagn[oó]stico/i.test(r.cuestionarioNombre || ''));
+    if (!dx || !dx.cuestionarioId) return;
+
+    const correct = await getCuestionarioCorrect(dx.cuestionarioId);
+    const nota    = gradeResultNota(dx, correct);
+    if (nota === null) return;
+
+    await updateNotaDiagnostico(alumnoId, materiaId, nota);
+    // Solo reflejar si seguimos en el mismo expediente
+    if (_alumnoId === alumnoId && _materiaId === materiaId) {
+      _insc.nota_diagnostico = nota;
+      refreshStats();
+    }
+  } catch (e) {
+    console.warn('[Expediente] No se pudo autocompletar la nota de diagnóstico:', e);
+  }
+}
+
+// Calcula la nota (0–10) de un resultado de cuestionario. Si ya viene calificado
+// usa su porcentaje; si no, califica el detalle contra las respuestas correctas.
+function gradeResultNota(result, correctData) {
+  if (typeof result.porcentaje === 'number' && !result.pendiente) {
+    return Math.round((result.porcentaje / 10) * 10) / 10;
+  }
+  if (!correctData?.respuestas) return null;
+  const { respuestas, puntos: ptsPorPregunta = [] } = correctData;
+  const det = result.detalle || [];
+  let puntos = 0, total = 0;
+  det.forEach((d, i) => {
+    const pts = ptsPorPregunta[i] ?? d.puntos ?? 1;
+    total += pts;
+    if (evalRespuesta(d.tipo, d.respuesta, respuestas[i])) puntos += pts;
+  });
+  if (total === 0) return null;
+  const porcentaje = Math.round((puntos / total) * 100);
+  return Math.round((porcentaje / 10) * 10) / 10;
+}
+
+function evalRespuesta(tipo, respuesta, correcta) {
+  if (respuesta === null || respuesta === undefined || respuesta === '') return false;
+  if (tipo === 'multiple' || tipo === 'imagen') return parseInt(respuesta) === parseInt(correcta);
+  if (tipo === 'truefalse') return String(respuesta) === String(correcta);
+  if (tipo === 'short' || tipo === 'fill') {
+    const norm = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    return norm(respuesta) === norm(correcta);
+  }
+  return false;
 }
 
 // Editar la nota del examen de diagnóstico (0–10). Solo docente.
