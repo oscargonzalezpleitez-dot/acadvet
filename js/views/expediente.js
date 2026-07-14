@@ -101,6 +101,20 @@ function paintShell() {
   const stats    = calcStats();
   const initials = getInitials(_alumno.nombre);
   const avatarBg = AVATAR_PALETTE[strHash(_alumno.id) % AVATAR_PALETTE.length];
+
+  // Foto tomada al inscribirse (fotoUrl del Storage, o fotoB64 en la base).
+  // Si falla o no hay, cae a las iniciales.
+  const photoSrc = _alumno.fotoUrl
+    ? escHtml(_alumno.fotoUrl)
+    : _alumno.fotoB64
+      ? `data:image/jpeg;base64,${escHtml(_alumno.fotoB64)}`
+      : null;
+  const avatarHTML = photoSrc
+    ? `<img src="${photoSrc}" alt="Foto de ${escHtml(_alumno.nombre)}"
+           class="exp-avatar exp-avatar--photo"
+           onerror="this.replaceWith(Object.assign(document.createElement('div'),{className:'exp-avatar',style:'background:${avatarBg}',textContent:'${initials}'}))">`
+    : `<div class="exp-avatar" style="background:${avatarBg}" aria-hidden="true">${initials}</div>`;
+
   const secBadge = _materia.seccion
     ? `<span class="badge badge--outline">Sección ${_materia.seccion}</span>`
     : '';
@@ -120,9 +134,7 @@ function paintShell() {
       <!-- Header del alumno -->
       <div class="exp-header">
         <div class="exp-alumno-info">
-          <div class="exp-avatar" style="background:${avatarBg}" aria-hidden="true">
-            ${initials}
-          </div>
+          ${avatarHTML}
           <div class="exp-alumno-text">
             <h2 class="exp-nombre">${escHtml(_alumno.nombre)}</h2>
             <div class="exp-meta">

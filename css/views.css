@@ -519,6 +519,12 @@
   box-shadow: var(--shadow-md);
 }
 
+/* Avatar con la foto de inscripción */
+.exp-avatar--photo {
+  object-fit: cover;
+  background: var(--color-surface-2);
+}
+
 .exp-alumno-text { min-width: 0; }
 
 .exp-nombre {
