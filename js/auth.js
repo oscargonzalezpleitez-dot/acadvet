@@ -59,31 +59,8 @@ pinDotsContainer.addEventListener('click', () => {
 pinInput.addEventListener('focus',  () => pinDotsContainer.classList.add('focused'));
 pinInput.addEventListener('blur',   () => pinDotsContainer.classList.remove('focused'));
 
-// --- Depuración opcional (solo con ?debug en la URL) ---
-// Muestra en vivo qué recibe el campo de PIN, para diagnosticar el teclado móvil.
-const DEBUG = /\bdebug/.test(location.search);
-let _dbgEl = null;
-if (DEBUG) {
-  _dbgEl = document.createElement('pre');
-  _dbgEl.style.cssText = 'position:fixed;bottom:0;left:0;right:0;margin:0;background:#000;color:#0f0;font:12px/1.5 monospace;padding:8px;z-index:99999;white-space:pre-wrap;word-break:break-all;';
-  _dbgEl.textContent = 'DEBUG: escribí tu PIN…';
-  document.addEventListener('DOMContentLoaded', () => document.body.appendChild(_dbgEl));
-  if (document.body) document.body.appendChild(_dbgEl);
-}
-function _dbg(raw) {
-  if (!_dbgEl) return;
-  const codes = Array.from(raw).map(c => c.charCodeAt(0)).join(',');
-  const clean = raw.replace(/\D/g, '').slice(0, 6);
-  _dbgEl.textContent = `crudo="${raw}" (largo ${raw.length})\ncodigos=[${codes}]\nlimpio="${clean}"`;
-}
-
 // --- Actualizar dots al escribir ---
-// Sanitizamos a solo dígitos: en el celular el corrector/texto predictivo o el
-// autocompletado de contraseñas pueden inyectar letras, espacios o una credencial
-// guardada. Como el PIN es numérico y corto, cualquier carácter de más cambiaría
-// el hash y Firebase respondería 'invalid-credential' ("PIN incorrecto").
 pinInput.addEventListener('input', () => {
-  _dbg(pinInput.value);
   // No reescribimos pinInput.value acá: reasignarlo mientras se teclea mueve el
   // cursor y en algunos teclados móviles desordenaba los dígitos. La limpieza a
   // solo-dígitos se hace al enviar (attemptLogin). Acá solo mostramos progreso.
