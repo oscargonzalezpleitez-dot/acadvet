@@ -86,9 +86,17 @@ btnLogin.addEventListener('click', attemptLogin);
 // Este lock local sólo mejora el mensaje al usuario; ya no se replica en Firebase.
 const MAX_ATTEMPTS = 5;
 const BASE_LOCK_MS = 30_000;
+const MAX_LOCK_MS  = 5 * 60_000; // tope duro: el bloqueo nunca pasa de 5 minutos
 
 function getLock() {
-  try { return JSON.parse(localStorage.getItem('acadvet_pin_lock') ?? 'null') ?? { attempts: 0, lockedUntil: 0 }; }
+  try {
+    const s = JSON.parse(localStorage.getItem('acadvet_pin_lock') ?? 'null') ?? { attempts: 0, lockedUntil: 0 };
+    // Auto-cura: si quedó guardado un bloqueo enorme (versiones viejas escalaban
+    // sin tope y podían dejar el login trabado por horas), lo limitamos a 5 min.
+    const tope = Date.now() + MAX_LOCK_MS;
+    if (s.lockedUntil > tope) { s.lockedUntil = 0; s.attempts = 0; saveLock(s); }
+    return s;
+  }
   catch { return { attempts: 0, lockedUntil: 0 }; }
 }
 function saveLock(s) {
@@ -180,15 +188,16 @@ function registerFailedAttempt() {
   const lock     = getLock();
   const attempts = lock.attempts + 1;
   const block    = Math.floor(attempts / MAX_ATTEMPTS);
+  const lockMs   = Math.min(BASE_LOCK_MS * Math.pow(2, block - 1), MAX_LOCK_MS);
   const lockedUntil = attempts % MAX_ATTEMPTS === 0
-    ? Date.now() + BASE_LOCK_MS * Math.pow(2, block - 1)
+    ? Date.now() + lockMs
     : 0;
   saveLock({ attempts, lockedUntil });
 
   if (lockedUntil > 0) {
-    showError(`PIN incorrecto. Cuenta bloqueada por ${Math.ceil(BASE_LOCK_MS * Math.pow(2, block - 1) / 1000)} s.`);
+    showError(`PIN incorrecto. Cuenta bloqueada por ${Math.ceil(lockMs / 1000)} s.`);
     btnLogin.disabled = true;
-    setTimeout(() => { btnLogin.disabled = (pinInput.value.length < 4); clearError(); }, BASE_LOCK_MS * Math.pow(2, block - 1) + 200);
+    setTimeout(() => { btnLogin.disabled = (pinInput.value.length < 4); clearError(); }, lockMs + 200);
   } else {
     const restantes = MAX_ATTEMPTS - (attempts % MAX_ATTEMPTS);
     showError(`PIN incorrecto. ${restantes} intento${restantes !== 1 ? 's' : ''} restante${restantes !== 1 ? 's' : ''} antes del bloqueo.`);
