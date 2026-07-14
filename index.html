@@ -57,6 +57,9 @@
       </p>
 
       <!-- Dots visuales del PIN -->
+      <!-- El input real va DENTRO y cubre los dots (tamaño real, transparente).
+           Un input oculto de 1px hacía que teclados Android desordenaran las
+           teclas; con tamaño real el teclado sigue bien el cursor. -->
       <div
         class="pin-dots"
         id="pinDots"
@@ -70,27 +73,25 @@
         <span class="pin-dot" aria-hidden="true"></span>
         <span class="pin-dot" aria-hidden="true"></span>
         <span class="pin-dot" aria-hidden="true"></span>
+        <input
+          type="text"
+          id="pinInput"
+          class="pin-input-real"
+          inputmode="numeric"
+          pattern="[0-9]*"
+          maxlength="6"
+          name="acadvet-pin"
+          autocomplete="off"
+          autocorrect="off"
+          autocapitalize="off"
+          spellcheck="false"
+          data-form-type="other"
+          data-lpignore="true"
+          data-1p-ignore="true"
+          aria-label="PIN de acceso"
+          aria-describedby="pinError"
+        >
       </div>
-
-      <!-- Input real (invisible, captura el teclado) -->
-      <input
-        type="password"
-        id="pinInput"
-        class="pin-input-real"
-        inputmode="numeric"
-        pattern="[0-9]*"
-        maxlength="6"
-        name="acadvet-pin"
-        autocomplete="off"
-        autocorrect="off"
-        autocapitalize="off"
-        spellcheck="false"
-        data-form-type="other"
-        data-lpignore="true"
-        data-1p-ignore="true"
-        aria-label="PIN de acceso"
-        aria-describedby="pinError"
-      >
 
       <!-- Mensaje de error -->
       <p class="pin-error" id="pinError" role="alert" aria-live="assertive"></p>
@@ -117,7 +118,7 @@
 
   <!-- Scripts (type="module" para ES imports) -->
   <!-- El ?v fuerza descarga fresca cuando cambia el login (evita caché vieja) -->
-  <script type="module" src="js/auth.js?v=20260714b"></script>
+  <script type="module" src="js/auth.js?v=20260714d"></script>
 
 </body>
 </html>
