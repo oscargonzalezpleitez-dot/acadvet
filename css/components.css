@@ -267,10 +267,15 @@
   backdrop-filter: blur(4px);
   z-index: calc(var(--z-dropdown) - 1);
   opacity: 0;
+  /* Cerrado (sin .visible) NO debe capturar clics: en móvil el overlay queda
+     display:block con opacity:0 y, sin esto, tapaba toda la pantalla y ningún
+     botón respondía. Solo intercepta cuando está abierto (.visible). */
+  pointer-events: none;
   transition: opacity var(--transition-base);
 }
 .sidebar-overlay.visible {
   opacity: 1;
+  pointer-events: auto;
 }
 
 /* =============================================================================
