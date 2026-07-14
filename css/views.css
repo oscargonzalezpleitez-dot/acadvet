@@ -432,6 +432,11 @@
   letter-spacing: 0.5px;
 }
 
+.alumno-avatar--photo {
+  object-fit: cover;
+  background: var(--color-surface-2);
+}
+
 .alumno-nombre {
   font-weight: 600;
   font-size: var(--text-sm);

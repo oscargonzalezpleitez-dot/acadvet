@@ -190,19 +190,69 @@ function buildTable(rows) {
   `;
 }
 
+// Fuente cruda de la foto de inscripción (para asignar a img.src, sin escapar).
+function photoSrcRaw(a) {
+  if (a.fotoUrl) return a.fotoUrl;
+  if (a.fotoB64) return `data:image/jpeg;base64,${a.fotoB64}`;
+  return null;
+}
+
+// Carga diferida de las fotos del listado: se renderizan las iniciales y la foto
+// se trae solo cuando la fila está cerca de la pantalla. Evita meter decenas de
+// imágenes base64 en el DOM de golpe (varios MB), que trababa la vista en móvil.
+function setupAvatarPhotos() {
+  const byId = {};
+  _alumnos.forEach(a => { byId[a.id] = a; });
+
+  const load = el => {
+    if (el._imgLoading) return;
+    el._imgLoading = true;
+    const a   = byId[el.dataset.photoAid];
+    const src = a && photoSrcRaw(a);
+    if (!src) return;
+    const img = new Image();
+    img.className = 'alumno-avatar alumno-avatar--photo';
+    img.alt = '';
+    img.decoding = 'async';
+    img.onload = () => el.replaceWith(img);   // reemplaza solo si cargó bien
+    img.src = src;                            // si falla, quedan las iniciales
+  };
+
+  const loadNearby = () => {
+    const pend = _container.querySelectorAll('.alumno-avatar[data-photo-aid]');
+    if (!pend.length) { cleanup(); return; }
+    const h = window.innerHeight || document.documentElement.clientHeight;
+    pend.forEach(el => {
+      const r = el.getBoundingClientRect();
+      if (r.top < h + 300 && r.bottom > -300) load(el);
+    });
+  };
+
+  const onScroll = () => requestAnimationFrame(loadNearby);
+  function cleanup() {
+    window.removeEventListener('scroll', onScroll, true);
+    window.removeEventListener('resize', onScroll);
+  }
+
+  window.addEventListener('scroll', onScroll, true); // capta scroll de cualquier contenedor
+  window.addEventListener('resize', onScroll);
+  loadNearby(); // carga inicial de lo que ya está visible
+}
+
 function rowHTML(alumno, num) {
   const estado   = getEstadoBadge(alumno);
   const initials = getInitials(alumno.nombre);
   const avatarBg = AVATAR_PALETTE[strHash(alumno.id) % AVATAR_PALETTE.length];
+  const hasPhoto = !!(alumno.fotoUrl || alumno.fotoB64);
+  const avatar   = `<div class="alumno-avatar" style="background:${avatarBg}"${
+    hasPhoto ? ` data-photo-aid="${escHtml(alumno.id)}"` : ' aria-hidden="true"'}>${initials}</div>`;
 
   return `
     <tr>
       <td class="text-muted text-sm">${num}</td>
       <td>
         <div class="alumno-cell">
-          <div class="alumno-avatar" style="background:${avatarBg}" aria-hidden="true">
-            ${initials}
-          </div>
+          ${avatar}
           <span class="alumno-nombre">${escHtml(alumno.nombre)}</span>
         </div>
       </td>
@@ -270,6 +320,8 @@ function emptyTable() {
 // ---------------------------------------------------------------------------
 
 function wireEvents() {
+  setupAvatarPhotos();
+
   document.getElementById('btnAgregarAlumno')?.addEventListener('click', openCreateModal);
   document.getElementById('btnAgregarAlumnoEmpty')?.addEventListener('click', openCreateModal);
   document.getElementById('btnEliminarAlumno')?.addEventListener('click', openRemoveStudentModal);
