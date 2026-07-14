@@ -60,7 +60,13 @@ pinInput.addEventListener('focus',  () => pinDotsContainer.classList.add('focuse
 pinInput.addEventListener('blur',   () => pinDotsContainer.classList.remove('focused'));
 
 // --- Actualizar dots al escribir ---
+// Sanitizamos a solo dígitos: en el celular el corrector/texto predictivo o el
+// autocompletado de contraseñas pueden inyectar letras, espacios o una credencial
+// guardada. Como el PIN es numérico y corto, cualquier carácter de más cambiaría
+// el hash y Firebase respondería 'invalid-credential' ("PIN incorrecto").
 pinInput.addEventListener('input', () => {
+  const clean = pinInput.value.replace(/\D/g, '').slice(0, 6);
+  if (clean !== pinInput.value) pinInput.value = clean;
   const len = pinInput.value.length;
   pinDots.forEach((dot, i) => {
     dot.classList.toggle('filled', i < len);
@@ -109,7 +115,7 @@ checkLockout();
 
 // --- Lógica de login ---
 async function attemptLogin() {
-  const pin = pinInput.value.trim();
+  const pin = pinInput.value.replace(/\D/g, '').slice(0, 6);
   if (pin.length < 4) return;
   if (checkLockout()) return;
 
