@@ -122,16 +122,38 @@ async function attemptLogin() {
   setLoading(true);
 
   try {
-    // La contraseña de Firebase Auth = SHA-256 del PIN. Firebase Auth verifica
-    // la credencial del lado servidor; si el PIN es incorrecto lanza
-    // auth/invalid-credential. Ya no se lee ningún hash público de la base.
+    // La contraseña de Firebase Auth = SHA-256 del PIN. El PIN determina el rol:
+    // probamos la cuenta de la pestaña activa y, si el PIN no coincide, probamos
+    // la otra. Así el login NO depende de qué pestaña quedó seleccionada (en el
+    // celular era fácil quedar en EPS y que el PIN de docente fuera rechazado).
+    // Los PINs son exclusivos por rol, así que el que coincida define la sesión.
     const enteredHash = await sha256(pin);
-    const fbEmail     = _role === 'eps' ? FB_EMAIL_EPS : FB_EMAIL_DOCENTE;
+    const intentos = _role === 'eps'
+      ? [['eps', FB_EMAIL_EPS], ['admin', FB_EMAIL_DOCENTE]]
+      : [['admin', FB_EMAIL_DOCENTE], ['eps', FB_EMAIL_EPS]];
 
-    await signInWithEmailAndPassword(auth, fbEmail, enteredHash);
+    let sesion = null, ultimoErr = null;
+    for (const [rol, email] of intentos) {
+      try {
+        await signInWithEmailAndPassword(auth, email, enteredHash);
+        sesion = rol;
+        break;
+      } catch (e) {
+        ultimoErr = e;
+        // Solo seguimos probando la otra cuenta si fue "PIN no coincide".
+        // Un error real (red, config) se propaga sin más intentos.
+        if (e.code !== 'auth/invalid-credential' &&
+            e.code !== 'auth/wrong-password' &&
+            e.code !== 'auth/user-not-found') {
+          throw e;
+        }
+      }
+    }
+
+    if (!sesion) throw ultimoErr;
 
     clearLock();
-    sessionStorage.setItem('acadvet_auth', _role === 'eps' ? 'eps' : 'admin');
+    sessionStorage.setItem('acadvet_auth', sesion);
     window.location.replace('app.html');
   } catch (err) {
     console.error('[AcadVet] Error de auth:', err.code ?? err.message ?? err);
