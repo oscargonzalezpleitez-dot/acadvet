@@ -578,6 +578,20 @@
   font-weight: 500;
 }
 
+/* Tarjeta editable (nota de diagnóstico) */
+.exp-stat-card--dx.is-editable {
+  cursor: pointer;
+  transition: border-color var(--transition-fast), box-shadow var(--transition-fast), transform var(--transition-fast);
+}
+.exp-stat-card--dx.is-editable:hover {
+  border-color: var(--color-primary);
+  box-shadow: var(--shadow-sm);
+}
+.exp-stat-card--dx.is-editable:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+
 /* Estado card variants */
 .exp-stat-card--neutral  { background: var(--color-surface-2); }
 .exp-stat-card--aprobado { background: var(--color-success-dim);

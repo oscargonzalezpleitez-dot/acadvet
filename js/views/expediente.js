@@ -9,7 +9,7 @@ import {
   addAsistencia, updateAsistencia, deleteAsistencia,
   addQuiz, updateQuiz, deleteQuiz,
   addExposicion, updateExposicion, deleteExposicion,
-  updateParciales, updateObservaciones,
+  updateParciales, updateObservaciones, updateNotaDiagnostico,
   getTareas, deleteTarea,
   getCuestionariosResultadosByCarnet,
   getLabReportsByCarnet, deleteLabReport,
@@ -192,6 +192,8 @@ function refreshStats() {
 
 function statsHTML(s) {
   const notaFinalCls = s.notaFinal !== '—' ? notaColorCls(parseFloat(s.notaFinal)) : 'nota--neutral';
+  const dxCls        = s.notaDiag !== '—' ? notaColorCls(parseFloat(s.notaDiag)) : 'nota--neutral';
+  const dxEditable   = !isEPS();
   return `
     <div class="exp-stat-card">
       <span class="exp-stat-num">${s.asistPct}</span>
@@ -204,6 +206,12 @@ function statsHTML(s) {
     <div class="exp-stat-card">
       <span class="exp-stat-num">${s.promParciales}</span>
       <span class="exp-stat-label">Prom. Parciales</span>
+    </div>
+    <div class="exp-stat-card exp-stat-card--dx${dxEditable ? ' is-editable' : ''}"${dxEditable
+        ? ' id="expStatDx" role="button" tabindex="0" title="Editar nota del examen de diagnóstico"'
+        : ''}>
+      <span class="exp-stat-num ${dxCls}">${s.notaDiag}</span>
+      <span class="exp-stat-label">Ex. Diagnóstico${dxEditable ? ' ✎' : ''}</span>
     </div>
     <div class="exp-stat-card">
       <span class="exp-stat-num ${notaFinalCls}">${s.notaFinal}</span>
@@ -243,6 +251,20 @@ function wireShellEvents() {
       else showToast(`Exportación ${fmt.toUpperCase()} — disponible próximamente`, 'info');
     });
   });
+
+  // Editar nota de diagnóstico (delegado: el contenedor persiste al refrescar stats)
+  const statsEl = document.getElementById('expStats');
+  if (statsEl && !isEPS()) {
+    statsEl.addEventListener('click', e => {
+      if (e.target.closest('#expStatDx')) editNotaDiag();
+    });
+    statsEl.addEventListener('keydown', e => {
+      if ((e.key === 'Enter' || e.key === ' ') && e.target.closest('#expStatDx')) {
+        e.preventDefault();
+        editNotaDiag();
+      }
+    });
+  }
 }
 
 function paintTabContent() {
@@ -1375,14 +1397,56 @@ function calcStats() {
     ? (parcVals.reduce((a, b) => a + b, 0) / parcVals.length * 10).toFixed(1) // volver a /100
     : '—';
 
+  const nd = _insc.nota_diagnostico;
+
   return {
     asistPct:      asistSummary.total > 0 ? asistSummary.pct + '%' : '—',
     promQuiz:      promQuizDisplay,
     promParciales: promParcDisplay,
+    notaDiag:      (typeof nd === 'number') ? nd.toFixed(1) : '—',
     notaFinal:     notaFinal !== null ? notaFinal.toFixed(2) : '—',
     estadoLabel,
     estadoCls,
   };
+}
+
+// Editar la nota del examen de diagnóstico (0–10). Solo docente.
+function editNotaDiag() {
+  if (isEPS()) return;
+  const cur = (typeof _insc.nota_diagnostico === 'number') ? _insc.nota_diagnostico : '';
+  openModal({
+    title: 'Nota — Examen de Diagnóstico',
+    body: `
+      <div class="form-group">
+        <label class="form-label" for="dxInput">Nota (escala 0 a 10)</label>
+        <input class="form-input" id="dxInput" type="number" min="0" max="10" step="0.1"
+               value="${cur}" placeholder="Ej: 7.5" inputmode="decimal">
+        <p class="text-muted text-xs" style="margin-top:8px">Dejá el campo vacío para borrar la nota.</p>
+      </div>`,
+    confirmLabel: 'Guardar',
+    onConfirm: async () => {
+      const raw = (document.getElementById('dxInput')?.value ?? '').trim().replace(',', '.');
+      let nota = null;
+      if (raw !== '') {
+        nota = parseFloat(raw);
+        if (isNaN(nota) || nota < 0 || nota > 10) {
+          showToast('Ingresá una nota válida entre 0 y 10.', 'error');
+          return; // deja el modal abierto
+        }
+        nota = Math.round(nota * 10) / 10;
+      }
+      try {
+        await updateNotaDiagnostico(_alumnoId, _materiaId, nota);
+        _insc.nota_diagnostico = nota;
+        refreshStats();
+        closeModal();
+        showToast(nota === null ? 'Nota de diagnóstico borrada.' : 'Nota de diagnóstico guardada.', 'success');
+      } catch (e) {
+        console.error('[AcadVet] Error guardando nota de diagnóstico:', e);
+        showToast('No se pudo guardar. Revisá tu conexión.', 'error');
+      }
+    },
+  });
 }
 
 function calcAsistSummary(asists) {

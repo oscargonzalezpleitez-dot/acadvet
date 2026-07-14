@@ -200,6 +200,11 @@ export async function updateParciales(alumnoId, materiaId, data) {
   });
 }
 
+/** Nota del examen de diagnóstico (escala 0–10). null para borrarla. */
+export async function updateNotaDiagnostico(alumnoId, materiaId, nota) {
+  await set(ref(db, `${inscRef(alumnoId, materiaId)}/nota_diagnostico`), nota ?? null);
+}
+
 // ---------------------------------------------------------------------------
 // EXPOSICIONES
 // ---------------------------------------------------------------------------
