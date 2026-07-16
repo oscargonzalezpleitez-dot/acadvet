@@ -3,7 +3,8 @@
 //   tardíos, correo institucional, GPS)
 // =============================================================================
 
-import { createQRSession, updateQRSession, listenQRAsistentes } from './db.js';
+import { createQRSession, updateQRSession, listenQRAsistentes,
+         setQRAsistenteAlumno, applyQRAsistencia } from './db.js';
 import { showToast } from './ui.js';
 
 // ---------------------------------------------------------------------------
@@ -76,7 +77,8 @@ export async function openQRSession(materia, alumnos) {
   }
 
   _s = { id: sessionId, materiaId: materia.id, alumnos, token, duration,
-         intervalId: null, unsubscribe: null, rotatedAt: now, config };
+         intervalId: null, unsubscribe: null, rotatedAt: now, config,
+         syncedIds: new Set() };
 
   buildOverlay(materia);
   drawQR();
@@ -433,7 +435,47 @@ function updateRing(pct) {
 // Asistentes en tiempo real
 // ---------------------------------------------------------------------------
 function watchAttendees() {
-  _s.unsubscribe = listenQRAsistentes(_s.id, renderAttendees);
+  _s.unsubscribe = listenQRAsistentes(_s.id, asistentes => {
+    renderAttendees(asistentes);
+    syncAttendees(asistentes);
+  });
+}
+
+// El registro público corre con auth anónima y las reglas no le permiten
+// tocar `alumnos`, así que el emparejamiento carné → alumno inscrito y la
+// escritura al expediente se hacen acá, desde la sesión del docente.
+async function syncAttendees(asistentes) {
+  for (const a of asistentes) {
+    if (!_s || _s.syncedIds.has(a.id)) continue;
+
+    let alumnoId = a.alumnoId ?? null;
+    if (!alumnoId) {
+      const needle = String(a.carnet ?? '').toLowerCase().trim();
+      const match  = _s.alumnos.find(al =>
+        String(al.carnet ?? '').toLowerCase().trim() === needle
+      );
+      if (!match) continue; // no inscrito: el docente lo resuelve manualmente
+      alumnoId = match.id;
+    }
+
+    try {
+      // Tardío sigue contando como presente en el expediente
+      await applyQRAsistencia(alumnoId, _s.materiaId, a.id, {
+        fecha:     localDate(a.ts),
+        estado:    'presente',
+        checkType: a.checkType ?? 'unico',
+      });
+      if (!a.alumnoId) await setQRAsistenteAlumno(_s.id, a.id, alumnoId);
+      _s.syncedIds.add(a.id);
+    } catch (err) {
+      console.error('[AcadVet] Error aplicando asistencia QR al expediente:', err);
+    }
+  }
+}
+
+function localDate(ts) {
+  const d = new Date(ts ?? Date.now());
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function renderAttendees(asistentes) {

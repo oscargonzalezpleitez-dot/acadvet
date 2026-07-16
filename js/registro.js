@@ -371,16 +371,17 @@ function backToForm() {
 // ---------------------------------------------------------------------------
 async function submitRegistro() {
   const { nombre, carnet, email } = _formData;
-  const alumnoId  = await findAlumno(_session.materiaId, carnet);
   const estado    = computeEstado(email);
   const checkType = _cfg.checkType ?? 'unico';
   const now       = Date.now();
 
+  // El emparejamiento con el alumno inscrito y la escritura al expediente
+  // los hace el panel del docente (auth anónima no tiene acceso a `alumnos`).
   const payload = {
     nombre,
     carnet,
-    email:     email     ?? null,
-    alumnoId:  alumnoId  ?? null,
+    email:     email ?? null,
+    alumnoId:  null,
     ts:        now,
     estado,
     checkType,
@@ -393,16 +394,7 @@ async function submitRegistro() {
   const asistRef = push(ref(db, `qr_sessions/${sessionId}/asistentes`));
   await set(asistRef, payload);
 
-  // Tardío sigue contando como presente en el expediente
-  if (alumnoId) {
-    const fecha  = new Date().toISOString().slice(0, 10);
-    const expRef = push(
-      ref(db, `alumnos/${alumnoId}/inscripciones/${_session.materiaId}/asistencias`)
-    );
-    await set(expRef, { fecha, estado: 'presente', checkType });
-  }
-
-  showSuccess(nombre, carnet, alumnoId !== null, estado);
+  showSuccess(nombre, carnet, estado);
 }
 
 // ---------------------------------------------------------------------------
@@ -413,26 +405,6 @@ function computeEstado(_email) {
   const startedAt = _cfg.sessionStartedAt ?? Date.now();
   const elapsed   = Date.now() - startedAt;
   return elapsed > ((_cfg.lateMinutes ?? 10) * 60_000) ? 'tardio' : 'presente';
-}
-
-// ---------------------------------------------------------------------------
-// Buscar alumno inscrito por carné
-// ---------------------------------------------------------------------------
-async function findAlumno(materiaId, carnet) {
-  try {
-    const snap = await get(ref(db, 'alumnos'));
-    if (!snap.exists()) return null;
-    const needle = carnet.toLowerCase().trim();
-    for (const [id, a] of Object.entries(snap.val())) {
-      if (
-        (a.carnet ?? '').toLowerCase().trim() === needle &&
-        a.inscripciones?.[materiaId] !== undefined
-      ) return id;
-    }
-    return null;
-  } catch {
-    return null;
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -505,18 +477,16 @@ function setLoading(loading) {
     : (_cfg.photoRequired ? 'Continuar →' : 'Registrar asistencia');
 }
 
-function showSuccess(nombre, carnet, matched, estado) {
+function showSuccess(nombre, carnet, estado) {
   const hora     = new Date().toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
   const isTardio = estado === 'tardio';
 
   const icon = document.getElementById('successIcon');
   if (icon) icon.textContent = isTardio ? '⏰' : '✅';
 
-  document.getElementById('successDetail').textContent = matched
-    ? (isTardio
-        ? 'Tu asistencia fue registrada como tardío y aplicada a tu expediente.'
-        : 'Tu asistencia fue registrada y aplicada a tu expediente.')
-    : 'Tu asistencia fue registrada. El docente verificará tu expediente manualmente.';
+  document.getElementById('successDetail').textContent = isTardio
+    ? 'Tu asistencia fue registrada como tardío. Si estás inscrito en la materia, se aplicará automáticamente a tu expediente.'
+    : 'Tu asistencia fue registrada. Si estás inscrito en la materia, se aplicará automáticamente a tu expediente.';
 
   document.getElementById('successCard').innerHTML = `
     <div style="display:grid;gap:var(--space-2)">

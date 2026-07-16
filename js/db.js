@@ -303,6 +303,22 @@ export function listenQRAsistentes(sessionId, callback) {
   });
 }
 
+/** Marca en la sesión QR que un asistente fue emparejado con un alumno inscrito. */
+export async function setQRAsistenteAlumno(sessionId, asistenteId, alumnoId) {
+  await update(ref(db, `qr_sessions/${sessionId}/asistentes/${asistenteId}`), { alumnoId });
+}
+
+/**
+ * Aplica al expediente la asistencia de un registro QR.
+ * Usa el id del asistente como clave para que reintentos no dupliquen.
+ */
+export async function applyQRAsistencia(alumnoId, materiaId, asistenteId, { fecha, estado, checkType }) {
+  await set(
+    ref(db, `${inscRef(alumnoId, materiaId)}/asistencias/qr_${asistenteId}`),
+    { fecha, estado, checkType }
+  );
+}
+
 // ---------------------------------------------------------------------------
 // TAREAS (PDFs subidos por alumnos)
 // ---------------------------------------------------------------------------
