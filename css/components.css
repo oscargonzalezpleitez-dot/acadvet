@@ -901,6 +901,24 @@
   align-items: center;
 }
 
+/* Botones de acción por fila: con borde y fondo para que se vean como botones
+   (los .btn--ghost pelados eran casi invisibles sobre la tabla blanca) */
+.row-action-btn {
+  border: 1.5px solid var(--color-border);
+  background: var(--color-surface);
+  padding: 8px 11px;
+}
+.row-action-btn--danger {
+  border-color: rgba(255, 107, 107, 0.6);
+  background: rgba(255, 107, 107, 0.08);
+  color: var(--color-danger);
+}
+.row-action-btn--danger:hover:not(:disabled) {
+  background: var(--color-danger);
+  border-color: var(--color-danger);
+  color: #fff;
+}
+
 /* =============================================================================
    RESPONSIVE — MOBILE
    ============================================================================= */
@@ -952,6 +970,19 @@
     flex-direction: column;
     align-items: flex-start;
     gap: var(--space-3);
+  }
+
+  /* Listado de alumnos: la columna Acciones queda fija a la derecha para que
+     los botones (ver/editar/quitar) no se pierdan con el scroll horizontal */
+  .data-table--alumnos th:last-child,
+  .data-table--alumnos td:last-child {
+    position: sticky;
+    right: 0;
+    background: var(--color-surface);
+    box-shadow: -6px 0 8px -6px rgba(0, 0, 0, 0.15);
+  }
+  .data-table--alumnos th:last-child {
+    background: var(--color-surface-2);
   }
 }
 

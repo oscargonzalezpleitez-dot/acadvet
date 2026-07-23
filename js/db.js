@@ -320,6 +320,59 @@ export async function applyQRAsistencia(alumnoId, materiaId, asistenteId, { fech
 }
 
 // ---------------------------------------------------------------------------
+// GRUPOS DE TRABAJO (sorteos al azar por materia)
+// ---------------------------------------------------------------------------
+
+export async function createGrupoSorteo({ materiaId, materiaNombre, ciclo, tamano, alumnos, grupos }) {
+  const newRef = push(ref(db, 'grupos_sorteos'));
+  const now = Date.now();
+  await set(newRef, {
+    materiaId,
+    materiaNombre,
+    ciclo: ciclo ?? '',
+    tamano,
+    alumnos,   // { alumnoId: nombre } — snapshot para que el historial sobreviva a bajas
+    grupos,    // [ [alumnoId, ...], ... ]
+    estado: 'sorteando',
+    fecha: new Date().toISOString().slice(0, 10),
+    createdAt: now,
+    updatedAt: now,
+  });
+  return newRef.key;
+}
+
+export async function updateGrupoSorteo(sorteoId, data) {
+  await update(ref(db, `grupos_sorteos/${sorteoId}`), { ...data, updatedAt: Date.now() });
+}
+
+export async function getGrupoSorteo(sorteoId) {
+  const s = await get(ref(db, `grupos_sorteos/${sorteoId}`));
+  if (!s.exists()) return null;
+  return { id: sorteoId, ...s.val() };
+}
+
+export function listenGrupoSorteo(sorteoId, callback) {
+  const dbRef = ref(db, `grupos_sorteos/${sorteoId}`);
+  return onValue(dbRef, snapshot => {
+    callback(snapshot.exists() ? { id: sorteoId, ...snapshot.val() } : null);
+  });
+}
+
+/** Historial de sorteos de una materia, más reciente primero. */
+export async function getGruposSorteosByMateria(materiaId) {
+  const s = await get(ref(db, 'grupos_sorteos'));
+  if (!s.exists()) return [];
+  return Object.entries(s.val())
+    .map(([id, data]) => ({ id, ...data }))
+    .filter(g => g.materiaId === materiaId)
+    .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+}
+
+export async function deleteGrupoSorteo(sorteoId) {
+  await remove(ref(db, `grupos_sorteos/${sorteoId}`));
+}
+
+// ---------------------------------------------------------------------------
 // TAREAS (PDFs subidos por alumnos)
 // ---------------------------------------------------------------------------
 

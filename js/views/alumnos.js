@@ -12,6 +12,7 @@ import {
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
 import { openQRSession } from '../qr-session.js';
+import { openGruposSorteo } from '../grupos-trabajo.js';
 
 const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
 
@@ -121,6 +122,13 @@ function paint() {
             </svg>
             Sesión QR
           </button>
+          <button class="btn btn--secondary btn--sm" id="btnGruposTrabajo" title="Sortear grupos de trabajo al azar">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9"/>
+              <circle cx="9" cy="10" r="1"/><circle cx="15" cy="10" r="1"/><circle cx="9" cy="15" r="1"/><circle cx="15" cy="15" r="1"/>
+            </svg>
+            Grupos de trabajo
+          </button>
           <button class="btn btn--secondary btn--sm" id="btnExportGrupal" title="Exportar Excel grupal">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
@@ -170,7 +178,7 @@ function buildTable(rows) {
 
   return `
     <div style="overflow-x:auto">
-      <table class="data-table">
+      <table class="data-table data-table--alumnos">
         <thead>
           <tr>
             <th style="width:44px">#</th>
@@ -269,17 +277,17 @@ function rowHTML(alumno, num) {
             title="Ver expediente">
             Ver →
           </button>
-          <button class="btn btn--ghost btn--sm"
+          <button class="btn btn--ghost btn--sm row-action-btn"
             data-action="edit" data-id="${alumno.id}"
-            aria-label="Editar alumno">
+            title="Editar alumno" aria-label="Editar alumno">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
             </svg>
           </button>
-          ${!isEPS() ? `<button class="btn btn--ghost btn--sm" style="color:var(--color-danger)"
+          ${!isEPS() ? `<button class="btn btn--ghost btn--sm row-action-btn row-action-btn--danger"
             data-action="remove" data-id="${alumno.id}"
-            aria-label="Quitar alumno de esta materia">
+            title="Quitar alumno de esta materia" aria-label="Quitar alumno de esta materia">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <polyline points="3 6 5 6 21 6"/>
               <path d="M19 6l-1 14H6L5 6"/>
@@ -330,6 +338,10 @@ function wireEvents() {
 
   document.getElementById('btnSesionQR')?.addEventListener('click', () => {
     openQRSession(_materia, _alumnos);
+  });
+
+  document.getElementById('btnGruposTrabajo')?.addEventListener('click', () => {
+    openGruposSorteo(_materia, _alumnos);
   });
 
   document.getElementById('btnExportGrupal')?.addEventListener('click', e => {

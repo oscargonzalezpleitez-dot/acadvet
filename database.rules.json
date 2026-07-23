@@ -62,6 +62,14 @@
       }
     },
 
+    "grupos_sorteos": {
+      ".read":  "auth != null",
+      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      "$sorteoId": {
+        ".validate": "newData.hasChildren(['materiaId', 'tamano', 'grupos', 'estado'])"
+      }
+    },
+
     "solicitudes_idx": {
       ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
       "$carnetKey": {
