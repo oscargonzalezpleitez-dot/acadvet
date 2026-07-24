@@ -17,7 +17,7 @@ const REVEAL_DELAY = 3000; // ms de "suspenso" antes de mostrar el resultado
 let _g = null;
 // _g = { materia, alumnos: [{id, nombre, carnet}], incluidos: Set<id>,
 //        tamano, sorteoId, grupos: [[id,...]], estado, pickedId,
-//        revealTimer, historial: [] }
+//        revealTimer, historial: [], parejasFijas: [[idA, idB], ...] }
 
 // ---------------------------------------------------------------------------
 // Entrada pública
@@ -36,6 +36,7 @@ export async function openGruposSorteo(materia, alumnos) {
     pickedId: null,
     revealTimer: null,
     historial: [],
+    parejasFijas: (materia.parejasFijas ?? []).filter(p => Array.isArray(p) && p.length === 2),
   };
 
   buildOverlay();
@@ -78,6 +79,8 @@ function buildOverlay() {
         <div class="grp-alumno-list" id="grpAlumnoList"></div>
       </div>
 
+      ${parejasFijasHtml()}
+
       <button class="btn btn--primary" id="grpSortear">🎲 Sortear grupos</button>
       <button class="btn btn--secondary btn--sm" id="grpProyectar" disabled>📽 Abrir proyector</button>
 
@@ -95,6 +98,18 @@ function buildOverlay() {
   wireEvents();
   paintAlumnoList();
   updatePreview();
+}
+
+function parejasFijasHtml() {
+  if (!_g.parejasFijas.length) return '';
+  const nombreDe = id => _g.alumnos.find(a => a.id === id)?.nombre ?? '—';
+  return `
+    <div class="grp-field">
+      <div class="qr-config-title">Siempre en el mismo grupo</div>
+      ${_g.parejasFijas.map(([a, b]) => `
+        <div class="text-sm text-muted">🔗 ${esc(nombreDe(a))} + ${esc(nombreDe(b))}</div>
+      `).join('')}
+    </div>`;
 }
 
 function emptyStateHtml() {
@@ -187,6 +202,39 @@ function armarGrupos(ids, tamano) {
   return grupos;
 }
 
+/**
+ * Reubica (sin alterar el tamaño de ningún grupo) para que cada pareja fija
+ * termine en el mismo grupo, intercambiando con un miembro al azar del grupo
+ * destino. El resto del sorteo sigue siendo aleatorio.
+ */
+function aplicarParejasFijas(grupos, parejas) {
+  const ubicar = id => {
+    for (let gi = 0; gi < grupos.length; gi++) {
+      const i = grupos[gi].indexOf(id);
+      if (i !== -1) return { gi, i };
+    }
+    return null;
+  };
+
+  for (const [idA, idB] of parejas) {
+    const posA = ubicar(idA);
+    const posB = ubicar(idB);
+    if (!posA || !posB || posA.gi === posB.gi) continue; // no incluidos o ya juntos
+
+    const candidatos = grupos[posA.gi].filter(id => id !== idA);
+    if (candidatos.length === 0) {
+      // grupo de A sólo tiene a A: mover B directamente
+      grupos[posB.gi].splice(posB.i, 1);
+      grupos[posA.gi].push(idB);
+      continue;
+    }
+    const victima = candidatos[Math.floor(Math.random() * candidatos.length)];
+    const posVictima = ubicar(victima);
+    grupos[posVictima.gi][posVictima.i] = idB;
+    grupos[posB.gi][posB.i] = victima;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Sortear
 // ---------------------------------------------------------------------------
@@ -199,6 +247,7 @@ async function doSorteo() {
 
   clearTimeout(_g.revealTimer);
   _g.grupos = armarGrupos(idsIncluidos, _g.tamano);
+  aplicarParejasFijas(_g.grupos, _g.parejasFijas);
   _g.estado = 'sorteando';
   _g.pickedId = null;
 
