@@ -79,8 +79,6 @@ function buildOverlay() {
         <div class="grp-alumno-list" id="grpAlumnoList"></div>
       </div>
 
-      ${parejasFijasHtml()}
-
       <button class="btn btn--primary" id="grpSortear">🎲 Sortear grupos</button>
       <button class="btn btn--secondary btn--sm" id="grpProyectar" disabled>📽 Abrir proyector</button>
 
@@ -98,18 +96,6 @@ function buildOverlay() {
   wireEvents();
   paintAlumnoList();
   updatePreview();
-}
-
-function parejasFijasHtml() {
-  if (!_g.parejasFijas.length) return '';
-  const nombreDe = id => _g.alumnos.find(a => a.id === id)?.nombre ?? '—';
-  return `
-    <div class="grp-field">
-      <div class="qr-config-title">Siempre en el mismo grupo</div>
-      ${_g.parejasFijas.map(([a, b]) => `
-        <div class="text-sm text-muted">🔗 ${esc(nombreDe(a))} + ${esc(nombreDe(b))}</div>
-      `).join('')}
-    </div>`;
 }
 
 function emptyStateHtml() {
