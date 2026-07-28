@@ -752,6 +752,9 @@
   padding: var(--space-8);
   width: 100%;
   max-width: 480px;
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
   box-shadow: var(--shadow-xl);
   animation: slideUp var(--transition-base) var(--transition-spring);
 }
@@ -765,6 +768,7 @@
   justify-content: space-between;
   gap: var(--space-4);
   margin-bottom: var(--space-6);
+  flex-shrink: 0;
 }
 .modal-title {
   font-family: var(--font-display);
@@ -792,6 +796,8 @@
   display: flex;
   flex-direction: column;
   gap: var(--space-4);
+  overflow-y: auto;
+  min-height: 0;
 }
 
 .modal-footer {
@@ -801,6 +807,7 @@
   margin-top: var(--space-6);
   padding-top: var(--space-5);
   border-top: 1px solid var(--color-border);
+  flex-shrink: 0;
 }
 
 @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
