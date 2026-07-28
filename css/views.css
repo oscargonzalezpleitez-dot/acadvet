@@ -1620,6 +1620,95 @@
 .asist-combined--full    { background: rgba(0,184,148,.12) !important; color: #00B894 !important; }
 .asist-combined--partial { background: rgba(253,203,110,.12) !important; color: #9A7D0A !important; }
 
+/* ── Asistencia por fecha (modal) ─────────────────────────────────── */
+.asistfecha-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin: var(--space-2) 0 var(--space-4);
+}
+.asistfecha-chip {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.asistfecha-chip--active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+.asistfecha-counts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+  margin-bottom: var(--space-4);
+}
+.asistfecha-count {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-3);
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+}
+.asistfecha-count--ok { background: var(--color-success-dim); border-color: rgba(0,184,148,.3); }
+.asistfecha-count--no { background: var(--color-danger-dim); border-color: rgba(255,107,107,.3); }
+.asistfecha-count-num {
+  font-size: 1.5rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.asistfecha-count--ok .asistfecha-count-num { color: var(--color-success); }
+.asistfecha-count--no .asistfecha-count-num { color: var(--color-danger); }
+.asistfecha-count-label {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  margin-top: 2px;
+}
+.asistfecha-cols {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+}
+@media (max-width: 640px) {
+  .asistfecha-cols { grid-template-columns: 1fr; }
+}
+.asistfecha-col-title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
+.asistfecha-col-title--ok { color: var(--color-success); }
+.asistfecha-col-title--no { color: var(--color-danger); }
+.asistfecha-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 320px;
+  overflow-y: auto;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: 6px;
+}
+.asistfecha-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 8px;
+}
+.asistfecha-row--ok { background: var(--color-success-dim); }
+.asistfecha-row--no { background: var(--color-danger-dim); }
+.asistfecha-row-name {
+  font-size: var(--text-sm);
+  color: var(--color-text-primary);
+}
+
 /* ============================================================
    SOLICITUDES DE INSCRIPCIÓN
    ============================================================ */

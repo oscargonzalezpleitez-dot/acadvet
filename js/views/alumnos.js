@@ -122,6 +122,13 @@ function paint() {
             </svg>
             Sesión QR
           </button>
+          <button class="btn btn--secondary btn--sm" id="btnAsistFecha" title="Ver quién registró asistencia en una fecha">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+              <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+            </svg>
+            Asistencia por fecha
+          </button>
           <button class="btn btn--secondary btn--sm" id="btnGruposTrabajo" title="Sortear grupos de trabajo al azar">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <circle cx="12" cy="12" r="9"/>
@@ -335,6 +342,8 @@ function wireEvents() {
   document.getElementById('btnEliminarAlumno')?.addEventListener('click', openRemoveStudentModal);
 
   document.getElementById('btnImportarQR')?.addEventListener('click', openImportModal);
+
+  document.getElementById('btnAsistFecha')?.addEventListener('click', openAsistFechaModal);
 
   document.getElementById('btnSesionQR')?.addEventListener('click', () => {
     openQRSession(_materia, _alumnos);
@@ -902,6 +911,179 @@ function loadScript(src) {
     s.onerror = () => reject(new Error(`No se pudo cargar: ${src}`));
     document.head.appendChild(s);
   });
+}
+
+// ---------------------------------------------------------------------------
+// ASISTENCIA POR FECHA — quién registró y quién no, en una fecha dada
+// ---------------------------------------------------------------------------
+
+function openAsistFechaModal() {
+  const fechas   = collectFechasConRegistro();
+  const defFecha = fechas[0] ?? todayStr();
+
+  openModal({
+    title: `Asistencia por fecha — ${escHtml(_materia.nombre)}`,
+    size: 'lg',
+    body: `
+      <div class="form-group">
+        <label class="form-label" for="fAsistFecha">Fecha</label>
+        <input class="form-input" id="fAsistFecha" type="date" value="${defFecha}">
+      </div>
+      ${fechas.length > 0 ? `
+        <div class="asistfecha-chips" id="asistFechaChips">
+          ${fechas.slice(0, 12).map(f => `
+            <button type="button" class="asistfecha-chip${f === defFecha ? ' asistfecha-chip--active' : ''}" data-fecha="${f}">
+              ${formatFechaCorta(f)}
+            </button>`).join('')}
+        </div>` : `
+        <p class="text-sm text-muted" style="margin:var(--space-2) 0 var(--space-4)">
+          Aún no hay asistencias registradas en esta materia.
+        </p>`}
+      <p id="asistFechaSummary" class="text-sm text-muted" style="margin:var(--space-3) 0"></p>
+      <div class="asistfecha-counts" id="asistFechaCounts">
+        <div class="asistfecha-count asistfecha-count--ok">
+          <span class="asistfecha-count-num" id="asistFechaCountOk">0</span>
+          <span class="asistfecha-count-label">Asistieron</span>
+        </div>
+        <div class="asistfecha-count asistfecha-count--no">
+          <span class="asistfecha-count-num" id="asistFechaCountNo">0</span>
+          <span class="asistfecha-count-label">No asistieron</span>
+        </div>
+      </div>
+      <div class="asistfecha-cols">
+        <div>
+          <h4 class="asistfecha-col-title asistfecha-col-title--ok">✓ Registraron asistencia</h4>
+          <div id="asistFechaVerdes" class="asistfecha-list"></div>
+        </div>
+        <div>
+          <h4 class="asistfecha-col-title asistfecha-col-title--no">✕ No registraron</h4>
+          <div id="asistFechaRojos" class="asistfecha-list"></div>
+        </div>
+      </div>
+    `,
+    confirmLabel: 'Cerrar',
+    cancelLabel: '',
+    onConfirm: () => closeModal(),
+  });
+  document.getElementById('modalCancelBtn')?.remove();
+
+  setTimeout(() => {
+    const fechaInput = document.getElementById('fAsistFecha');
+    fechaInput?.addEventListener('change', () => {
+      renderAsistFechaLists(fechaInput.value);
+      syncAsistFechaChips(fechaInput.value);
+    });
+    document.getElementById('asistFechaChips')?.querySelectorAll('[data-fecha]').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const f = chip.dataset.fecha;
+        if (fechaInput) fechaInput.value = f;
+        renderAsistFechaLists(f);
+        syncAsistFechaChips(f);
+      });
+    });
+    renderAsistFechaLists(defFecha);
+  }, 0);
+}
+
+function syncAsistFechaChips(fecha) {
+  document.getElementById('asistFechaChips')?.querySelectorAll('[data-fecha]').forEach(chip => {
+    chip.classList.toggle('asistfecha-chip--active', chip.dataset.fecha === fecha);
+  });
+}
+
+// Fechas únicas con al menos un registro de asistencia en la materia, más recientes primero.
+function collectFechasConRegistro() {
+  const set = new Set();
+  _alumnos.forEach(a => {
+    const asists = a.inscripciones?.[_materiaId]?.asistencias;
+    if (!asists) return;
+    Object.values(asists).forEach(r => { if (r?.fecha) set.add(r.fecha); });
+  });
+  return [...set].sort((a, b) => b.localeCompare(a));
+}
+
+// Un alumno cuenta como "registrado" en la fecha si tiene al menos un registro
+// presente/justificado ese día (ej. checkType inicio O fin ya cuentan, no hace falta ambos).
+function estadoAlumnoEnFecha(alumno, fecha) {
+  const asists = alumno.inscripciones?.[_materiaId]?.asistencias;
+  if (!asists) return { registrado: false, ausenteExplicito: false };
+  const registros = Object.values(asists).filter(r => r?.fecha === fecha);
+  const registrado = registros.some(r => r.estado === 'presente' || r.estado === 'justificado');
+  const ausenteExplicito = !registrado && registros.some(r => r.estado === 'ausente');
+  return { registrado, ausenteExplicito };
+}
+
+function renderAsistFechaLists(fecha) {
+  if (!fecha) return;
+
+  const verdes = [];
+  const rojos  = [];
+  _alumnos.forEach(a => {
+    const { registrado, ausenteExplicito } = estadoAlumnoEnFecha(a, fecha);
+    if (registrado) verdes.push(a);
+    else rojos.push({ ...a, _ausenteExplicito: ausenteExplicito });
+  });
+
+  const byName = (a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es');
+  verdes.sort(byName);
+  rojos.sort(byName);
+
+  const summaryEl = document.getElementById('asistFechaSummary');
+  if (summaryEl) {
+    summaryEl.textContent = _alumnos.length
+      ? `${formatFecha(fecha)} — ${verdes.length} de ${_alumnos.length} registraron asistencia`
+      : `${formatFecha(fecha)}`;
+  }
+
+  const countOkEl = document.getElementById('asistFechaCountOk');
+  const countNoEl = document.getElementById('asistFechaCountNo');
+  if (countOkEl) countOkEl.textContent = String(verdes.length);
+  if (countNoEl) countNoEl.textContent = String(rojos.length);
+
+  const verdesEl = document.getElementById('asistFechaVerdes');
+  const rojosEl  = document.getElementById('asistFechaRojos');
+
+  if (verdesEl) {
+    verdesEl.innerHTML = verdes.length
+      ? verdes.map(a => asistFechaRow(a, 'ok')).join('')
+      : `<p class="text-xs text-muted" style="padding:var(--space-2)">Nadie registró asistencia esta fecha.</p>`;
+  }
+  if (rojosEl) {
+    rojosEl.innerHTML = rojos.length
+      ? rojos.map(a => asistFechaRow(a, 'no')).join('')
+      : `<p class="text-xs text-muted" style="padding:var(--space-2)">Todos registraron asistencia esta fecha.</p>`;
+  }
+}
+
+function asistFechaRow(alumno, kind) {
+  const initials = getInitials(alumno.nombre);
+  const bg       = AVATAR_PALETTE[strHash(alumno.id) % AVATAR_PALETTE.length];
+  const nota     = kind === 'no' && alumno._ausenteExplicito
+    ? ' <span class="text-xs text-muted">(marcado ausente)</span>'
+    : '';
+  return `
+    <div class="asistfecha-row asistfecha-row--${kind}">
+      <div class="alumno-avatar" style="background:${bg};width:26px;height:26px;font-size:.65rem" aria-hidden="true">${escHtml(initials)}</div>
+      <span class="asistfecha-row-name">${escHtml(alumno.nombre)}${nota}</span>
+    </div>
+  `;
+}
+
+function formatFecha(dateStr) {
+  if (!dateStr) return '—';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es-SV', {
+    weekday: 'long', day: '2-digit', month: 'long', year: 'numeric',
+  });
+}
+
+function formatFechaCorta(dateStr) {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  return new Date(y, m - 1, d).toLocaleDateString('es-SV', { day: '2-digit', month: 'short' });
+}
+
+function todayStr() {
+  return new Date().toISOString().split('T')[0];
 }
 
 // ---------------------------------------------------------------------------
