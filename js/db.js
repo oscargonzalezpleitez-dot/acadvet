@@ -214,9 +214,16 @@ export async function getExposiciones(alumnoId, materiaId) {
   return snapToArray(s);
 }
 
-export async function addExposicion(alumnoId, materiaId, { tema, nota, fecha = null }) {
+export async function addExposicion(alumnoId, materiaId, {
+  tema, nota, fecha = null, sorteoId = null, grupoIndex = null, rubrica = null, total100 = null,
+}) {
   const newRef = push(ref(db, `${inscRef(alumnoId, materiaId)}/exposiciones`));
-  await set(newRef, { tema, nota, fecha });
+  const payload = { tema, nota, fecha };
+  if (sorteoId   !== null) payload.sorteoId   = sorteoId;
+  if (grupoIndex !== null) payload.grupoIndex = grupoIndex;
+  if (rubrica    !== null) payload.rubrica    = rubrica;
+  if (total100   !== null) payload.total100   = total100;
+  await set(newRef, payload);
   return newRef.key;
 }
 

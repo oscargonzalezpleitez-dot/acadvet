@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Calificar Exposición — AcadVet USAM</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --primary:#6C63FF; --primary-light:#A29BFE; --accent:#00D2D3;
+      --success:#00B894; --danger:#FF6B6B; --warning:#FDCB6E;
+      --bg:#F0F2FF; --surface:#FFFFFF; --surface-2:#ECEEFF;
+      --text:#1A1A2E; --text-2:#4A4A6A; --text-muted:#8888AA;
+      --border:rgba(108,99,255,0.15);
+      --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
+      --font-d:'Poppins',sans-serif; --font-b:'Inter',sans-serif;
+    }
+    *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: var(--font-b); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+    .header {
+      background: var(--surface);
+      border-bottom: 2px solid var(--border);
+      padding: 16px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+    .header-title { font-family: var(--font-d); font-weight: 800; font-size: 1.05rem; color: var(--primary); }
+    .header-sub   { font-size: .78rem; color: var(--text-muted); margin-top: 2px; }
+
+    .layout { display: grid; grid-template-columns: 300px 1fr; min-height: calc(100vh - 73px); }
+    @media (max-width: 720px) { .layout { grid-template-columns: 1fr; } }
+
+    .member-list {
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      overflow-y: auto;
+    }
+    .member-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1.5px solid var(--border);
+      cursor: pointer;
+      background: var(--surface-2);
+      transition: all .15s;
+    }
+    .member-row:hover { border-color: var(--primary-light); }
+    .member-row.active {
+      border-color: var(--primary);
+      background: rgba(108,99,255,.10);
+      box-shadow: 0 0 0 2px rgba(108,99,255,.12);
+    }
+    .member-avatar {
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--primary); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-size: .72rem; font-weight: 700; flex-shrink: 0;
+    }
+    .member-name  { font-size: .86rem; font-weight: 600; flex: 1; }
+    .member-badge {
+      font-size: .68rem; font-weight: 700; color: var(--success);
+      background: rgba(0,184,148,.12); padding: 2px 7px; border-radius: var(--radius-full);
+      flex-shrink: 0;
+    }
+
+    .detail { padding: 32px; display: flex; align-items: center; justify-content: center; overflow-y: auto; }
+    .detail.detail--form { align-items: flex-start; justify-content: center; }
+    .detail-empty { text-align: center; max-width: 360px; }
+    .detail-icon { font-size: 2.6rem; margin-bottom: 14px; }
+    .detail-name { font-family: var(--font-d); font-weight: 800; font-size: 1.2rem; margin-bottom: 6px; }
+    .detail-msg  { font-size: .86rem; color: var(--text-muted); line-height: 1.5; }
+
+    /* ── Formulario de calificación (rúbrica) ─────────────────────────── */
+    .rubric-wrap { width: 100%; max-width: 640px; padding-bottom: 24px; }
+    .rubric-header { display: flex; align-items: center; gap: 10px; margin-bottom: 18px; flex-wrap: wrap; }
+    .rubric-edit-tag {
+      font-size: .7rem; font-weight: 700; color: var(--warning);
+      background: rgba(253,203,110,.18); padding: 3px 9px; border-radius: var(--radius-full);
+    }
+
+    .form-row   { margin-bottom: 18px; }
+    .form-label { display: block; font-size: .8rem; font-weight: 700; color: var(--text-2); margin-bottom: 6px; }
+    .form-input {
+      width: 100%; padding: 10px 12px; border-radius: var(--radius-md);
+      border: 1.5px solid var(--border); background: var(--surface);
+      color: var(--text); font-size: .88rem; font-family: var(--font-b);
+    }
+    .form-input:focus { outline: none; border-color: var(--primary); }
+    .form-error { display: block; font-size: .75rem; color: var(--danger); margin-top: 5px; }
+
+    .rubric-list { display: flex; flex-direction: column; gap: 12px; margin-bottom: 18px; }
+    .rubric-item {
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--radius-md); padding: 12px 14px;
+    }
+    .rubric-item__top { display: flex; align-items: center; gap: 10px; }
+    .rubric-item__top label { flex: 1; font-size: .84rem; font-weight: 700; color: var(--text); }
+    .rubric-item__max { font-size: .76rem; color: var(--text-muted); font-weight: 600; }
+    .rubric-item__desc { font-size: .75rem; color: var(--text-muted); margin-top: 5px; line-height: 1.4; }
+    .rubric-input {
+      width: 64px; padding: 6px 8px; text-align: center;
+      border-radius: var(--radius-sm); border: 1.5px solid var(--border);
+      background: var(--surface-2); color: var(--text); font-size: .86rem; font-weight: 700;
+    }
+    .rubric-input:focus { outline: none; border-color: var(--primary); }
+
+    .rubric-total {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      background: rgba(108,99,255,.08); border-radius: var(--radius-md);
+      padding: 12px 16px; font-size: .86rem; color: var(--text-2); margin-bottom: 10px;
+    }
+    .rubric-total strong { color: var(--primary); font-size: 1rem; }
+    .rubric-total-nota { margin-left: auto; }
+
+    .rubric-actions { display: flex; align-items: center; gap: 14px; }
+    .rubric-save-btn {
+      background: var(--primary); color: #fff; border: none;
+      padding: 11px 20px; border-radius: var(--radius-md);
+      font-family: var(--font-b); font-size: .86rem; font-weight: 700; cursor: pointer;
+    }
+    .rubric-save-btn:hover  { opacity: .92; }
+    .rubric-save-btn:disabled { opacity: .6; cursor: default; }
+    .rubric-saved-hint { font-size: .82rem; font-weight: 700; color: var(--success); }
+
+    .state-center {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 60vh; flex-direction: column; gap: 10px; color: var(--text-muted);
+    }
+    .spinner {
+      width: 32px; height: 32px; border: 3px solid rgba(108,99,255,0.2);
+      border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .hidden { display: none !important; }
+  </style>
+</head>
+
+<body>
+  <header class="header">
+    <div>
+      <div class="header-title" id="hMateria">Cargando…</div>
+      <div class="header-sub" id="hGrupo"></div>
+    </div>
+  </header>
+
+  <div id="loadingState" class="state-center">
+    <div class="spinner"></div>
+    <span>Conectando…</span>
+  </div>
+
+  <div id="errorState" class="state-center hidden">
+    <div style="font-size:2.4rem">❌</div>
+    <span id="errTxt">No se pudo cargar el grupo.</span>
+  </div>
+
+  <div id="mainLayout" class="layout hidden">
+    <div class="member-list" id="memberList"></div>
+    <div class="detail" id="detailPanel">
+      <div class="detail-empty">
+        <div class="detail-icon">🎤</div>
+        <div class="detail-msg">Elegí un integrante de la lista para calificar su exposición.</div>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/calificar-grupo.js"></script>
+</body>
+</html>
