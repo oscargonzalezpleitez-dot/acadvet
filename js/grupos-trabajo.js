@@ -316,7 +316,11 @@ function paintResultados() {
   right.innerHTML = `
     <div class="grp-results-toolbar">
       <span class="grp-results-hint">Tocá un alumno y luego otro para intercambiarlos de grupo.</span>
-      <button class="btn btn--secondary btn--sm" id="grpRepetir">🔀 Repetir sorteo</button>
+      <div class="grp-results-actions">
+        <button class="btn btn--secondary btn--sm" id="grpExportExcel">📊 Excel</button>
+        <button class="btn btn--secondary btn--sm" id="grpExportPDF">📄 PDF</button>
+        <button class="btn btn--secondary btn--sm" id="grpRepetir">🔀 Repetir sorteo</button>
+      </div>
     </div>
     <div class="grp-results-grid">
       ${_g.grupos.map((miembros, i) => `
@@ -342,6 +346,8 @@ function paintResultados() {
   });
 
   document.getElementById('grpRepetir')?.addEventListener('click', doSorteo);
+  document.getElementById('grpExportExcel')?.addEventListener('click', e => exportExcel(e.currentTarget));
+  document.getElementById('grpExportPDF')?.addEventListener('click', e => exportPDF(e.currentTarget));
 }
 
 function onChipClick(id) {
@@ -455,6 +461,253 @@ async function borrarHistorial(item) {
     showToast('Error al eliminar', 'error');
     console.error(err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Exportación Excel / PDF
+// ---------------------------------------------------------------------------
+async function exportExcel(btn) {
+  if (!_g?.grupos) return;
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Generando…';
+
+  try {
+    await loadScript('https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js');
+
+    const byId = {};
+    _g.alumnos.forEach(a => { byId[a.id] = a; });
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'AcadVet USAM';
+    wb.created = new Date();
+
+    const ws = wb.addWorksheet('Grupos', {
+      pageSetup: { paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1 },
+    });
+    ws.columns = [{ width: 34 }, { width: 20 }];
+
+    const C = {
+      dark: 'FF2D2A6E', primary: 'FF6C63FF', sectionBg: 'FFECEEFF',
+      even: 'FFF0F2FF', odd: 'FFFFFFFF', white: 'FFFFFFFF', text: 'FF1A1A2E',
+      secondary: 'FF4A4A6A',
+    };
+    const fgFill = a => ({ type: 'pattern', pattern: 'solid', fgColor: { argb: a } });
+    const fnt    = (bold, size, argb = C.text) => ({ bold, size, color: { argb } });
+    const aln    = (h, indent = 0) => ({ vertical: 'middle', horizontal: h, indent });
+
+    const mergedCell = (rowNum, text, bgArgb, fontCfg) => {
+      ws.getRow(rowNum).height = 20;
+      ws.mergeCells(rowNum, 1, rowNum, 2);
+      const c = ws.getCell(rowNum, 1);
+      c.value = text; c.font = fontCfg; c.fill = fgFill(bgArgb); c.alignment = aln('left', 1);
+    };
+    const infoRow = (rowNum, label, value) => {
+      ws.getRow(rowNum).height = 16;
+      const ca = ws.getCell(rowNum, 1);
+      ca.value = label + ':'; ca.font = fnt(true, 9, C.secondary); ca.alignment = aln('left', 1);
+      const cb = ws.getCell(rowNum, 2);
+      cb.value = value; cb.font = fnt(false, 9, C.text); cb.alignment = aln('left');
+    };
+    const blankRow = n => { ws.getRow(n).height = 8; };
+
+    const fechaHoy = new Date().toLocaleDateString('es-SV', {
+      day: '2-digit', month: 'long', year: 'numeric',
+    });
+
+    let r = 1;
+    mergedCell(r++, 'UNIVERSIDAD SALVADOREÑA ALBERTO MASFERRER', C.dark, fnt(true, 11, C.white));
+    mergedCell(r++, 'Facultad de Medicina Veterinaria',          C.dark, fnt(false, 10, C.white));
+    mergedCell(r++, 'GRUPOS DE TRABAJO',                         C.dark, fnt(true, 11, C.white));
+    blankRow(r++);
+
+    infoRow(r++, 'Materia',            _g.materia.nombre ?? '—');
+    infoRow(r++, 'Ciclo',              (_g.materia.ciclo ?? '—') + (_g.materia.seccion ? ` · Sección ${_g.materia.seccion}` : ''));
+    infoRow(r++, 'Fecha',              fechaHoy);
+    infoRow(r++, 'Alumnos por grupo',  String(_g.tamano));
+    blankRow(r++);
+
+    _g.grupos.forEach((miembros, i) => {
+      mergedCell(r++, `GRUPO ${i + 1}  (${miembros.length} alumno${miembros.length !== 1 ? 's' : ''})`, C.sectionBg, fnt(true, 10, C.primary));
+
+      ws.getRow(r).height = 17;
+      ['Nombre', 'Carné'].forEach((h, ci) => {
+        const c = ws.getCell(r, ci + 1);
+        c.value = h; c.font = fnt(true, 9, C.white); c.fill = fgFill(C.primary);
+        c.alignment = aln(ci === 0 ? 'left' : 'center', ci === 0 ? 1 : 0);
+      });
+      r++;
+
+      miembros.forEach((id, idx) => {
+        const a  = byId[id];
+        const bg = idx % 2 === 0 ? C.even : C.odd;
+        ws.getRow(r).height = 15;
+        [a?.nombre ?? '—', a?.carnet ?? '—'].forEach((v, ci) => {
+          const c = ws.getCell(r, ci + 1);
+          c.value = v; c.font = fnt(false, 9, C.text); c.fill = fgFill(bg);
+          c.alignment = aln(ci === 0 ? 'left' : 'center', ci === 0 ? 1 : 0);
+        });
+        r++;
+      });
+      blankRow(r++);
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob   = new Blob([buffer], {
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    });
+    const url    = URL.createObjectURL(blob);
+    const anchor = document.createElement('a');
+    anchor.href     = url;
+    anchor.download = `Grupos_${safeName(_g.materia.nombre)}_${safeName(_g.materia.ciclo ?? '')}.xlsx`;
+    anchor.click();
+    URL.revokeObjectURL(url);
+    showToast('Excel de grupos generado');
+
+  } catch (err) {
+    console.error('[AcadVet] Error generando Excel de grupos:', err);
+    showToast('Error al generar Excel. Verificá tu conexión.', 'error');
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = origHTML;
+  }
+}
+
+async function exportPDF(btn) {
+  if (!_g?.grupos) return;
+  const origHTML = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Generando…';
+
+  try {
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
+
+    const byId = {};
+    _g.alumnos.forEach(a => { byId[a.id] = a; });
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+
+    const pw = doc.internal.pageSize.getWidth();
+    const ph = doc.internal.pageSize.getHeight();
+    const ML = 15;
+    const MR = 15;
+    const CW = pw - ML - MR;
+
+    // ── Header bar ────────────────────────────────────────────────────────
+    doc.setFillColor(45, 42, 110);
+    doc.rect(0, 0, pw, 32, 'F');
+
+    doc.setTextColor(255, 255, 255);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.text('UNIVERSIDAD SALVADOREÑA ALBERTO MASFERRER', ML, 10);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.text('Facultad de Medicina Veterinaria', ML, 17);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text('GRUPOS DE TRABAJO', ML, 25);
+
+    const fechaHoy = new Date().toLocaleDateString('es-SV', {
+      day: '2-digit', month: 'long', year: 'numeric',
+    });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7.5);
+    doc.text(fechaHoy, pw - MR, 25, { align: 'right' });
+
+    // ── Datos generales ──────────────────────────────────────────────────
+    let y = 42;
+    doc.setTextColor(26, 26, 46);
+    const infoRows = [
+      ['Materia',            _g.materia.nombre ?? '—'],
+      ['Ciclo',              (_g.materia.ciclo ?? '—') + (_g.materia.seccion ? ` · Sección ${_g.materia.seccion}` : '')],
+      ['Alumnos por grupo',  String(_g.tamano)],
+      ['Total de grupos',    String(_g.grupos.length)],
+    ];
+    for (const [lbl, val] of infoRows) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.text(lbl + ':', ML, y);
+      doc.setFont('helvetica', 'normal');
+      doc.text(String(val), ML + 38, y);
+      y += 6;
+    }
+    y += 3;
+
+    // ── Grupos ────────────────────────────────────────────────────────────
+    _g.grupos.forEach((miembros, i) => {
+      y = pdfCheckPage(doc, y, 20, ph);
+      y = pdfSection(doc, `GRUPO ${i + 1}  ·  ${miembros.length} alumno${miembros.length !== 1 ? 's' : ''}`, ML, y, CW);
+
+      doc.autoTable({
+        startY: y,
+        margin: { left: ML, right: MR },
+        head: [['Nombre', 'Carné']],
+        body: miembros.map(id => [byId[id]?.nombre ?? '—', byId[id]?.carnet ?? '—']),
+        styles:             { fontSize: 8, cellPadding: 2 },
+        headStyles:         { fillColor: [108, 99, 255], textColor: 255, fontStyle: 'bold' },
+        alternateRowStyles: { fillColor: [240, 242, 255] },
+        columnStyles:       { 1: { cellWidth: 40, halign: 'center' } },
+      });
+      y = doc.lastAutoTable.finalY + 8;
+    });
+
+    // ── Pie de página en todas las páginas ───────────────────────────────
+    const total = doc.internal.getNumberOfPages();
+    for (let p = 1; p <= total; p++) {
+      doc.setPage(p);
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(7);
+      doc.setTextColor(136, 136, 170);
+      doc.text(`AcadVet USAM  ·  Página ${p} de ${total}`, pw / 2, ph - 8, { align: 'center' });
+    }
+
+    doc.save(`Grupos_${safeName(_g.materia.nombre)}_${safeName(_g.materia.ciclo ?? '')}.pdf`);
+    showToast('PDF de grupos generado');
+
+  } catch (err) {
+    console.error('[AcadVet] Error generando PDF de grupos:', err);
+    showToast('Error al generar el PDF. Verificá tu conexión.', 'error');
+  } finally {
+    btn.disabled  = false;
+    btn.innerHTML = origHTML;
+  }
+}
+
+function pdfSection(doc, title, x, y, w) {
+  doc.setFillColor(236, 238, 255);
+  doc.rect(x, y - 5, w, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.setTextColor(108, 99, 255);
+  doc.text(title, x + 2, y);
+  doc.setTextColor(26, 26, 46);
+  return y + 9;
+}
+
+function pdfCheckPage(doc, y, needed, ph) {
+  if (y + needed > ph - 15) {
+    doc.addPage();
+    return 20;
+  }
+  return y;
+}
+
+function loadScript(src) {
+  return new Promise((resolve, reject) => {
+    if (document.querySelector(`script[src="${src}"]`)) { resolve(); return; }
+    const s = document.createElement('script');
+    s.src = src;
+    s.onload  = resolve;
+    s.onerror = () => reject(new Error(`No se pudo cargar: ${src}`));
+    document.head.appendChild(s);
+  });
+}
+
+function safeName(s) {
+  return (s ?? '').replace(/[^\w\sáéíóúÁÉÍÓÚñÑ]/g, '').trim().replace(/\s+/g, '_');
 }
 
 // ---------------------------------------------------------------------------
