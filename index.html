@@ -6,6 +6,13 @@
   <meta name="description" content="AcadVet USAM — Sistema de Gestión Académica Veterinaria">
   <title>AcadVet USAM</title>
 
+  <!-- PWA -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#0056A6">
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
+  <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
+  <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
+
   <!-- Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -119,6 +126,7 @@
   <!-- Scripts (type="module" para ES imports) -->
   <!-- El ?v fuerza descarga fresca cuando cambia el login (evita caché vieja) -->
   <script type="module" src="js/auth.js?v=20260714e"></script>
+  <script src="js/register-sw.js"></script>
 
 </body>
 </html>
