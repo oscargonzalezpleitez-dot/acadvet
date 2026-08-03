@@ -6,7 +6,7 @@
       ".write": false,
       "lab_location": {
         ".read": true,
-        ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'"
+        ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
       }
     },
 
@@ -17,29 +17,55 @@
 
     "materias": {
       ".read":  "auth != null",
-      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$materiaId": {
         ".validate": "newData.hasChildren(['nombre', 'ciclo', 'estado'])"
       }
     },
 
     "alumnos": {
-      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
-      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$alumnoId": {
+
+        "nombre": {
+          ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+        },
+        "carnet": {
+          ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+        },
+
+        "email": {
+          ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == data.val()))",
+          ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && !data.exists() && newData.val() == auth.token.email))"
+        },
+
         "inscripciones": {
           "$materiaId": {
+
             "parciales": {
+              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))",
               "$parcialId": {
                 ".validate": "!newData.exists() || (newData.isNumber() && newData.val() >= 0 && newData.val() <= 100)"
               }
             },
             "asistencias": {
+              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))",
               "$asistId": {
                 ".validate": "newData.hasChildren(['fecha', 'estado'])"
               }
             },
+            "quizzes": {
+              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+            },
+            "exposiciones": {
+              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+            },
+            "nota_diagnostico": {
+              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+            },
             "tareas": {
+              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))",
               "$tareaId": {
                 ".validate": "newData.hasChildren(['nombre', 'subidoEn'])"
               }
@@ -49,10 +75,28 @@
       }
     },
 
+    "alumno_observaciones": {
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      "$alumnoId": {
+        "$materiaId": {
+          ".validate": "newData.isString()"
+        }
+      }
+    },
+
+    "alumno_lookup": {
+      ".read": true,
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      "$carnetKey": {
+        ".validate": "newData.hasChildren(['alumnoId', 'nombre'])"
+      }
+    },
+
     "qr_sessions": {
       ".read":  "auth != null",
       "$sessionId": {
-        ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+        ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
         "asistentes": {
           "$asistenteId": {
             ".write":    "auth != null && !data.exists()",
@@ -64,22 +108,22 @@
 
     "grupos_sorteos": {
       ".read":  "auth != null",
-      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$sorteoId": {
         ".validate": "newData.hasChildren(['materiaId', 'tamano', 'grupos', 'estado'])"
       }
     },
 
     "solicitudes_idx": {
-      ".read": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$carnetKey": {
-        ".write": "auth != null && (auth.token.firebase.sign_in_provider === 'password' || !data.exists())",
+        ".write": "auth != null && ((auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv') || !data.exists())",
         ".validate": "newData.isBoolean()"
       }
     },
 
     "solicitudes_registro": {
-      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       ".write": "auth != null",
       "$solicitudId": {
         ".validate": "newData.hasChildren(['nombre', 'carnet', 'email', 'materias'])",
@@ -93,15 +137,15 @@
 
     "cuestionarios": {
       ".read":  "auth != null",
-      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$quizId": {
         ".validate": "newData.hasChildren(['nombre', 'tiempo', 'activo'])"
       }
     },
 
     "cuestionarios_correctas": {
-      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
-      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'"
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
     },
 
     "cuestionarios_enviados": {
@@ -115,7 +159,7 @@
     },
 
     "cuestionarios_resultados": {
-      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       ".write": "auth != null",
       "$resultId": {
         ".validate": "newData.hasChildren(['cuestionarioId', 'alumno']) && !data.exists()"
@@ -123,7 +167,7 @@
     },
 
     "lab_reports": {
-      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       ".write": "auth != null",
       "$reportId": {
         ".validate": "newData.hasChildren(['student_name', 'student_id', 'tipo_preparacion', 'timestamp', 'foto_url'])"
@@ -132,21 +176,21 @@
 
     "lab_images": {
       ".read":  true,
-      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'"
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
     },
 
     "reminders": {
       ".read":  true,
-      ".write": "auth != null && auth.token.firebase.sign_in_provider === 'password'"
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
     },
 
     "student_competencies": {
-      ".read":  "auth != null && auth.token.firebase.sign_in_provider === 'password'",
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$studentKey": {
         ".read":  "auth != null",
         "$compId": {
           ".write": "auth != null",
-          ".validate": "newData.hasChildren(['student_id', 'student_name', 'comp_id', 'comp_name', 'status']) && (auth.token.firebase.sign_in_provider === 'password' || (newData.child('status').val() === 'pendiente' && !newData.child('validated_by').exists() && !newData.child('validated_at').exists()))"
+          ".validate": "newData.hasChildren(['student_id', 'student_name', 'comp_id', 'comp_name', 'status']) && ((auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv') || (newData.child('status').val() === 'pendiente' && !newData.child('validated_by').exists() && !newData.child('validated_at').exists()))"
         }
       }
     }

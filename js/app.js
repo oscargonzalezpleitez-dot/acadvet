@@ -12,7 +12,7 @@ import { renderSolicitudes }        from './views/solicitudes.js';
 import { renderArchivo }            from './views/archivo.js';
 import { renderCuestionarios }      from './views/cuestionarios.js';
 import { renderReminders }          from './views/reminders.js';
-import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes } from './db.js';
+import { getMaterias, getAlumnos, alumnosByMateria, getSolicitudes, backfillAlumnoLookup } from './db.js';
 import { onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { auth } from './firebase-config.js';
 
@@ -199,6 +199,17 @@ async function refreshSolicitudesBadge() {
   } catch (_) {}
 }
 
+// Reconstruye alumno_lookup (índice público para "Mi Perfil") una sola vez,
+// para dar de alta a los alumnos creados antes de que existiera esa función.
+// Los cambios posteriores ya se mantienen solos (ver syncAlumnoLookup en db.js).
+const LOOKUP_BACKFILL_FLAG = 'acadvet_lookup_synced_v1';
+function ensureAlumnoLookupBackfill() {
+  if (localStorage.getItem(LOOKUP_BACKFILL_FLAG)) return;
+  backfillAlumnoLookup()
+    .then(() => localStorage.setItem(LOOKUP_BACKFILL_FLAG, '1'))
+    .catch((err) => console.warn('[AcadVet] No se pudo sincronizar alumno_lookup:', err));
+}
+
 // ---------------------------------------------------------------------------
 // Init — Firebase Auth persiste la sesión (browserLocalPersistence) y restaura
 // al usuario antes del primer callback. Si no hay sesión Firebase válida se
@@ -207,6 +218,7 @@ async function refreshSolicitudesBadge() {
 onAuthStateChanged(auth, (user) => {
   if (user) {
     refreshSolicitudesBadge();
+    ensureAlumnoLookupBackfill();
     initRouter();
     return;
   }

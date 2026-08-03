@@ -94,15 +94,67 @@ export async function createAlumno({ nombre, carnet, email = null, telefono = nu
     fotoUrl,
     creado_en: Date.now(),
   });
+  await syncAlumnoLookup(newRef.key);
   return newRef.key;
 }
 
 export async function updateAlumno(id, data) {
+  const before = await get(ref(db, `alumnos/${id}/carnet`));
   await update(ref(db, `alumnos/${id}`), data);
+  await syncAlumnoLookup(id, before.exists() ? before.val() : null);
 }
 
 export async function deleteAlumno(id) {
+  const before = await get(ref(db, `alumnos/${id}/carnet`));
   await remove(ref(db, `alumnos/${id}`));
+  await remove(ref(db, `alumno_observaciones/${id}`));
+  if (before.exists()) await remove(ref(db, `alumno_lookup/${sanitizeKey(before.val())}`));
+}
+
+// ---------------------------------------------------------------------------
+// ALUMNO_LOOKUP — índice público (solo lectura) para que el alumno encuentre
+// su propio alumnoId por carné desde el portal, sin exponer notas ni datos
+// de otros alumnos. Se recalcula cada vez que cambian los datos del alumno
+// o sus inscripciones. Ver "Mi Perfil" (mi-perfil.html / js/mi-perfil.js).
+// ---------------------------------------------------------------------------
+
+async function syncAlumnoLookup(alumnoId, carnetAnterior = null) {
+  const s = await get(ref(db, `alumnos/${alumnoId}`));
+
+  if (!s.exists()) {
+    if (carnetAnterior) await remove(ref(db, `alumno_lookup/${sanitizeKey(carnetAnterior)}`));
+    return;
+  }
+
+  const a = s.val();
+  const carnetKey = sanitizeKey(a.carnet);
+
+  if (carnetAnterior && sanitizeKey(carnetAnterior) !== carnetKey) {
+    await remove(ref(db, `alumno_lookup/${sanitizeKey(carnetAnterior)}`));
+  }
+
+  await set(ref(db, `alumno_lookup/${carnetKey}`), {
+    alumnoId,
+    nombre: a.nombre ?? '',
+    materiaIds: Object.keys(a.inscripciones ?? {}).reduce((acc, id) => {
+      acc[id] = true;
+      return acc;
+    }, {}),
+  });
+}
+
+/**
+ * Reconstruye alumno_lookup para TODOS los alumnos existentes. Se llama una
+ * sola vez de forma automática (ver js/app.js) para dar de alta el índice
+ * de alumnos creados antes de que existiera "Mi Perfil".
+ */
+export async function backfillAlumnoLookup() {
+  const s = await get(ref(db, 'alumnos'));
+  if (!s.exists()) return;
+  const ids = Object.keys(s.val());
+  for (const id of ids) {
+    await syncAlumnoLookup(id);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -113,19 +165,23 @@ export async function createInscripcion(alumnoId, materiaId) {
   await set(ref(db, `${inscRef(alumnoId, materiaId)}`), {
     inscrito_en: Date.now(),
     parciales: { parcial_1: null, parcial_2: null, parcial_3: null },
-    observaciones: '',
   });
+  await syncAlumnoLookup(alumnoId);
 }
 
 export async function deleteInscripcion(alumnoId, materiaId) {
   await remove(ref(db, inscRef(alumnoId, materiaId)));
+  await remove(ref(db, `alumno_observaciones/${alumnoId}/${materiaId}`));
+  await syncAlumnoLookup(alumnoId);
 }
 
 /** Retorna el objeto completo de inscripción (asistencias, quizzes, etc.) */
 export async function getInscripcion(alumnoId, materiaId) {
   const s = await get(ref(db, inscRef(alumnoId, materiaId)));
   if (!s.exists()) return null;
-  return s.val();
+  const insc = s.val();
+  insc.observaciones = await getObservaciones(alumnoId, materiaId);
+  return insc;
 }
 
 // ---------------------------------------------------------------------------
@@ -243,12 +299,16 @@ export async function deleteExposicion(alumnoId, materiaId, expId) {
 // ---------------------------------------------------------------------------
 
 export async function getObservaciones(alumnoId, materiaId) {
-  const s = await get(ref(db, `${inscRef(alumnoId, materiaId)}/observaciones`));
-  return s.exists() ? s.val() : '';
+  const s = await get(ref(db, `alumno_observaciones/${alumnoId}/${materiaId}`));
+  if (s.exists()) return s.val();
+  // Compatibilidad: observaciones antiguas que aún viven dentro de la inscripción
+  // (antes de moverlas a su propio nodo protegido). Se migran solas al guardar.
+  const legacy = await get(ref(db, `${inscRef(alumnoId, materiaId)}/observaciones`));
+  return legacy.exists() ? legacy.val() : '';
 }
 
 export async function updateObservaciones(alumnoId, materiaId, texto) {
-  await set(ref(db, `${inscRef(alumnoId, materiaId)}/observaciones`), texto);
+  await set(ref(db, `alumno_observaciones/${alumnoId}/${materiaId}`), texto);
 }
 
 // ---------------------------------------------------------------------------
@@ -457,10 +517,11 @@ export async function aprobarSolicitud(solicitudId) {
       set(ref(db, `alumnos/${alumnoId}/inscripciones/${materiaId}`), {
         inscrito_en: Date.now(),
         parciales: { parcial_1: null, parcial_2: null, parcial_3: null },
-        observaciones: '',
       })
     )
   );
+
+  await syncAlumnoLookup(alumnoId);
 
   await update(ref(db, `solicitudes_registro/${solicitudId}`), {
     estado: 'aprobado',
