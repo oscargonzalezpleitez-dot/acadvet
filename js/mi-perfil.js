@@ -31,8 +31,13 @@ const formLogin        = document.getElementById('formLogin');
 const formSignup        = document.getElementById('formSignup');
 const authError       = document.getElementById('authError');
 const btnLogout       = document.getElementById('btnLogout');
+const signupConfirm   = document.getElementById('signupConfirm');
+const confirmNombre   = document.getElementById('confirmNombre');
+const btnConfirmYes   = document.getElementById('btnConfirmYes');
+const btnConfirmNo    = document.getElementById('btnConfirmNo');
 
 let _booting = true;
+let _pendingSignup = null; // { alumnoId, carnet, email, pass }
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -46,6 +51,8 @@ function switchTab(which) {
   tabSignup.classList.toggle('active', !isLogin);
   formLogin.classList.toggle('hidden', !isLogin);
   formSignup.classList.toggle('hidden', isLogin);
+  signupConfirm.classList.add('hidden');
+  _pendingSignup = null;
   clearError();
 }
 
@@ -102,10 +109,29 @@ formSignup.addEventListener('submit', async (e) => {
     }
     const { alumnoId, nombre } = lookupSnap.val();
 
-    const confirmed = window.confirm(`¿Sos ${nombre}?\n\nSe va a crear tu cuenta para ver tu expediente.`);
-    if (!confirmed) { setLoading(null); return; }
+    _pendingSignup = { alumnoId, carnet, email, pass };
+    confirmNombre.textContent = nombre;
+    formSignup.classList.add('hidden');
+    signupConfirm.classList.remove('hidden');
+  } catch (err) {
+    handleAuthError(err);
+  } finally {
+    setLoading(null);
+  }
+});
 
-    setLoading('Creando tu cuenta…');
+btnConfirmNo.addEventListener('click', () => {
+  _pendingSignup = null;
+  signupConfirm.classList.add('hidden');
+  formSignup.classList.remove('hidden');
+});
+
+btnConfirmYes.addEventListener('click', async () => {
+  if (!_pendingSignup) return;
+  const { alumnoId, carnet, email, pass } = _pendingSignup;
+
+  setLoading('Creando tu cuenta…');
+  try {
     await createUserWithEmailAndPassword(auth, email, pass);
 
     // Vincula el correo al expediente solo si el docente no puso uno todavía
@@ -114,9 +140,13 @@ formSignup.addEventListener('submit', async (e) => {
       await set(ref(db, `alumnos/${alumnoId}/email`), email);
     } catch (_) { /* el docente ya tiene un correo distinto registrado; seguimos */ }
 
+    _pendingSignup = null;
+    signupConfirm.classList.add('hidden');
     saveCache(alumnoId, carnet);
     await loadProfile(alumnoId);
   } catch (err) {
+    signupConfirm.classList.add('hidden');
+    formSignup.classList.remove('hidden');
     handleAuthError(err);
   } finally {
     setLoading(null);
@@ -225,7 +255,12 @@ async function loadProfile(alumnoId) {
   } catch (err) {
     console.error('[MiPerfil] loadProfile', err);
     clearCache();
+    profileView.classList.add('hidden');
+    authCard.classList.remove('hidden');
+    switchTab('login');
     showError('No pudimos cargar tu expediente. Iniciá sesión de nuevo.');
+  } finally {
+    setLoading(null);
   }
 }
 

@@ -65,6 +65,13 @@
     }
     .btn-submit:active { transform: scale(0.98); }
 
+    .confirm-text { font-size: 0.95rem; text-align: center; margin-bottom: 16px; line-height: 1.5; }
+    .btn-secondary {
+      width: 100%; padding: 11px; border: 2px solid var(--border); border-radius: var(--r-full);
+      background: var(--surface); color: var(--text-2); font-family: var(--font); font-weight: 700;
+      font-size: 0.85rem; cursor: pointer; margin-top: 8px;
+    }
+
     .auth-error {
       background: rgba(255,107,107,0.1); border: 1px solid rgba(255,107,107,0.3); color: #C0392B;
       border-radius: var(--r-md); padding: 10px 12px; font-size: 0.8rem; margin-bottom: 12px; font-weight: 600;
@@ -176,6 +183,12 @@
         </div>
         <button class="btn-submit" type="submit">Crear cuenta</button>
       </form>
+
+      <div id="signupConfirm" class="hidden">
+        <p class="confirm-text">¿Sos <strong id="confirmNombre"></strong>?</p>
+        <button class="btn-submit" type="button" id="btnConfirmYes">Sí, crear mi cuenta</button>
+        <button class="btn-secondary" type="button" id="btnConfirmNo">No, es otro carné</button>
+      </div>
 
       <p class="auth-hint">
         Tu docente ya debe haberte inscrito en una materia para poder crear tu cuenta.
