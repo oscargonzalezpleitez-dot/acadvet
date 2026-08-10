@@ -60,12 +60,10 @@ async function init() {
       if (inp) inp.value = tokenUrl;
     }
 
-    // Fingerprint del dispositivo (djb2)
+    // ID del dispositivo: aleatorio y persistente en localStorage (no colisiona
+    // entre teléfonos del mismo modelo, a diferencia del fingerprint anterior).
     if (_cfg.onceDevice) {
-      _deviceId = djb2(
-        `${navigator.userAgent}${screen.width}${screen.height}` +
-        `${navigator.language}${navigator.hardwareConcurrency ?? ''}`
-      );
+      _deviceId = getDeviceId();
     }
 
     // Mostrar campo de correo si es necesario
@@ -247,9 +245,13 @@ async function handleStep1() {
     }
 
     // Verificaciones en la lista de asistentes
+    const checkType = _cfg.checkType ?? 'unico';
     const asistSnap = await get(ref(db, `qr_sessions/${sessionId}/asistentes`));
     if (asistSnap.exists()) {
-      const vals = Object.values(asistSnap.val());
+      // Solo compara contra registros del mismo checkType: así el que ya marcó
+      // INICIO no queda bloqueado al querer marcar FIN (y viceversa).
+      const vals = Object.values(asistSnap.val())
+        .filter(a => (a.checkType ?? 'unico') === checkType);
 
       // Duplicado por carné
       if (vals.some(a => (a.carnet ?? '').toLowerCase() === carnet.toLowerCase())) {
@@ -421,15 +423,21 @@ function haversine(lat1, lng1, lat2, lng2) {
 }
 
 // ---------------------------------------------------------------------------
-// djb2 — fingerprint del dispositivo
+// ID persistente del dispositivo — aleatorio, guardado en localStorage
 // ---------------------------------------------------------------------------
-function djb2(str) {
-  let h = 5381;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) + h) ^ str.charCodeAt(i);
-    h |= 0;
+function getDeviceId() {
+  const KEY = 'acadvet_device_id';
+  try {
+    let id = localStorage.getItem(KEY);
+    if (!id) {
+      id = (crypto.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`);
+      localStorage.setItem(KEY, id);
+    }
+    return id;
+  } catch {
+    // localStorage no disponible (modo privado, etc.): no bloqueamos el registro.
+    return null;
   }
-  return (h >>> 0).toString(36);
 }
 
 // ---------------------------------------------------------------------------
