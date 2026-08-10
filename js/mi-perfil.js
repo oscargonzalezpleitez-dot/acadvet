@@ -14,6 +14,7 @@ import {
   signInWithEmailAndPassword,
   onAuthStateChanged,
   signOut,
+  deleteUser,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { app, auth } from './firebase-config.js';
 import { activarPushParaAlumno, canUsePush, isIOS, isStandalone } from './push.js';
@@ -139,10 +140,27 @@ btnConfirmYes.addEventListener('click', async () => {
     await createUserWithEmailAndPassword(auth, email, pass);
 
     // Vincula el correo al expediente solo si el docente no puso uno todavía
-    // (write-once: si ya hay un correo distinto, esta escritura es rechazada).
+    // (write-once: si ya hay un correo distinto, esta escritura es rechazada
+    // y no pasa nada — puede significar que ya coincidía, o que es distinto;
+    // no podemos leer el valor guardado para saber cuál caso es).
     try {
       await set(ref(db, `alumnos/${alumnoId}/email`), email);
-    } catch (_) { /* el docente ya tiene un correo distinto registrado; seguimos */ }
+    } catch (_) { /* seguimos a verificar abajo si de verdad quedó vinculada */ }
+
+    // Confirmar que el correo con el que se creó la cuenta realmente da
+    // acceso al expediente. Si el docente había registrado un correo
+    // DISTINTO, esta lectura falla — sin este chequeo, la cuenta queda
+    // creada pero inservible y el alumno se entera recién más tarde con
+    // un error genérico ("no pudimos cargar tu expediente").
+    const probe = await get(ref(db, `alumnos/${alumnoId}/nombre`)).catch(() => null);
+    if (!probe?.exists()) {
+      await deleteUser(auth.currentUser).catch(() => {});
+      _pendingSignup = null;
+      signupConfirm.classList.add('hidden');
+      formSignup.classList.remove('hidden');
+      showError('El correo que ingresaste no coincide con el que tu docente tiene registrado para tu carné. Consultale a tu docente cuál correo usar (o pedile que lo actualice) y volvé a intentar.');
+      return;
+    }
 
     _pendingSignup = null;
     signupConfirm.classList.add('hidden');
