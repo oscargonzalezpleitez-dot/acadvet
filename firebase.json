@@ -19,6 +19,7 @@
       ".firebaserc",
       "database.rules.json",
       "storage.rules",
+      "functions/**",
       ".github/**",
       ".git/**",
       ".gitignore",
