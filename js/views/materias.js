@@ -5,6 +5,7 @@
 
 import {
   getMaterias, createMateria, updateMateria, archivarMateria,
+  getTareasAsignadas, addTareaAsignada, deleteTareaAsignada,
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 
@@ -110,6 +111,7 @@ function paint() {
       if (action === 'edit')    openEditModal(m);
       if (action === 'archive') confirmArchive(m);
       if (action === 'activate') doActivate(m);
+      if (action === 'tareas')  openTareasModal(m);
     });
   });
 }
@@ -124,7 +126,8 @@ function rowHTML(materia, index, archived) {
     ? `<button class="btn btn--secondary btn--sm" data-action="activate" data-id="${materia.id}" title="Reactivar">
          ↩ Reactivar
        </button>`
-    : `<button class="btn btn--ghost btn--sm" data-action="edit" data-id="${materia.id}" title="Editar" aria-label="Editar">
+    : `<button class="btn btn--ghost btn--sm" data-action="tareas" data-id="${materia.id}" title="Tareas asignadas" aria-label="Tareas asignadas">📋</button>
+       <button class="btn btn--ghost btn--sm" data-action="edit" data-id="${materia.id}" title="Editar" aria-label="Editar">
          <svg viewBox="0 0 24 24" width="15" height="15" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
            <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
            <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -248,6 +251,110 @@ async function doActivate(materia) {
     showToast('Error al reactivar', 'error');
     console.error(err);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Tareas asignadas — publicar tarea nueva para toda la materia (notifica
+// por push a los inscritos vía Cloud Function).
+// ---------------------------------------------------------------------------
+
+async function openTareasModal(materia) {
+  let tareas = [];
+  try {
+    tareas = await getTareasAsignadas(materia.id);
+  } catch (err) {
+    showToast('Error al cargar las tareas asignadas', 'error');
+    console.error(err);
+    return;
+  }
+
+  openModal({
+    title: `Tareas asignadas — ${materia.nombre}`,
+    body: tareasModalBody(tareas),
+    confirmLabel: 'Publicar tarea',
+    async onConfirm() {
+      const data = readTareaForm();
+      if (!data) return;
+      try {
+        await addTareaAsignada(materia.id, data);
+        showToast('Tarea publicada — se notificó a los alumnos inscritos');
+        await openTareasModal(materia); // re-render con la lista actualizada
+      } catch (err) {
+        showToast('Error al publicar la tarea', 'error');
+        console.error(err);
+      }
+    },
+  });
+
+  wireTareasModal(materia);
+}
+
+function tareasModalBody(tareas) {
+  const lista = tareas.length === 0
+    ? `<p class="text-muted text-sm">Todavía no hay tareas publicadas en esta materia.</p>`
+    : `<ul class="tareas-asignadas-list" style="list-style:none;padding:0;margin:0 0 var(--space-5);display:grid;gap:var(--space-2)">
+        ${tareas.map(t => `
+          <li style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-2);padding:var(--space-2) var(--space-3);background:var(--color-surface-2);border-radius:var(--radius-md)">
+            <div>
+              <div style="font-weight:600;font-size:var(--text-sm)">${escHtml(t.titulo)}</div>
+              <div class="text-muted text-sm">Fecha límite: ${escHtml(t.fechaLimite || '—')}</div>
+            </div>
+            <button class="btn btn--ghost btn--sm text-danger" data-del-tarea="${escHtml(t.id)}" title="Eliminar" aria-label="Eliminar">✕</button>
+          </li>`).join('')}
+      </ul>`;
+
+  return `
+    ${lista}
+    <div class="form-group">
+      <label class="form-label" for="fTareaTitulo">Título *</label>
+      <input class="form-input" id="fTareaTitulo" type="text" maxlength="150" autocomplete="off" placeholder="Ej. Reporte de laboratorio 1">
+      <span class="form-error hidden" id="fTareaTituloErr">El título es obligatorio.</span>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="fTareaFecha">Fecha límite *</label>
+      <input class="form-input" id="fTareaFecha" type="date">
+      <span class="form-error hidden" id="fTareaFechaErr">La fecha límite es obligatoria.</span>
+    </div>
+    <div class="form-group">
+      <label class="form-label" for="fTareaDescripcion">Descripción <span class="text-muted">(opcional)</span></label>
+      <textarea class="form-input" id="fTareaDescripcion" rows="3" maxlength="500" placeholder="Instrucciones para la tarea…"></textarea>
+    </div>
+  `;
+}
+
+function readTareaForm() {
+  const titulo      = document.getElementById('fTareaTitulo')?.value.trim() ?? '';
+  const fechaLimite = document.getElementById('fTareaFecha')?.value ?? '';
+  const descripcion = document.getElementById('fTareaDescripcion')?.value.trim() ?? '';
+
+  let ok = true;
+  const titErr = document.getElementById('fTareaTituloErr');
+  const fecErr = document.getElementById('fTareaFechaErr');
+
+  if (!titulo) { titErr?.classList.remove('hidden'); document.getElementById('fTareaTitulo')?.classList.add('form-input--error'); ok = false; }
+  else         { titErr?.classList.add('hidden');    document.getElementById('fTareaTitulo')?.classList.remove('form-input--error'); }
+
+  if (!fechaLimite) { fecErr?.classList.remove('hidden'); document.getElementById('fTareaFecha')?.classList.add('form-input--error'); ok = false; }
+  else               { fecErr?.classList.add('hidden');    document.getElementById('fTareaFecha')?.classList.remove('form-input--error'); }
+
+  if (!ok) return null;
+  return { titulo, fechaLimite, descripcion };
+}
+
+function wireTareasModal(materia) {
+  document.querySelectorAll('[data-del-tarea]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.delTarea;
+      try {
+        await deleteTareaAsignada(materia.id, id);
+        showToast('Tarea eliminada');
+        await openTareasModal(materia);
+      } catch (err) {
+        showToast('Error al eliminar', 'error');
+        console.error(err);
+      }
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------

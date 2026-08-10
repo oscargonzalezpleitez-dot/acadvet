@@ -16,6 +16,7 @@ import {
   signOut,
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { app, auth } from './firebase-config.js';
+import { activarPushParaAlumno, canUsePush, isIOS, isStandalone } from './push.js';
 
 const db = getDatabase(app);
 const CACHE_KEY = 'acadvet_mi_perfil';
@@ -35,9 +36,12 @@ const signupConfirm   = document.getElementById('signupConfirm');
 const confirmNombre   = document.getElementById('confirmNombre');
 const btnConfirmYes   = document.getElementById('btnConfirmYes');
 const btnConfirmNo    = document.getElementById('btnConfirmNo');
+const btnActivarPush  = document.getElementById('btnActivarPush');
+const pushStatusText  = document.getElementById('pushStatusText');
 
 let _booting = true;
-let _pendingSignup = null; // { alumnoId, carnet, email, pass }
+let _pendingSignup   = null; // { alumnoId, carnet, email, pass }
+let _currentAlumnoId = null;
 
 // ---------------------------------------------------------------------------
 // Tabs
@@ -205,6 +209,7 @@ function handleAuthError(err) {
 // ---------------------------------------------------------------------------
 btnLogout.addEventListener('click', async () => {
   clearCache();
+  _currentAlumnoId = null;
   await signOut(auth);
   profileView.classList.add('hidden');
   authCard.classList.remove('hidden');
@@ -214,10 +219,58 @@ btnLogout.addEventListener('click', async () => {
 });
 
 // ---------------------------------------------------------------------------
+// Activar notificaciones push
+// ---------------------------------------------------------------------------
+btnActivarPush?.addEventListener('click', async () => {
+  if (!_currentAlumnoId) return;
+
+  if (isIOS() && !isStandalone()) {
+    pushStatusText.textContent =
+      '📲 Para recibir notificaciones en iPhone: agregá esta página a tu pantalla de inicio (botón Compartir → "Agregar a inicio") y abrila desde ahí.';
+    return;
+  }
+
+  if (!(await canUsePush())) {
+    pushStatusText.textContent = '⚠️ Tu navegador no soporta notificaciones push.';
+    return;
+  }
+
+  btnActivarPush.disabled = true;
+  btnActivarPush.textContent = 'Activando…';
+  try {
+    await activarPushParaAlumno(_currentAlumnoId);
+    setPushActivated();
+  } catch (err) {
+    btnActivarPush.disabled = false;
+    btnActivarPush.textContent = 'Activar notificaciones';
+    if (err.message === 'PERMISO_DENEGADO') {
+      pushStatusText.textContent = '⚠️ Bloqueaste el permiso de notificaciones. Habilitalo en la configuración de tu navegador para este sitio.';
+    } else {
+      console.error('[MiPerfil] push', err);
+      pushStatusText.textContent = '⚠️ No se pudo activar. Intentá de nuevo.';
+    }
+  }
+});
+
+function setPushActivated() {
+  btnActivarPush.disabled = true;
+  btnActivarPush.textContent = '✓ Activadas';
+  pushStatusText.textContent = '🔔 Vas a recibir avisos de tareas, notas y recordatorios acá.';
+}
+
+function updatePushButtonState() {
+  if (!btnActivarPush) return;
+  if ('Notification' in window && Notification.permission === 'granted') {
+    setPushActivated();
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Carga y pinta el perfil (solo lectura)
 // ---------------------------------------------------------------------------
 async function loadProfile(alumnoId) {
   setLoading('Cargando tu expediente…');
+  _currentAlumnoId = alumnoId;
   try {
     const [nombreSnap, carnetSnap, lookupSnap] = await Promise.all([
       get(ref(db, `alumnos/${alumnoId}/nombre`)),
@@ -252,9 +305,11 @@ async function loadProfile(alumnoId) {
 
     authCard.classList.add('hidden');
     profileView.classList.remove('hidden');
+    updatePushButtonState();
   } catch (err) {
     console.error('[MiPerfil] loadProfile', err);
     clearCache();
+    _currentAlumnoId = null;
     profileView.classList.add('hidden');
     authCard.classList.remove('hidden');
     switchTab('login');

@@ -15,13 +15,14 @@ export const REMINDER_COLORS = {
   red:    '#FF6B6B',
 };
 
-export async function createReminder({ title, message, date, subject, color = 'purple' }) {
+export async function createReminder({ title, message, date, subject, color = 'purple', materiaId = null }) {
   return push(ref(rtdb, 'reminders'), {
     title:      title.trim(),
     message:    message.trim(),
     date,
     subject:    subject.trim(),
     color,
+    materiaId,
     created_at: Date.now(),
   });
 }

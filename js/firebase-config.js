@@ -17,3 +17,7 @@ const firebaseConfig = {
 
 export const app  = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
+
+// Firebase Console → Project Settings → Cloud Messaging → Web configuration
+// → "Generate key pair". Necesaria para pedir el token de push (js/push.js).
+export const VAPID_KEY = 'REEMPLAZAR_CON_TU_VAPID_KEY';

@@ -5,7 +5,10 @@
 
 import { getDatabase, ref, get, push, set }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-import { app } from './firebase-config.js';
+import { signInAnonymously }
+  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { app, auth } from './firebase-config.js';
+import { getTareasAsignadas } from './db.js';
 
 const db = getDatabase(app);
 
@@ -19,9 +22,15 @@ let _materiaId = null;
 // ---------------------------------------------------------------------------
 // Inicio
 // ---------------------------------------------------------------------------
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   const params = new URLSearchParams(location.search);
   _materiaId = params.get('materia') ?? null;
+
+  try {
+    if (!auth.currentUser) await signInAnonymously(auth);
+  } catch (err) {
+    console.error('[Tareas] Error de autenticación anónima:', err);
+  }
 
   bindBuscar();
   if (_materiaId) showMateriaHint(_materiaId);
@@ -47,36 +56,27 @@ async function buscarAlumno() {
   setBuscarLoading(true);
 
   try {
-    const snap = await get(ref(db, 'alumnos'));
+    const snap = await get(ref(db, `alumno_lookup/${sanitizeKey(carnet)}`));
     if (!snap.exists()) {
-      setBuscarLoading(false);
-      showError('fCarnet', errEl, 'No se encontró ningún alumno con ese carné.');
-      return;
-    }
-
-    const todos  = Object.entries(snap.val()).map(([id, d]) => ({ id, ...d }));
-    const alumno = todos.find(a =>
-      (a.carnet ?? '').toLowerCase().trim() === carnet.toLowerCase()
-    );
-
-    if (!alumno) {
       setBuscarLoading(false);
       showError('fCarnet', errEl, 'Carné no encontrado. Verificá el número e intentá de nuevo.');
       return;
     }
 
-    _alumno = alumno;
+    const lookup = snap.val(); // { alumnoId, nombre, materiaIds }
+    const materiaIds = lookup.materiaIds ?? {};
+
+    _alumno = { id: lookup.alumnoId, nombre: lookup.nombre, materiaIds };
 
     if (_materiaId) {
-      if (!alumno.inscripciones?.[_materiaId]) {
+      if (!materiaIds[_materiaId]) {
         setBuscarLoading(false);
         showError('fCarnet', errEl, 'No estás inscrito en la materia de este enlace.');
         return;
       }
       _materias = await fetchMaterias([_materiaId]);
     } else {
-      const ids = Object.keys(alumno.inscripciones ?? {});
-      _materias = await fetchMaterias(ids);
+      _materias = await fetchMaterias(Object.keys(materiaIds));
     }
 
     setBuscarLoading(false);
@@ -87,6 +87,10 @@ async function buscarAlumno() {
     setBuscarLoading(false);
     showError('fCarnet', errEl, 'Error de conexión. Verificá tu internet e intentá de nuevo.');
   }
+}
+
+function sanitizeKey(s) {
+  return String(s ?? '').toLowerCase().trim().replace(/[.#$\[\]\/\s]/g, '_');
 }
 
 async function fetchMaterias(ids) {
@@ -120,6 +124,8 @@ function showFormStep() {
 
   document.getElementById('alumnoNombre').textContent = _alumno.nombre;
 
+  renderTareasAsignadas(); // no bloquea el resto del formulario
+
   const sel = document.getElementById('fMateria');
   if (!sel) return;
   sel.innerHTML = '';
@@ -143,6 +149,41 @@ function showFormStep() {
   }
 
   document.getElementById('btnEntregar')?.addEventListener('click', registrarEntrega);
+}
+
+async function renderTareasAsignadas() {
+  const cont = document.getElementById('tareasAsignadasCont');
+  if (!cont) return;
+  if (_materias.length === 0) { cont.innerHTML = ''; return; }
+
+  try {
+    const porMateria = await Promise.all(_materias.map(m => getTareasAsignadas(m.id)));
+    const bloques = _materias
+      .map((m, i) => ({ materia: m, tareas: porMateria[i] }))
+      .filter(b => b.tareas.length > 0);
+
+    if (bloques.length === 0) { cont.innerHTML = ''; return; }
+
+    cont.innerHTML = `
+      <div style="background:var(--surface2);border:1.5px solid var(--border);border-radius:12px;padding:14px 16px;margin-bottom:18px">
+        <div style="font-weight:700;font-size:0.9rem;color:var(--text);margin-bottom:10px">📌 Tareas asignadas</div>
+        ${bloques.map(b => `
+          <div style="margin-bottom:8px">
+            <div style="font-size:0.75rem;color:var(--muted);margin-bottom:4px">${escHtml(b.materia.nombre)}</div>
+            ${b.tareas.map(t => `
+              <div style="display:flex;justify-content:space-between;gap:10px;padding:8px 10px;
+                   background:var(--surface);border-radius:8px;margin-bottom:6px;font-size:0.85rem;color:var(--text)">
+                <span>${escHtml(t.titulo)}</span>
+                <strong style="white-space:nowrap">${escHtml(t.fechaLimite || '—')}</strong>
+              </div>
+            `).join('')}
+          </div>
+        `).join('')}
+      </div>
+    `;
+  } catch (err) {
+    console.error('[Tareas] Error cargando tareas asignadas:', err);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +211,7 @@ async function registrarEntrega() {
 
   if (!ok) return;
 
-  if (!_alumno.inscripciones?.[materiaId]) {
+  if (!_alumno.materiaIds?.[materiaId]) {
     showError('fMateria', errMateria, 'No estás inscrito en esa materia.');
     return;
   }

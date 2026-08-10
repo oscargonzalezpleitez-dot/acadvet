@@ -7,6 +7,52 @@
 // Subir CACHE_VERSION cuando se quiera forzar limpieza del cache viejo.
 // =============================================================================
 
+// -----------------------------------------------------------------------------
+// Firebase Cloud Messaging (notificaciones push)
+// Se fusiona aquí porque un scope solo puede tener un Service Worker activo:
+// registrar un firebase-messaging-sw.js aparte reemplazaría este archivo y
+// rompería el cache offline de abajo. El SW no es un módulo ES, así que usa
+// el build "compat" de Firebase (única excepción al SDK modular del resto
+// del proyecto, y solo dentro de este archivo).
+// -----------------------------------------------------------------------------
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js');
+importScripts('https://www.gstatic.com/firebasejs/10.14.1/firebase-messaging-compat.js');
+
+firebase.initializeApp({
+  apiKey:            "AIzaSyDsypCuOI00MIkow2rATpd3FjujP5jVBwM",
+  authDomain:        "acadvet-usam.firebaseapp.com",
+  databaseURL:       "https://acadvet-usam-default-rtdb.firebaseio.com",
+  projectId:         "acadvet-usam",
+  storageBucket:     "acadvet-usam.firebasestorage.app",
+  messagingSenderId: "1020301218871",
+  appId:             "1:1020301218871:web:7f28eda174b8af9bc45bb2",
+});
+
+const messaging = firebase.messaging();
+
+// Los mensajes se mandan "data-only" (sin campo "notification") para que el
+// render y el click los controlemos nosotros, no el SDK.
+messaging.onBackgroundMessage((payload) => {
+  const { title, body, url } = payload.data || {};
+  self.registration.showNotification(title || 'AcadVet USAM', {
+    body: body || '',
+    icon: './assets/icons/icon-192.png',
+    badge: './assets/icons/icon-192.png',
+    data: { url: url || './' },
+  });
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || './';
+  event.waitUntil(
+    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((list) => {
+      const existing = list.find((c) => c.url.includes(url.replace('./', '')));
+      return existing ? existing.focus() : clients.openWindow(url);
+    })
+  );
+});
+
 const CACHE_VERSION = 'acadvet-shell-v1';
 
 const APP_SHELL = [

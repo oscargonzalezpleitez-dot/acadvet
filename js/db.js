@@ -62,6 +62,26 @@ export async function archivarMateria(id) {
 }
 
 // ---------------------------------------------------------------------------
+// TAREAS ASIGNADAS — el docente publica una tarea para toda la materia
+// (dispara notificación push a los inscritos vía Cloud Function).
+// ---------------------------------------------------------------------------
+
+export async function addTareaAsignada(materiaId, { titulo, descripcion = '', fechaLimite }) {
+  const newRef = push(ref(db, `materias/${materiaId}/tareas_asignadas`));
+  await set(newRef, { titulo, descripcion, fechaLimite, creadaEn: Date.now() });
+  return newRef.key;
+}
+
+export async function getTareasAsignadas(materiaId) {
+  const s = await get(ref(db, `materias/${materiaId}/tareas_asignadas`));
+  return snapToArray(s).sort((a, b) => (b.creadaEn || 0) - (a.creadaEn || 0));
+}
+
+export async function deleteTareaAsignada(materiaId, id) {
+  await remove(ref(db, `materias/${materiaId}/tareas_asignadas/${id}`));
+}
+
+// ---------------------------------------------------------------------------
 // ALUMNOS
 // ---------------------------------------------------------------------------
 
@@ -109,6 +129,20 @@ export async function deleteAlumno(id) {
   await remove(ref(db, `alumnos/${id}`));
   await remove(ref(db, `alumno_observaciones/${id}`));
   if (before.exists()) await remove(ref(db, `alumno_lookup/${sanitizeKey(before.val())}`));
+}
+
+// ---------------------------------------------------------------------------
+// PUSH TOKENS — un alumno puede tener varios (uno por dispositivo instalado).
+// ---------------------------------------------------------------------------
+
+export async function savePushToken(alumnoId, token) {
+  await set(ref(db, `alumnos/${alumnoId}/pushTokens/${sanitizeKey(token)}`), {
+    token, savedAt: Date.now(), ua: navigator.userAgent,
+  });
+}
+
+export async function deletePushToken(alumnoId, token) {
+  await remove(ref(db, `alumnos/${alumnoId}/pushTokens/${sanitizeKey(token)}`));
 }
 
 // ---------------------------------------------------------------------------

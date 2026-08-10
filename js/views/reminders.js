@@ -5,6 +5,7 @@
 import { createReminder, deleteReminder, listenReminders, REMINDER_COLORS }
   from '../reminders.js';
 import { getMaterias, getAlumnos, alumnosByMateria } from '../db.js';
+import { sendBroadcastNotification } from '../broadcast.js';
 
 const SENDER_EMAIL = 'oscar.gonzalez@usam.edu.sv';
 
@@ -51,8 +52,10 @@ export function renderReminders(container) {
             <input class="form-input" id="remTitle" placeholder="Ej. Parcial 1 · Bacteriología">
           </div>
           <div class="form-group">
-            <label class="form-label">Asignatura</label>
-            <input class="form-input" id="remSubject" placeholder="Ej. Microbiología Veterinaria">
+            <label class="form-label">Materia</label>
+            <select class="form-input" id="remMateriaId">
+              <option value="">Cargando materias…</option>
+            </select>
           </div>
         </div>
 
@@ -82,6 +85,38 @@ export function renderReminders(container) {
           <button class="btn btn--primary" id="btnCreateReminder">Publicar aviso</button>
         </div>
         <p id="remError" style="color:var(--color-danger);font-size:var(--text-sm);margin-top:8px;display:none"></p>
+      </div>
+
+      <!-- Enviar mensaje ahora (push manual) -->
+      <div style="background:var(--color-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:var(--space-6);margin-bottom:var(--space-6)">
+        <h3 style="font-size:var(--text-base);font-weight:700;margin-bottom:var(--space-2);color:var(--color-text-primary)">
+          🔔 Enviar mensaje ahora
+        </h3>
+        <p style="font-size:var(--text-sm);color:var(--color-text-muted);margin-bottom:var(--space-5)">
+          Manda una notificación push inmediata a los alumnos que tengan el portal instalado.
+        </p>
+
+        <div class="form-group" style="margin-bottom:var(--space-4)">
+          <label class="form-label">Título *</label>
+          <input class="form-input" id="bcTitle" placeholder="Ej. Cambio de aula">
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--space-4);margin-bottom:var(--space-5)">
+          <div class="form-group">
+            <label class="form-label">Mensaje *</label>
+            <input class="form-input" id="bcBody" placeholder="Ej. La clase de hoy es en el laboratorio 2">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Destinatarios</label>
+            <select class="form-input" id="bcMateriaId">
+              <option value="">Todos los alumnos</option>
+            </select>
+          </div>
+        </div>
+
+        <div style="display:flex;justify-content:flex-end">
+          <button class="btn btn--primary" id="btnSendBroadcast">Enviar ahora</button>
+        </div>
+        <p id="bcError" style="color:var(--color-danger);font-size:var(--text-sm);margin-top:8px;display:none"></p>
       </div>
 
       <!-- Lista de avisos -->
@@ -171,14 +206,19 @@ export function renderReminders(container) {
   // Listener en tiempo real
   listenReminders(reminders => renderList(reminders, today));
 
+  // Poblar selects de materia (aviso + broadcast manual)
+  loadMateriaSelects();
+
   // Crear aviso
   document.getElementById('btnCreateReminder').addEventListener('click', async () => {
-    const title   = document.getElementById('remTitle').value.trim();
-    const subject = document.getElementById('remSubject').value.trim();
-    const date    = document.getElementById('remDate').value;
-    const color   = document.getElementById('remColor').value;
-    const message = document.getElementById('remMessage').value.trim();
-    const errEl   = document.getElementById('remError');
+    const title      = document.getElementById('remTitle').value.trim();
+    const materiaId  = document.getElementById('remMateriaId').value || null;
+    const materia    = _materias.find(m => m.id === materiaId);
+    const subject    = materia?.nombre ?? '';
+    const date       = document.getElementById('remDate').value;
+    const color      = document.getElementById('remColor').value;
+    const message    = document.getElementById('remMessage').value.trim();
+    const errEl      = document.getElementById('remError');
 
     if (!title) { errEl.textContent = 'El título es obligatorio.'; errEl.style.display = 'block'; return; }
     if (!date)  { errEl.textContent = 'La fecha es obligatoria.';  errEl.style.display = 'block'; return; }
@@ -188,11 +228,11 @@ export function renderReminders(container) {
     btn.disabled = true; btn.textContent = 'Publicando…';
 
     try {
-      await createReminder({ title, subject, date, color, message });
-      document.getElementById('remTitle').value   = '';
-      document.getElementById('remSubject').value = '';
-      document.getElementById('remMessage').value = '';
-      document.getElementById('remDate').value    = today;
+      await createReminder({ title, subject, date, color, message, materiaId });
+      document.getElementById('remTitle').value      = '';
+      document.getElementById('remMateriaId').value   = '';
+      document.getElementById('remMessage').value     = '';
+      document.getElementById('remDate').value        = today;
     } catch (e) {
       errEl.textContent = `Error al publicar: ${e.message}`;
       errEl.style.display = 'block';
@@ -201,11 +241,65 @@ export function renderReminders(container) {
     }
   });
 
+  // Enviar mensaje ahora (broadcast push manual)
+  document.getElementById('btnSendBroadcast').addEventListener('click', async () => {
+    const title     = document.getElementById('bcTitle').value.trim();
+    const body      = document.getElementById('bcBody').value.trim();
+    const materiaId = document.getElementById('bcMateriaId').value || null;
+    const errEl     = document.getElementById('bcError');
+
+    if (!title || !body) {
+      errEl.textContent = 'El título y el mensaje son obligatorios.';
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+
+    const btn = document.getElementById('btnSendBroadcast');
+    btn.disabled = true; btn.textContent = 'Enviando…';
+
+    try {
+      const { sent, failed } = await sendBroadcastNotification({ title, body, materiaId });
+      document.getElementById('bcTitle').value = '';
+      document.getElementById('bcBody').value  = '';
+      errEl.style.display = 'none';
+      alert(`Enviado a ${sent} dispositivo(s)${failed ? ` (${failed} fallaron)` : ''}.`);
+    } catch (e) {
+      errEl.textContent = `Error al enviar: ${e.message}`;
+      errEl.style.display = 'block';
+    } finally {
+      btn.disabled = false; btn.textContent = 'Enviar ahora';
+    }
+  });
+
   // Cerrar modal
   document.getElementById('btnCloseEmailModal').addEventListener('click', closeEmailModal);
   document.getElementById('emailModal').addEventListener('click', e => {
     if (e.target === document.getElementById('emailModal')) closeEmailModal();
   });
+}
+
+// ---------------------------------------------------------------------------
+// Selects de materia (formulario de aviso + broadcast manual)
+// ---------------------------------------------------------------------------
+
+async function loadMateriaSelects() {
+  const remSel = document.getElementById('remMateriaId');
+  const bcSel  = document.getElementById('bcMateriaId');
+
+  try {
+    _materias = await getMaterias();
+    const activas = _materias.filter(m => m.estado !== 'archivada');
+    const options = activas.map(m =>
+      `<option value="${m.id}">${esc(m.nombre)}${m.ciclo ? ' · ' + esc(m.ciclo) : ''}</option>`
+    ).join('');
+
+    if (remSel) remSel.innerHTML = `<option value="">— Sin materia —</option>${options}`;
+    if (bcSel)  bcSel.innerHTML  = `<option value="">Todos los alumnos</option>${options}`;
+  } catch {
+    if (remSel) remSel.innerHTML = '<option value="">Error al cargar materias</option>';
+    if (bcSel)  bcSel.innerHTML  = '<option value="">Error al cargar materias</option>';
+  }
 }
 
 // ---------------------------------------------------------------------------

@@ -19,7 +19,14 @@
       ".read":  "auth != null",
       ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$materiaId": {
-        ".validate": "newData.hasChildren(['nombre', 'ciclo', 'estado'])"
+        ".validate": "newData.hasChildren(['nombre', 'ciclo', 'estado'])",
+
+        "tareas_asignadas": {
+          "$tareaId": {
+            ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+            ".validate": "newData.hasChildren(['titulo', 'fechaLimite', 'creadaEn'])"
+          }
+        }
       }
     },
 
@@ -38,6 +45,14 @@
         "email": {
           ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == data.val()))",
           ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && !data.exists() && newData.val() == auth.token.email))"
+        },
+
+        "pushTokens": {
+          ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))",
+          "$tokenKey": {
+            ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))",
+            ".validate": "newData.hasChildren(['token', 'savedAt'])"
+          }
         },
 
         "inscripciones": {
@@ -66,7 +81,9 @@
             },
             "tareas": {
               ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))",
+              ".write": "auth != null",
               "$tareaId": {
+                ".write": "auth != null && !data.exists()",
                 ".validate": "newData.hasChildren(['nombre', 'subidoEn'])"
               }
             }
