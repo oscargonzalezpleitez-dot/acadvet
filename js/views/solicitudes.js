@@ -247,8 +247,11 @@ function wireCards(pendientes, historial) {
             updateBadge();
             await paint();
           } catch (err) {
-            showToast('Error al aprobar', 'error');
+            closeModal();
+            showToast(err.message || 'Error al aprobar', 'error');
             console.error(err);
+            updateBadge();
+            await paint(); // refresca por si la solicitud ya fue procesada (doble tap)
           }
         },
       });

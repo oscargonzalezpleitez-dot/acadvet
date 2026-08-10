@@ -3,7 +3,7 @@
 // ÚNICA capa que habla con Firebase. Todo el resto llama estas funciones.
 // =============================================================================
 
-import { getDatabase, ref, get, set, push, update, remove, onValue }
+import { getDatabase, ref, get, set, push, update, remove, onValue, runTransaction }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { getStorage, ref as sRef, deleteObject }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
@@ -495,41 +495,59 @@ export async function getSolicitudes() {
 }
 
 export async function aprobarSolicitud(solicitudId) {
-  const s = await get(ref(db, `solicitudes_registro/${solicitudId}`));
-  if (!s.exists()) throw new Error('Solicitud no encontrada');
-  const sol = s.val();
-
-  const alumnoRef = push(ref(db, 'alumnos'));
-  await set(alumnoRef, {
-    nombre:    sol.nombre,
-    carnet:    sol.carnet,
-    email:     sol.email     || null,
-    telefono:  sol.telefono  || null,
-    fotoUrl:   sol.fotoUrl   || null,
-    fotoB64:   sol.fotoB64   || null,
-    creado_en: Date.now(),
+  // Reclamo atómico: si dos taps (o dos pestañas) llaman aprobarSolicitud() al
+  // mismo tiempo, solo el primero logra pasar 'pendiente' -> 'aprobando'. El
+  // segundo ve el estado ya cambiado y la transacción no se compromete, evitando
+  // que se creen dos alumnos duplicados para la misma solicitud.
+  const estadoRef = ref(db, `solicitudes_registro/${solicitudId}/estado`);
+  const claim = await runTransaction(estadoRef, current => {
+    if (current !== 'pendiente') return; // aborta sin tocar nada
+    return 'aprobando';
   });
-  const alumnoId = alumnoRef.key;
+  if (!claim.committed) throw new Error('Esta solicitud ya fue procesada.');
 
-  const materias = sol.materias || {};
-  await Promise.all(
-    Object.keys(materias).map(materiaId =>
-      set(ref(db, `alumnos/${alumnoId}/inscripciones/${materiaId}`), {
-        inscrito_en: Date.now(),
-        parciales: { parcial_1: null, parcial_2: null, parcial_3: null },
-      })
-    )
-  );
+  try {
+    const s = await get(ref(db, `solicitudes_registro/${solicitudId}`));
+    if (!s.exists()) throw new Error('Solicitud no encontrada');
+    const sol = s.val();
 
-  await syncAlumnoLookup(alumnoId);
+    const alumnoRef = push(ref(db, 'alumnos'));
+    await set(alumnoRef, {
+      nombre:    sol.nombre,
+      carnet:    sol.carnet,
+      email:     sol.email     || null,
+      telefono:  sol.telefono  || null,
+      fotoUrl:   sol.fotoUrl   || null,
+      fotoB64:   sol.fotoB64   || null,
+      creado_en: Date.now(),
+    });
+    const alumnoId = alumnoRef.key;
 
-  await update(ref(db, `solicitudes_registro/${solicitudId}`), {
-    estado: 'aprobado',
-    alumnoId,
-    procesadoEn: Date.now(),
-  });
+    const materias = sol.materias || {};
+    await Promise.all(
+      Object.keys(materias).map(materiaId =>
+        set(ref(db, `alumnos/${alumnoId}/inscripciones/${materiaId}`), {
+          inscrito_en: Date.now(),
+          parciales: { parcial_1: null, parcial_2: null, parcial_3: null },
+        })
+      )
+    );
 
-  return alumnoId;
+    await syncAlumnoLookup(alumnoId);
+
+    await update(ref(db, `solicitudes_registro/${solicitudId}`), {
+      estado: 'aprobado',
+      alumnoId,
+      procesadoEn: Date.now(),
+    });
+
+    return alumnoId;
+  } catch (err) {
+    // Si algo falla después del reclamo, devolvemos el estado a 'pendiente'
+    // para que la solicitud no quede atascada en 'aprobando' para siempre.
+    await runTransaction(estadoRef, current => current === 'aprobando' ? 'pendiente' : current);
+    throw err;
+  }
 }
 
 export async function rechazarSolicitud(solicitudId) {
