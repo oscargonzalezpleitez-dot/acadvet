@@ -4,6 +4,8 @@
 // T02: datos mock. T03: conecta con Firebase.
 // =============================================================================
 
+import { watchAlumnosConectados } from '../db.js';
+
 // Colores rotativos para las cards de materias
 const CARD_COLORS = [
   {
@@ -75,6 +77,17 @@ export function renderDashboard(container, data = null) {
             <div class="stat-number">2026</div>
             <div class="stat-label">Año académico</div>
           </div>
+        </div>
+      </div>
+
+      <!-- Alumnos conectados ahora -->
+      <div class="section-header" style="margin-top:var(--space-6)">
+        <h3 class="section-title">🟢 Conectados ahora</h3>
+        <span class="badge badge--primary" id="conectadosCount">0</span>
+      </div>
+      <div class="materia-card" style="margin-bottom:var(--space-6);cursor:default">
+        <div id="conectadosList" style="padding:var(--space-2) var(--space-4)">
+          <p style="color:var(--color-text-secondary);font-size:0.85rem;padding:var(--space-2) 0">Cargando…</p>
         </div>
       </div>
 
@@ -218,6 +231,65 @@ export function renderDashboard(container, data = null) {
       window.location.hash = `#/materia/${btn.dataset.navMateria}`;
     });
   });
+
+  wireConectados(container);
+}
+
+// ---------------------------------------------------------------------------
+// Alumnos conectados — presencia en tiempo real (ver presencia_alumnos en RTDB)
+// ---------------------------------------------------------------------------
+
+let _presenceUnsub = null;
+
+function wireConectados(container) {
+  _presenceUnsub?.();
+
+  const countEl = container.querySelector('#conectadosCount');
+  const listEl  = container.querySelector('#conectadosList');
+
+  _presenceUnsub = watchAlumnosConectados(alumnos => {
+    if (countEl) countEl.textContent = alumnos.length;
+    if (!listEl) return;
+    listEl.innerHTML = alumnos.length
+      ? alumnos.map(conectadoRow).join('')
+      : `<p style="color:var(--color-text-secondary);font-size:0.85rem;padding:var(--space-2) 0">Nadie conectado en este momento.</p>`;
+  });
+
+  // Se desengancha al salir del dashboard para no dejar listeners activos.
+  const detach = () => {
+    if ((window.location.hash.replace(/^#/, '') || '/') !== '/') {
+      _presenceUnsub?.();
+      _presenceUnsub = null;
+      window.removeEventListener('hashchange', detach);
+    }
+  };
+  window.addEventListener('hashchange', detach);
+}
+
+function conectadoRow(a) {
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--color-border)">
+      <div>
+        <div style="font-weight:600;font-size:0.9rem">${escHtml(a.nombre)}</div>
+        <div style="font-size:0.75rem;color:var(--color-text-secondary)">Carné: ${escHtml(a.carnet)}</div>
+      </div>
+      <span style="font-size:0.75rem;color:var(--color-text-secondary)">${tiempoConectado(a.desde)}</span>
+    </div>
+  `;
+}
+
+function tiempoConectado(desde) {
+  const mins = Math.max(0, Math.round((Date.now() - (desde ?? Date.now())) / 60000));
+  if (mins < 1)  return 'ahora mismo';
+  if (mins < 60) return `hace ${mins} min`;
+  const horas = Math.round(mins / 60);
+  return `hace ${horas} h`;
+}
+
+function escHtml(s) {
+  return String(s ?? '').replace(/[&<>"']/g, c => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;',
+  }[c]));
 }
 
 // ---------------------------------------------------------------------------

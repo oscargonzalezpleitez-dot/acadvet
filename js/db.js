@@ -3,7 +3,7 @@
 // ÚNICA capa que habla con Firebase. Todo el resto llama estas funciones.
 // =============================================================================
 
-import { getDatabase, ref, get, set, push, update, remove, onValue, runTransaction }
+import { getDatabase, ref, get, set, push, update, remove, onValue, onDisconnect, runTransaction }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { getStorage, ref as sRef, deleteObject }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
@@ -128,6 +128,7 @@ export async function deleteAlumno(id) {
   const before = await get(ref(db, `alumnos/${id}/carnet`));
   await remove(ref(db, `alumnos/${id}`));
   await remove(ref(db, `alumno_observaciones/${id}`));
+  await remove(ref(db, `presencia_alumnos/${id}`));
   if (before.exists()) await remove(ref(db, `alumno_lookup/${sanitizeKey(before.val())}`));
 }
 
@@ -143,6 +144,34 @@ export async function savePushToken(alumnoId, token) {
 
 export async function deletePushToken(alumnoId, token) {
   await remove(ref(db, `alumnos/${alumnoId}/pushTokens/${sanitizeKey(token)}`));
+}
+
+// ---------------------------------------------------------------------------
+// PRESENCIA — alumnos con el portal abierto en este momento.
+// Usa .info/connected + onDisconnect() para que la marca se borre sola al
+// cerrar la pestaña o perder la conexión, sin depender de un logout explícito.
+// ---------------------------------------------------------------------------
+
+export function marcarAlumnoConectado(alumnoId, { nombre, carnet }) {
+  const presenceRef  = ref(db, `presencia_alumnos/${alumnoId}`);
+  const connectedRef = ref(db, '.info/connected');
+  return onValue(connectedRef, (snapshot) => {
+    if (snapshot.val() !== true) return;
+    onDisconnect(presenceRef).remove().then(() => {
+      set(presenceRef, { nombre, carnet, desde: Date.now() });
+    });
+  });
+}
+
+export async function marcarAlumnoDesconectado(alumnoId) {
+  await remove(ref(db, `presencia_alumnos/${alumnoId}`));
+}
+
+export function watchAlumnosConectados(callback) {
+  return onValue(ref(db, 'presencia_alumnos'), (snapshot) => {
+    const arr = snapToArray(snapshot).sort((a, b) => (b.desde ?? 0) - (a.desde ?? 0));
+    callback(arr);
+  });
 }
 
 // ---------------------------------------------------------------------------

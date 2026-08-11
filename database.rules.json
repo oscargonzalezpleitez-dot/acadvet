@@ -201,6 +201,14 @@
       ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
     },
 
+    "presencia_alumnos": {
+      ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      "$alumnoId": {
+        ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || auth.token.email == root.child('alumnos').child($alumnoId).child('email').val())",
+        ".validate": "newData.hasChildren(['nombre', 'carnet', 'desde'])"
+      }
+    },
+
     "student_competencies": {
       ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$studentKey": {

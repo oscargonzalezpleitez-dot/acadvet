@@ -18,9 +18,11 @@ import {
 } from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { app, auth } from './firebase-config.js';
 import { activarPushParaAlumno, canUsePush, isIOS, isStandalone } from './push.js';
+import { marcarAlumnoConectado, marcarAlumnoDesconectado } from './db.js';
 
 const db = getDatabase(app);
 const CACHE_KEY = 'acadvet_mi_perfil';
+let _presenceUnsub = null;
 
 // --- Referencias DOM ---
 const loadingOverlay = document.getElementById('loadingOverlay');
@@ -226,6 +228,9 @@ function handleAuthError(err) {
 // Cerrar sesión
 // ---------------------------------------------------------------------------
 btnLogout.addEventListener('click', async () => {
+  _presenceUnsub?.();
+  _presenceUnsub = null;
+  if (_currentAlumnoId) await marcarAlumnoDesconectado(_currentAlumnoId).catch(() => {});
   clearCache();
   _currentAlumnoId = null;
   await signOut(auth);
@@ -324,6 +329,9 @@ async function loadProfile(alumnoId) {
     authCard.classList.add('hidden');
     profileView.classList.remove('hidden');
     updatePushButtonState();
+
+    _presenceUnsub?.();
+    _presenceUnsub = marcarAlumnoConectado(alumnoId, { nombre: nombreSnap.val(), carnet: carnetSnap.val() });
   } catch (err) {
     console.error('[MiPerfil] loadProfile', err);
     clearCache();
