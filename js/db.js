@@ -545,26 +545,39 @@ export async function aprobarSolicitud(solicitudId) {
     if (!s.exists()) throw new Error('Solicitud no encontrada');
     const sol = s.val();
 
-    const alumnoRef = push(ref(db, 'alumnos'));
-    await set(alumnoRef, {
-      nombre:    sol.nombre,
-      carnet:    sol.carnet,
-      email:     sol.email     || null,
-      telefono:  sol.telefono  || null,
-      fotoUrl:   sol.fotoUrl   || null,
-      fotoB64:   sol.fotoB64   || null,
-      creado_en: Date.now(),
-    });
-    const alumnoId = alumnoRef.key;
+    // Si el carné ya tiene un alumno registrado (p. ej. solicitud repetida),
+    // reutilizamos ese registro en vez de crear uno duplicado: un carné
+    // duplicado deja el alumno_lookup apuntando a un solo nodo y el otro
+    // queda huérfano con su historial de asistencias inaccesible.
+    const lookupSnap = await get(ref(db, `alumno_lookup/${sanitizeKey(sol.carnet)}`));
+    const alumnoId = lookupSnap.exists()
+      ? lookupSnap.val().alumnoId
+      : push(ref(db, 'alumnos')).key;
+
+    if (!lookupSnap.exists()) {
+      await set(ref(db, `alumnos/${alumnoId}`), {
+        nombre:    sol.nombre,
+        carnet:    sol.carnet,
+        email:     sol.email     || null,
+        telefono:  sol.telefono  || null,
+        fotoUrl:   sol.fotoUrl   || null,
+        fotoB64:   sol.fotoB64   || null,
+        creado_en: Date.now(),
+      });
+    }
 
     const materias = sol.materias || {};
     await Promise.all(
-      Object.keys(materias).map(materiaId =>
-        set(ref(db, `alumnos/${alumnoId}/inscripciones/${materiaId}`), {
+      Object.keys(materias).map(async materiaId => {
+        // No pisar una inscripción que ya existía (evita borrar parciales/
+        // asistencias si el alumno reusado ya estaba inscrito en esa materia).
+        const yaInscrito = await get(ref(db, `alumnos/${alumnoId}/inscripciones/${materiaId}`));
+        if (yaInscrito.exists()) return;
+        await set(ref(db, `alumnos/${alumnoId}/inscripciones/${materiaId}`), {
           inscrito_en: Date.now(),
           parciales: { parcial_1: null, parcial_2: null, parcial_3: null },
-        })
-      )
+        });
+      })
     );
 
     await syncAlumnoLookup(alumnoId);
