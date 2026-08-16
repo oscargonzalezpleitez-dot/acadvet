@@ -18,6 +18,12 @@ export const LAB_LAT       = 13.6894;
 export const LAB_LNG       = -89.1872;
 export const RADIUS_METERS = 50;
 
+// Lado más largo en px al que se reduce cualquier foto (cámara o galería)
+// antes de subirla. Suficiente detalle para revisar una práctica de
+// laboratorio y mantiene el archivo liviano para Storage/RTDB.
+export const PHOTO_MAX_DIM     = 1600;
+export const PHOTO_JPEG_QUALITY = 0.85;
+
 export const TIPOS_PREPARACION = [
   'Práctica 1. Esterilización y desinfección microbiológica',
   'Práctica 2. Preparación de medios de cultivo',
@@ -110,6 +116,34 @@ export async function validateLocation() {
 }
 
 // ---------------------------------------------------------------------------
+// Dibuja una imagen (video frame o <img>) en un canvas, reducida a
+// PHOTO_MAX_DIM si hace falta. Fotos de galería de celulares modernos vienen
+// en 12+ MP; sin este límite el JPEG final pesaría varios MB.
+// ---------------------------------------------------------------------------
+export function drawScaledToCanvas(canvas, source, sourceW, sourceH) {
+  const scale = Math.min(1, PHOTO_MAX_DIM / Math.max(sourceW, sourceH));
+  const w = Math.round(sourceW * scale);
+  const h = Math.round(sourceH * scale);
+
+  canvas.width  = w;
+  canvas.height = h;
+  canvas.getContext('2d').drawImage(source, 0, 0, w, h);
+}
+
+// ---------------------------------------------------------------------------
+// Carga un File (input de galería) como HTMLImageElement
+// ---------------------------------------------------------------------------
+export function loadImageFile(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload  = () => { URL.revokeObjectURL(url); resolve(img); };
+    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen seleccionada')); };
+    img.src = url;
+  });
+}
+
+// ---------------------------------------------------------------------------
 // Watermark sobre canvas
 // ---------------------------------------------------------------------------
 export function drawWatermark(canvas, studentName, studentId) {
@@ -164,7 +198,7 @@ export function uploadPhoto(canvas, studentId) {
         }
         reject(e);
       }
-    }, 'image/jpeg', 0.88);
+    }, 'image/jpeg', PHOTO_JPEG_QUALITY);
   });
 }
 

@@ -162,6 +162,29 @@
     }
     .btn-capture:not(:disabled):active { transform: scale(0.97); }
 
+    .btn-gallery {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 14px;
+      margin-top: 10px;
+      border-radius: var(--radius-full);
+      border: 2px solid var(--border);
+      background: var(--surface);
+      color: var(--text-2);
+      font-family: var(--font-display);
+      font-size: 0.95rem;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .btn-gallery:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+    .btn-gallery:not(:disabled):active { transform: scale(0.97); }
+
     /* ── Modal Cámara ── */
     .camera-modal {
       position: fixed; inset: 0;
@@ -391,6 +414,10 @@
         <button class="btn-capture" id="btnCapturar" disabled>
           📷 Capturar Práctica
         </button>
+        <button class="btn-gallery" id="btnGaleria" disabled>
+          🖼️ Subir foto desde galería
+        </button>
+        <input type="file" id="fileInput" accept="image/*" style="display:none">
       </div>
 
     </div>
@@ -433,6 +460,7 @@
   <script type="module">
     import {
       drawWatermark, uploadPhoto, saveReport,
+      drawScaledToCanvas, loadImageFile,
       TIPOS_PREPARACION
     } from './js/lab-reports.js';
 
@@ -450,6 +478,8 @@
 
     // ── Refs DOM ──
     const btnCapturar    = document.getElementById('btnCapturar');
+    const btnGaleria     = document.getElementById('btnGaleria');
+    const fileInput      = document.getElementById('fileInput');
     const cameraModal    = document.getElementById('cameraModal');
     const cameraVideo    = document.getElementById('cameraVideo');
     const photoCanvas    = document.getElementById('photoCanvas');
@@ -468,6 +498,25 @@
       const filled = formInputs.every(el => el.value.trim().length >= 2)
                    && tipoPrepSel.value !== '';
       btnCapturar.disabled = !filled;
+      btnGaleria.disabled  = !filled;
+    }
+
+    // ── Mostrar preview (compartido entre cámara y galería) ──
+    function showPreview() {
+      const name = document.getElementById('studentName').value.trim();
+      const id   = document.getElementById('studentId').value.trim();
+      drawWatermark(photoCanvas, name, id);
+
+      capturedCanvas = photoCanvas;
+
+      const tipo = tipoPrepSel.value;
+      const asig = document.getElementById('asignatura').value.trim();
+      previewMeta.innerHTML = `
+        <strong>Tipo:</strong> ${tipo}<br>
+        <strong>Asignatura:</strong> ${asig}
+      `;
+      mainView.classList.add('hidden');
+      previewSection.classList.remove('hidden');
     }
 
     // ── Abrir cámara ──
@@ -498,33 +547,32 @@
       }
     }
 
-    // ── Capturar foto ──
+    // ── Capturar foto (cámara) ──
     document.getElementById('btnCapturarFoto').addEventListener('click', () => {
       const w = cameraVideo.videoWidth  || 1280;
       const h = cameraVideo.videoHeight || 960;
+      drawScaledToCanvas(photoCanvas, cameraVideo, w, h);
 
-      photoCanvas.width  = w;
-      photoCanvas.height = h;
-
-      const ctx = photoCanvas.getContext('2d');
-      ctx.drawImage(cameraVideo, 0, 0, w, h);
-
-      const name = document.getElementById('studentName').value.trim();
-      const id   = document.getElementById('studentId').value.trim();
-      drawWatermark(photoCanvas, name, id);
-
-      capturedCanvas = photoCanvas;
       stopCamera();
-
-      // Mostrar preview
       cameraModal.classList.add('hidden');
-      const tipo = tipoPrepSel.value;
-      const asig = document.getElementById('asignatura').value.trim();
-      previewMeta.innerHTML = `
-        <strong>Tipo:</strong> ${tipo}<br>
-        <strong>Asignatura:</strong> ${asig}
-      `;
-      previewSection.classList.remove('hidden');
+      showPreview();
+    });
+
+    // ── Subir foto desde galería ──
+    btnGaleria.addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', async () => {
+      const file = fileInput.files[0];
+      fileInput.value = ''; // permite volver a elegir el mismo archivo después
+      if (!file) return;
+
+      try {
+        const img = await loadImageFile(file);
+        drawScaledToCanvas(photoCanvas, img, img.naturalWidth, img.naturalHeight);
+        showPreview();
+      } catch (e) {
+        alert(`❌ No se pudo cargar la imagen: ${e.message}`);
+      }
     });
 
     // ── Nueva foto ──
