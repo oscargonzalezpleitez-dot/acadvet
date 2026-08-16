@@ -7,7 +7,7 @@ import { getDatabase, ref, push, set, get }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { getStorage, ref as storageRef, uploadBytes, getDownloadURL }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
-import { getAuth, signInAnonymously }
+import { getAuth, signInAnonymously, signOut }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
 import { app } from './firebase-config.js';
 
@@ -34,10 +34,25 @@ const auth    = getAuth(app);
 
 // ---------------------------------------------------------------------------
 // Auth anónima — requerida para escribir en RTDB/Storage sin credenciales
+//
+// No basta con revisar si auth.currentUser existe: la sesión puede quedar
+// invalidada del lado del servidor (token vencido, cuenta revocada) mientras
+// el objeto sigue en caché local. En ese caso el alumno queda con un
+// "storage/unauthorized" que un simple reintento nunca arregla, porque
+// currentUser sigue pareciendo válido. Por eso forzamos un refresh real del
+// token y, si falla, re-autenticamos desde cero.
 // ---------------------------------------------------------------------------
 export async function ensureAnonymousAuth() {
-  if (auth.currentUser) return;
-  await signInAnonymously(auth);
+  if (!auth.currentUser) {
+    await signInAnonymously(auth);
+    return;
+  }
+  try {
+    await auth.currentUser.getIdToken(true);
+  } catch (_) {
+    try { await signOut(auth); } catch (_) {}
+    await signInAnonymously(auth);
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -127,15 +142,28 @@ export function uploadPhoto(canvas, studentId) {
   return new Promise((resolve, reject) => {
     canvas.toBlob(async blob => {
       if (!blob) { reject(new Error('No se pudo generar la imagen')); return; }
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const ts      = Date.now();
+      const safeid  = studentId.replace(/[^\w-]/g, '');
+      const path    = `lab-reports/${dateStr}/${safeid}-${ts}.jpg`;
       try {
         await ensureAnonymousAuth();
-        const dateStr = new Date().toISOString().slice(0, 10);
-        const ts      = Date.now();
-        const safeid  = studentId.replace(/[^\w-]/g, '');
-        const path    = `lab-reports/${dateStr}/${safeid}-${ts}.jpg`;
-        const snap    = await uploadBytes(storageRef(storage, path), blob, { contentType: 'image/jpeg' });
+        const snap = await uploadBytes(storageRef(storage, path), blob, { contentType: 'image/jpeg' });
         resolve(await getDownloadURL(snap.ref));
-      } catch (e) { reject(e); }
+      } catch (e) {
+        // Un solo reintento forzando sesión nueva: cubre el caso raro en que
+        // el token recién emitido todavía no es válido para las reglas.
+        if (e.code === 'storage/unauthorized') {
+          try {
+            try { await signOut(auth); } catch (_) {}
+            await signInAnonymously(auth);
+            const snap = await uploadBytes(storageRef(storage, path), blob, { contentType: 'image/jpeg' });
+            resolve(await getDownloadURL(snap.ref));
+            return;
+          } catch (e2) { reject(e2); return; }
+        }
+        reject(e);
+      }
     }, 'image/jpeg', 0.88);
   });
 }
