@@ -458,11 +458,16 @@
   <canvas id="hiddenCanvas" style="display:none"></canvas>
 
   <script type="module">
+    // El "?v=" fuerza descarga fresca en GitHub Pages, que cachea JS 10 min
+    // (Cache-Control: max-age=600) a diferencia de Firebase Hosting. Subir
+    // este número cada vez que se edite js/lab-reports.js, si no los
+    // alumnos pueden seguir recibiendo la versión vieja hasta 10 min después
+    // del deploy.
     import {
       drawWatermark, uploadPhoto, saveReport,
       drawScaledToCanvas, loadImageFile,
       TIPOS_PREPARACION
-    } from './js/lab-reports.js';
+    } from './js/lab-reports.js?v=20260816b';
 
     // ── Poblar dropdown de tipos ──
     const tipoPrepSel = document.getElementById('tipoPrep');

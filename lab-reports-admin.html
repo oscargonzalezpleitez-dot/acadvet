@@ -636,11 +636,14 @@
   </div>
 
   <script type="module">
+    // El "?v=" fuerza descarga fresca en GitHub Pages, que cachea JS 10 min
+    // (Cache-Control: max-age=600) a diferencia de Firebase Hosting. Subir
+    // este número cada vez que se edite js/lab-reports.js.
     import {
       initDashboard, applyFilters, openDetail, closeDetail,
       saveFeedback, markReviewed
     } from './js/lab-reports-admin.js';
-    import { getLabLocation, saveLabLocation } from './js/lab-reports.js';
+    import { getLabLocation, saveLabLocation } from './js/lab-reports.js?v=20260816b';
 
     // ── Inicializar dashboard ──
     initDashboard();
