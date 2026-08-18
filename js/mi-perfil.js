@@ -12,6 +12,7 @@ import { getDatabase, ref, get, set }
 import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   onAuthStateChanged,
   signOut,
   deleteUser,
@@ -34,6 +35,11 @@ const tabSignup       = document.getElementById('tabSignup');
 const formLogin        = document.getElementById('formLogin');
 const formSignup        = document.getElementById('formSignup');
 const authError       = document.getElementById('authError');
+const authSuccess     = document.getElementById('authSuccess');
+const btnForgotPassword = document.getElementById('btnForgotPassword');
+const formForgotPanel   = document.getElementById('formForgotPanel');
+const formForgot        = document.getElementById('formForgot');
+const btnBackToLogin    = document.getElementById('btnBackToLogin');
 const btnLogout       = document.getElementById('btnLogout');
 const signupConfirm   = document.getElementById('signupConfirm');
 const confirmNombre   = document.getElementById('confirmNombre');
@@ -58,18 +64,32 @@ function switchTab(which) {
   tabSignup.classList.toggle('active', !isLogin);
   formLogin.classList.toggle('hidden', !isLogin);
   formSignup.classList.toggle('hidden', isLogin);
+  btnForgotPassword.classList.toggle('hidden', !isLogin);
+  formForgotPanel.classList.add('hidden');
   signupConfirm.classList.add('hidden');
   _pendingSignup = null;
   clearError();
+  clearSuccess();
 }
 
 function showError(msg) {
+  clearSuccess();
   authError.textContent = msg;
   authError.classList.remove('hidden');
 }
 function clearError() {
   authError.textContent = '';
   authError.classList.add('hidden');
+}
+
+function showSuccess(msg) {
+  clearError();
+  authSuccess.textContent = msg;
+  authSuccess.classList.remove('hidden');
+}
+function clearSuccess() {
+  authSuccess.textContent = '';
+  authSuccess.classList.add('hidden');
 }
 
 function setLoading(msg) {
@@ -218,11 +238,57 @@ function handleAuthError(err) {
     showError('Ese correo no es válido.');
   } else if (code === 'auth/weak-password') {
     showError('La contraseña es muy débil (mínimo 6 caracteres).');
+  } else if (code === 'auth/too-many-requests') {
+    showError('Demasiados intentos. Esperá unos minutos y volvé a intentar.');
   } else {
     console.error('[MiPerfil]', err);
     showError('Algo falló. Verificá tu conexión e intentá de nuevo.');
   }
 }
+
+// ---------------------------------------------------------------------------
+// Olvidé mi contraseña
+// ---------------------------------------------------------------------------
+btnForgotPassword.addEventListener('click', () => {
+  clearError();
+  clearSuccess();
+  document.getElementById('fpEmail').value = document.getElementById('liEmail').value.trim();
+  formLogin.classList.add('hidden');
+  btnForgotPassword.classList.add('hidden');
+  formForgotPanel.classList.remove('hidden');
+});
+
+btnBackToLogin.addEventListener('click', () => {
+  clearError();
+  clearSuccess();
+  formForgotPanel.classList.add('hidden');
+  formLogin.classList.remove('hidden');
+  btnForgotPassword.classList.remove('hidden');
+});
+
+formForgot.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  clearError();
+  clearSuccess();
+
+  const email = document.getElementById('fpEmail').value.trim();
+  if (!email) return showError('Ingresá tu correo.');
+
+  setLoading('Enviando enlace…');
+  try {
+    await sendPasswordResetEmail(auth, email);
+    formForgot.reset();
+    showSuccess('Listo. Revisá tu correo (y la carpeta de spam) y seguí el enlace para crear una nueva contraseña.');
+  } catch (err) {
+    if (err?.code === 'auth/user-not-found' || err?.code === 'auth/invalid-credential') {
+      showError('No encontramos una cuenta con ese correo. Verificá que sea el que usaste al crear tu perfil.');
+    } else {
+      handleAuthError(err);
+    }
+  } finally {
+    setLoading(null);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Cerrar sesión
