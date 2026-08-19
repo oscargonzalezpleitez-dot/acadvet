@@ -13,7 +13,13 @@
 
     .layout { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
     .canvas-wrap { flex: 2; min-width: 300px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
-    #canvas { max-width: 100%; display: block; cursor: crosshair; border: 1px solid #ddd; }
+    #canvas { max-width: 100%; display: block; cursor: crosshair; border: 1px solid #ddd; touch-action: none; }
+
+    #magnifier {
+      display: none; position: fixed; width: 160px; height: 160px; border-radius: 50%;
+      border: 3px solid var(--primary); box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+      z-index: 500; pointer-events: none; background: #fff;
+    }
 
     .panel { flex: 1; min-width: 260px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
     .panel h2 { font-size: 0.95rem; color: var(--primary); margin-bottom: 8px; }
@@ -38,6 +44,8 @@
     detector leyó bien cada pregunta. Esto NO guarda nada — es solo para probar.
   </p>
 
+  <canvas id="magnifier" width="160" height="160"></canvas>
+
   <div class="layout">
     <div class="canvas-wrap">
       <input type="file" id="fileInput" accept="image/*">
@@ -61,17 +69,23 @@
     const instruction = document.getElementById('instruction');
     const resultsBox  = document.getElementById('resultsBox');
     const btnReset    = document.getElementById('btnReset');
+    const magnifier   = document.getElementById('magnifier');
+    const magCtx      = magnifier.getContext('2d');
 
     const STEPS = [
-      { key: 'tl', label: '1/4 — Tocá la marca ARRIBA-IZQUIERDA' },
-      { key: 'tr', label: '2/4 — Tocá la marca ARRIBA-DERECHA' },
-      { key: 'br', label: '3/4 — Tocá la marca ABAJO-DERECHA' },
-      { key: 'bl', label: '4/4 — Tocá la marca ABAJO-IZQUIERDA' },
+      { key: 'tl', label: '1/4 — Mantené presionado sobre la marca ARRIBA-IZQUIERDA, ajustá con la lupa y soltá para confirmar' },
+      { key: 'tr', label: '2/4 — Ahora ARRIBA-DERECHA' },
+      { key: 'br', label: '3/4 — Ahora ABAJO-DERECHA' },
+      { key: 'bl', label: '4/4 — Ahora ABAJO-IZQUIERDA' },
     ];
+
+    const MAG_ZOOM = 5;
 
     let img = null;
     let corners = {};
     let stepIndex = 0;
+    let dragging = false;
+    let pendingPoint = null;
 
     fileInput.addEventListener('change', () => {
       const file = fileInput.files[0];
@@ -107,14 +121,53 @@
         : 'Subí una foto para empezar.';
     }
 
-    canvas.addEventListener('click', (e) => {
-      if (!img || stepIndex >= 4) return;
+    function canvasPointFromEvent(e) {
       const rect = canvas.getBoundingClientRect();
       const scaleX = canvas.width  / rect.width;
       const scaleY = canvas.height / rect.height;
-      const x = (e.clientX - rect.left) * scaleX;
-      const y = (e.clientY - rect.top)  * scaleY;
+      return { x: (e.clientX - rect.left) * scaleX, y: (e.clientY - rect.top) * scaleY };
+    }
 
+    function showMagnifier(e, p) {
+      magnifier.style.display = 'block';
+      // Offset arriba del dedo/cursor para no taparlo con la lupa.
+      magnifier.style.left = `${e.clientX - 80}px`;
+      magnifier.style.top  = `${e.clientY - 190}px`;
+
+      const size = 160, srcSize = size / MAG_ZOOM;
+      magCtx.clearRect(0, 0, size, size);
+      magCtx.imageSmoothingEnabled = false;
+      magCtx.drawImage(canvas, p.x - srcSize / 2, p.y - srcSize / 2, srcSize, srcSize, 0, 0, size, size);
+      magCtx.strokeStyle = 'red';
+      magCtx.lineWidth = 1;
+      magCtx.beginPath();
+      magCtx.moveTo(size / 2, 0); magCtx.lineTo(size / 2, size);
+      magCtx.moveTo(0, size / 2); magCtx.lineTo(size, size / 2);
+      magCtx.stroke();
+    }
+
+    canvas.addEventListener('pointerdown', (e) => {
+      if (!img || stepIndex >= 4) return;
+      e.preventDefault();
+      dragging = true;
+      pendingPoint = canvasPointFromEvent(e);
+      showMagnifier(e, pendingPoint);
+    });
+
+    canvas.addEventListener('pointermove', (e) => {
+      if (!dragging) return;
+      e.preventDefault();
+      pendingPoint = canvasPointFromEvent(e);
+      showMagnifier(e, pendingPoint);
+    });
+
+    window.addEventListener('pointerup', () => {
+      if (!dragging) return;
+      dragging = false;
+      magnifier.style.display = 'none';
+      if (!pendingPoint) return;
+
+      const { x, y } = pendingPoint;
       const key = STEPS[stepIndex].key;
       corners[key] = { x, y };
 
@@ -124,6 +177,7 @@
       ctx.fill();
 
       stepIndex++;
+      pendingPoint = null;
       updateInstruction();
       if (stepIndex === 4) runDetection();
     });
@@ -138,11 +192,13 @@
         return;
       }
 
-      // Overlay de depuración: un punto por cada burbuja muestreada.
+      // Overlay de depuración: un círculo por cada burbuja muestreada, bien
+      // visible — si esto no cae justo sobre las burbujas impresas, el
+      // problema es de alineación (toques imprecisos), no del algoritmo.
       out.muestras.forEach(m => {
         const marcada = out.resultado[m.q]?.marcada === m.opt;
-        ctx.strokeStyle = marcada ? '#00C853' : 'rgba(255,0,0,0.5)';
-        ctx.lineWidth = 2;
+        ctx.strokeStyle = marcada ? '#00C853' : '#FF3B30';
+        ctx.lineWidth = Math.max(2, canvas.width * 0.0015);
         ctx.beginPath();
         ctx.arc(m.x, m.y, m.radiusPx, 0, Math.PI * 2);
         ctx.stroke();
@@ -158,7 +214,18 @@
           return `<tr><td>${q}</td><td>${val}</td></tr>`;
         }).join('');
 
+      const vacias = Object.values(out.resultado).filter(r => r.motivo === 'sin_respuesta').length;
+      const avisoAlineacion = vacias >= 10
+        ? `<div class="warn" style="background:#FFF0EE;border:1px solid #FF3B30;border-radius:6px;padding:8px 10px;margin-bottom:10px">
+             ⚠️ ${vacias} preguntas salieron "vacías" — mirá los círculos rojos sobre la
+             foto: si NO están centrados en las burbujas impresas, el problema es que
+             algún toque de esquina quedó impreciso. Reiniciá y usá la lupa con más
+             cuidado (mantené presionado y ajustá antes de soltar).
+           </div>`
+        : '';
+
       resultsBox.innerHTML = `
+        ${avisoAlineacion}
         <p><strong>Versión detectada:</strong> <span class="${out.version ? 'ok' : 'warn'}">${out.version ?? 'no se pudo leer'}</span></p>
         <table>
           <thead><tr><th>Pregunta</th><th>Detectado</th></tr></thead>
@@ -166,9 +233,8 @@
         </table>
         <p style="font-size:0.75rem;color:#888;margin-top:8px">
           Círculos verdes = respuesta detectada. Rojos = burbujas vacías/no elegidas.
-          Si algo no calzó con la burbuja real, es que las 4 marcas no quedaron
-          justo en el centro — probá "Reiniciar toques" y tocá con más precisión
-          (podés hacer zoom en la imagen del navegador antes de tocar).
+          Mirá la FOTO (no solo la tabla): si los círculos no caen centrados sobre
+          las burbujas impresas, reiniciá los toques.
         </p>`;
     }
   </script>
