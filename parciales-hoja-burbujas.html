@@ -5,7 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hoja de Respuestas — AcadVet USAM</title>
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+    * {
+      box-sizing: border-box; margin: 0; padding: 0;
+      /* Fuerza que los colores de fondo SIEMPRE se impriman — por defecto
+         Chrome/Edge/Firefox los omiten al imprimir para ahorrar tinta, y acá
+         las marcas negras (esquinas + código de versión) son justamente
+         color de fondo, no texto ni borde. Sin esto, la hoja sale sin ellas. */
+      print-color-adjust: exact;
+      -webkit-print-color-adjust: exact;
+    }
     body { font-family: Arial, Helvetica, sans-serif; background: #ccc; }
 
     .no-print {
