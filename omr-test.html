@@ -159,6 +159,7 @@
         }).join('');
 
       resultsBox.innerHTML = `
+        <p><strong>Versión detectada:</strong> <span class="${out.version ? 'ok' : 'warn'}">${out.version ?? 'no se pudo leer'}</span></p>
         <table>
           <thead><tr><th>Pregunta</th><th>Detectado</th></tr></thead>
           <tbody>${rows}</tbody>

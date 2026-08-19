@@ -43,6 +43,16 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 8pt; font-weight: bold;
     }
+    .version-mark {
+      position: absolute; background: #000;
+      transform: translate(-50%, -50%);
+    }
+
+    .version-picker { margin-top: 10px; }
+    .version-picker button {
+      background: #fff; color: #6b5400; border: 1px solid #e0c46c; margin-right: 4px;
+    }
+    .version-picker button.active { background: #0056A6; color: #fff; border-color: #0056A6; }
 
     @media print {
       body { background: #fff; }
@@ -59,15 +69,47 @@
     Imprimí esta página tal cual (sin "ajustar a la página" — 100% de escala) y fotocopiala para tus alumnos.
     Las 4 marcas negras de las esquinas son necesarias para que la app pueda leer las respuestas: no las recortes ni las tapes.
     <br><button onclick="window.print()">🖨️ Imprimir</button>
+
+    <div class="version-picker">
+      <strong>Versión a imprimir:</strong> <span id="versionLabel"></span><br>
+      <span style="font-size:0.78rem">
+        Si vas a usar varias claves de respuestas distintas, imprimí un lote por
+        cada versión (cambiá acá y volvé a imprimir). El alumno nunca ve esta
+        letra — queda codificada como unas marcas chiquitas cerca del margen
+        inferior, invisibles a simple vista como "versión".
+      </span>
+      <div id="versionButtons" style="margin-top:6px"></div>
+    </div>
   </div>
 
   <div id="page"></div>
 
   <script type="module">
-    import { MARKERS_MM, MARKER_SIZE_MM, bubblePositions, rowLabelPositions, fracToMm, OPTIONS }
-      from './js/omr-template.js';
+    import {
+      MARKERS_MM, MARKER_SIZE_MM, bubblePositions, rowLabelPositions, fracToMm,
+      VERSIONS, versionCodePositions, versionToBits, VERSION_MARK_SIZE_MM,
+    } from './js/omr-template.js';
 
     const page = document.getElementById('page');
+
+    // ── Versión a imprimir (?version=B en la URL, por defecto la primera) ──
+    const params = new URLSearchParams(location.search);
+    const version = VERSIONS.includes(params.get('version')) ? params.get('version') : VERSIONS[0];
+
+    document.getElementById('versionLabel').textContent = version;
+    const versionButtons = document.getElementById('versionButtons');
+    VERSIONS.forEach(v => {
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.textContent = v;
+      btn.className = v === version ? 'active' : '';
+      btn.addEventListener('click', () => {
+        const url = new URL(location.href);
+        url.searchParams.set('version', v);
+        location.href = url.toString();
+      });
+      versionButtons.appendChild(btn);
+    });
 
     function el(tag, cls, styleObj, html) {
       const e = document.createElement(tag);
@@ -109,6 +151,17 @@
     bubblePositions().forEach(({ q, opt, xFrac, yFrac }) => {
       const { x, y } = fracToMm({ xFrac, yFrac });
       page.appendChild(el('div', 'bubble', { left: `${x}mm`, top: `${y}mm` }, opt));
+    });
+
+    // ── Código de versión escondido (impreso, el alumno no lo llena) ──
+    const bits = versionToBits(version);
+    versionCodePositions().forEach(({ bit, xFrac, yFrac }) => {
+      if (!bits[bit]) return; // bit 0 = no se imprime nada ahí
+      const { x, y } = fracToMm({ xFrac, yFrac });
+      page.appendChild(el('div', 'version-mark', {
+        left: `${x}mm`, top: `${y}mm`,
+        width: `${VERSION_MARK_SIZE_MM}mm`, height: `${VERSION_MARK_SIZE_MM}mm`,
+      }));
     });
   </script>
 </body>

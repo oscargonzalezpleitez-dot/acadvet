@@ -63,6 +63,38 @@ export function rowLabelPositions() {
   return positions;
 }
 
+// ---------------------------------------------------------------------------
+// Código de versión "escondido" — para tener varias claves de respuestas
+// distintas sin que el alumno note que hay más de una circulando. No es algo
+// que el alumno llena: se imprime ya marcado, distinto por versión, como
+// 3 cuadraditos chicos cerca del margen inferior (se leen igual que
+// cualquier burbuja: negro impreso = bit 1, ausente = bit 0). Con 3 bits
+// alcanzan 8 versiones — usamos 5 (A-E).
+// ---------------------------------------------------------------------------
+export const VERSIONS = ['A', 'B', 'C', 'D', 'E'];
+// Debe ser >= al diámetro que cubre el muestreo (ver BUBBLE_RADIUS_FRAC en
+// omr-core.js) — si el cuadradito impreso es más chico que el círculo de
+// muestreo, se diluye con el blanco de alrededor y nunca se detecta lleno.
+export const VERSION_MARK_SIZE_MM = 6;
+
+const VERSION_CODE_Y = 0.985;
+const VERSION_CODE_X = [0.30, 0.42, 0.54]; // 3 bits, lejos de burbujas y marcas
+
+export function versionCodePositions() {
+  return VERSION_CODE_X.map((xFrac, bit) => ({ bit, xFrac, yFrac: VERSION_CODE_Y }));
+}
+
+export function versionToBits(version) {
+  const idx = VERSIONS.indexOf(version);
+  if (idx < 0) throw new Error(`Versión desconocida: ${version}`);
+  return [(idx >> 2) & 1, (idx >> 1) & 1, idx & 1];
+}
+
+export function bitsToVersion(bits) {
+  const idx = (bits[0] << 2) | (bits[1] << 1) | bits[2];
+  return VERSIONS[idx] ?? null;
+}
+
 /** Ancho/alto del rectángulo de marcas, en mm — útil para dibujar la plantilla. */
 export function contentSizeMm() {
   return {
