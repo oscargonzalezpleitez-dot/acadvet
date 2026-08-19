@@ -154,6 +154,11 @@
 
   <div class="panel hidden" id="procesarPanel">
     <div class="panel-title">3. Procesá las fotos de los exámenes</div>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin-bottom:10px">
+      Las respuestas se leen solas. El carné lo escribe el alumno a mano en la hoja —
+      después de subir las fotos, usá "✏️ Escribir carnés pendientes" para tecleearlos
+      uno por uno; la app busca al alumno al instante mientras escribís.
+    </p>
     <input type="file" id="fileInputBatch" accept="image/*" multiple>
     <div class="progress-wrap hidden" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
     <div id="progressText" style="font-size:0.8rem;color:var(--text-muted);margin-top:6px"></div>
@@ -167,6 +172,7 @@
 
     <div class="summary-bar hidden" id="summaryBar">
       <span class="summary-count" id="summaryCount"></span>
+      <button class="btn primary hidden" id="btnRevisarCarnets">✏️ Escribir carnés pendientes</button>
       <button class="btn success" id="btnAprobarTodo">✅ Aprobar y guardar notas listas</button>
     </div>
   </div>

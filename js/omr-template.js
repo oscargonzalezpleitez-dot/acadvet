@@ -26,10 +26,8 @@ export const OPTIONS = ['A', 'B', 'C', 'D'];
 const ROWS_PER_COL = 15;
 
 // Grilla de burbujas, en fracciones (0..1) del rectángulo de marcas.
-// yStart empieza más abajo que antes (era 0.26) para dejar espacio arriba a
-// la grilla de carné (ver CARNET_GRID) — ver carnetPositions().
 const GRID = {
-  yStart: 0.41,
+  yStart: 0.26,
   yEnd:   0.96,
   colStartX: [0.06, 0.54],
   optionOffsets: [0.11, 0.19, 0.27, 0.35],
@@ -61,43 +59,6 @@ export function rowLabelPositions() {
     const rowInCol = (q - 1) % ROWS_PER_COL;
     const yFrac    = GRID.yStart + (GRID.yEnd - GRID.yStart) * (rowInCol / (ROWS_PER_COL - 1));
     positions.push({ q, xFrac: GRID.colStartX[col], yFrac });
-  }
-  return positions;
-}
-
-// ---------------------------------------------------------------------------
-// Grilla de carné — el alumno rellena su número de carné dígito por dígito
-// (una burbuja 0-9 por columna), igual que un carné de universidad real.
-// Se lee con el mismo mecanismo que las respuestas — nada de reconocer
-// letra manuscrita, que es justo lo que falla.
-// ---------------------------------------------------------------------------
-export const CARNET_DIGITS = 6;
-export const CARNET_BUBBLE_SIZE_MM = 5;
-
-const CARNET_GRID = {
-  yStart: 0.135,
-  yEnd:   0.37,
-  colX: [0.08, 0.164, 0.248, 0.332, 0.416, 0.50],
-};
-
-/** Posición de cada burbuja de carné: [{ digitIndex, valor, xFrac, yFrac }]. */
-export function carnetPositions() {
-  const positions = [];
-  for (let col = 0; col < CARNET_DIGITS; col++) {
-    for (let valor = 0; valor <= 9; valor++) {
-      const yFrac = CARNET_GRID.yStart + (CARNET_GRID.yEnd - CARNET_GRID.yStart) * (valor / 9);
-      positions.push({ digitIndex: col, valor, xFrac: CARNET_GRID.colX[col], yFrac });
-    }
-  }
-  return positions;
-}
-
-/** Posición del dígito (0-9) en la fila, a la izquierda de cada columna: [{ digitIndex, valor, xFrac, yFrac }]. */
-export function carnetLabelPositions() {
-  const positions = [];
-  for (let valor = 0; valor <= 9; valor++) {
-    const yFrac = CARNET_GRID.yStart + (CARNET_GRID.yEnd - CARNET_GRID.yStart) * (valor / 9);
-    positions.push({ valor, xFrac: CARNET_GRID.colX[0] - 0.045, yFrac });
   }
   return positions;
 }

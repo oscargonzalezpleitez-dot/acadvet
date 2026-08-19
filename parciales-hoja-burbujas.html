@@ -51,16 +51,6 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 8pt; font-weight: bold;
     }
-    .bubble-carnet {
-      position: absolute; width: 5mm; height: 5mm; border: 1.2pt solid #000; border-radius: 50%;
-      transform: translate(-50%, -50%);
-      display: flex; align-items: center; justify-content: center;
-      font-size: 7pt; font-weight: bold;
-    }
-    .carnet-digit-label {
-      position: absolute; font-size: 7pt; font-weight: bold; text-align: right; width: 6mm;
-      transform: translate(-100%, -50%);
-    }
     .version-mark {
       position: absolute; background: #000;
       transform: translate(-50%, -50%);
@@ -106,7 +96,6 @@
     import {
       MARKERS_MM, MARKER_SIZE_MM, bubblePositions, rowLabelPositions, fracToMm,
       VERSIONS, versionCodePositions, versionToBits, VERSION_MARK_SIZE_MM,
-      carnetPositions, carnetLabelPositions, CARNET_DIGITS,
     } from './js/omr-template.js';
 
     const page = document.getElementById('page');
@@ -153,22 +142,12 @@
 
     page.appendChild(el('div', 'campo', { left: '30mm', top: '27mm' },
       'Nombre completo: <span class="linea" style="width:90mm">&nbsp;</span>'));
-    page.appendChild(el('div', 'campo', { left: '30mm', top: '34mm' },
-      'Grupo: <span class="linea" style="width:80mm">&nbsp;</span>'));
-    page.appendChild(el('div', 'campo', { left: '30mm', top: '41mm', width: '160mm' },
+    page.appendChild(el('div', 'campo', { left: '30mm', top: '35mm' },
+      'Carné (en números): <span class="linea" style="width:50mm">&nbsp;</span>'));
+    page.appendChild(el('div', 'campo', { left: '110mm', top: '35mm' },
+      'Grupo: <span class="linea" style="width:60mm">&nbsp;</span>'));
+    page.appendChild(el('div', 'campo', { left: '30mm', top: '43mm', width: '160mm' },
       'Indicaciones: rellená completamente el círculo de tu respuesta con lapicero azul o negro.'));
-    page.appendChild(el('div', 'campo', { left: '30mm', top: '46mm', fontWeight: 'bold' },
-      'Carné — rellená completamente un círculo por columna:'));
-
-    // ── Grilla de carné (dígito por dígito, igual mecanismo que las respuestas) ──
-    carnetLabelPositions().forEach(({ valor, xFrac, yFrac }) => {
-      const { x, y } = fracToMm({ xFrac, yFrac });
-      page.appendChild(el('div', 'carnet-digit-label', { left: `${x}mm`, top: `${y}mm` }, String(valor)));
-    });
-    carnetPositions().forEach(({ digitIndex, valor, xFrac, yFrac }) => {
-      const { x, y } = fracToMm({ xFrac, yFrac });
-      page.appendChild(el('div', 'bubble-carnet', { left: `${x}mm`, top: `${y}mm` }, String(valor)));
-    });
 
     // ── Números de pregunta ──
     rowLabelPositions().forEach(({ q, xFrac, yFrac }) => {

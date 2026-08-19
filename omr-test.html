@@ -62,7 +62,7 @@
   </div>
 
   <script type="module">
-    import { detectRespuestas, detectCorners, detectCarnet } from './js/omr-core.js';
+    import { detectRespuestas, detectCorners } from './js/omr-core.js';
 
     const fileInput   = document.getElementById('fileInput');
     const canvas      = document.getElementById('canvas');
@@ -219,7 +219,6 @@
       let out;
       try {
         out = detectRespuestas(imageData, corners);
-      out.carnetInfo = detectCarnet(imageData, corners);
       } catch (e) {
         resultsBox.innerHTML = `<p class="warn">Error: ${e.message}</p>`;
         return;
@@ -228,14 +227,6 @@
       // Overlay de depuración: un círculo por cada burbuja muestreada, bien
       // visible — si esto no cae justo sobre las burbujas impresas, el
       // problema es de alineación (toques imprecisos), no del algoritmo.
-      out.carnetInfo.muestras.forEach(m => {
-        const marcada = out.carnetInfo.digitos[Number(m.q.slice(1))]?.valor === Number(m.opt);
-        ctx.strokeStyle = marcada ? '#00C853' : '#FF3B30';
-        ctx.lineWidth = Math.max(2, canvas.width * 0.0015);
-        ctx.beginPath();
-        ctx.arc(m.x, m.y, m.radiusPx, 0, Math.PI * 2);
-        ctx.stroke();
-      });
       out.muestras.forEach(m => {
         const marcada = out.resultado[m.q]?.marcada === m.opt;
         ctx.strokeStyle = marcada ? '#00C853' : '#FF3B30';
@@ -267,7 +258,6 @@
 
       resultsBox.innerHTML = `
         ${avisoAlineacion}
-        <p><strong>Carné detectado:</strong> <span class="${out.carnetInfo.confiable ? 'ok' : 'warn'}">${out.carnetInfo.carnet ?? 'no legible — revisar a mano'}</span></p>
         <p><strong>Versión detectada:</strong> <span class="${out.version ? 'ok' : 'warn'}">${out.version ?? 'no se pudo leer'}</span></p>
         <table>
           <thead><tr><th>Pregunta</th><th>Detectado</th></tr></thead>

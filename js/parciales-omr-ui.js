@@ -2,14 +2,16 @@
 // AcadVet USAM — Pantalla "Parciales por Burbujas" (docente)
 // Carga la clave de respuestas (una o varias versiones) → subís todas las
 // fotos de golpe → cada una se procesa en el navegador (sin servidor, sin
-// IA): esquinas automáticas, respuestas, carné, y se empareja con el
-// alumno de la materia. Todo lo dudoso queda marcado para revisión manual.
-// Al final, un solo click guarda todas las notas listas en el expediente.
+// IA): esquinas y respuestas automáticas. El carné se escribe a mano —
+// el alumno lo pone a mano y en números en la hoja, y vos lo tecleás acá
+// (no hay grilla de burbujas para el carné) — la app busca al alumno al
+// instante mientras lo escribís. Al final, un click guarda todas las
+// notas listas en el expediente.
 // =============================================================================
 
 import { getMaterias, getAlumnos, alumnosByMateria } from './db.js';
 import { getClave, saveClave, calcularNota, aprobarNotaOmr } from './parciales-omr.js';
-import { detectCorners, detectRespuestas, detectCarnet } from './omr-core.js';
+import { detectCorners, detectRespuestas } from './omr-core.js';
 import { VERSIONS, OPTIONS } from './omr-template.js';
 import { drawScaledToCanvas, loadImageFile } from './lab-reports.js';
 
@@ -57,6 +59,7 @@ const resultsBody    = document.getElementById('resultsBody');
 const summaryBar      = document.getElementById('summaryBar');
 const summaryCount    = document.getElementById('summaryCount');
 const btnAprobarTodo  = document.getElementById('btnAprobarTodo');
+const btnRevisarCarnets = document.getElementById('btnRevisarCarnets');
 
 const detailModal = document.getElementById('detailModal');
 const detailBody  = document.getElementById('detailBody');
@@ -235,7 +238,7 @@ async function processFile(file) {
 
   const row = {
     id: ++_rowSeq, thumb, nombreArchivo: file.name,
-    carnetDetectado: null, carnetConfiable: false, carnetManual: null,
+    carnetManual: null,
     alumno: null, version: null, respuestas: null, nota: null,
     estado: 'sin_esquinas', avisos: [],
   };
@@ -249,25 +252,22 @@ async function processFile(file) {
   }
 
   const { resultado, version } = detectRespuestas(imageData, corners);
-  const carnetInfo = detectCarnet(imageData, corners);
 
   row.respuestas = resultado;
   row.version = version;
-  row.carnetDetectado = carnetInfo.carnet;
-  row.carnetConfiable = carnetInfo.confiable;
 
   resolveRow(row);
 }
 
-/** Resuelve alumno + nota a partir de row.carnetManual ?? row.carnetDetectado, y decide el estado. */
+/** Resuelve alumno + nota a partir de row.carnetManual (siempre a mano), y decide el estado. */
 function resolveRow(row) {
-  const carnet = row.carnetManual ?? row.carnetDetectado;
+  const carnet = row.carnetManual;
   row.avisos = [];
   row.alumno = carnet ? (_carnetMap.get(String(carnet).trim()) || null) : null;
   row.nota = null;
 
-  if (!carnet || (!row.carnetManual && !row.carnetConfiable)) {
-    row.avisos.push('Carné no se pudo leer con confianza.');
+  if (!carnet) {
+    row.avisos.push('Todavía no escribiste el carné de este alumno.');
   }
   if (carnet && !row.alumno) {
     row.avisos.push(`Carné "${carnet}" no está inscrito en esta materia.`);
@@ -314,7 +314,7 @@ const ESTADO_BADGE = {
 function renderResultsTable() {
   resultsBody.innerHTML = _resultados.map(row => {
     const badge = ESTADO_BADGE[row.estado];
-    const carnet = row.carnetManual ?? row.carnetDetectado ?? '—';
+    const carnet = row.carnetManual ?? '—';
     return `
       <tr data-id="${row.id}">
         <td><img class="thumb" src="${row.thumb}" alt=""></td>
@@ -331,9 +331,17 @@ function renderResultsTable() {
   }).join('');
 
   const listos = _resultados.filter(r => r.estado === 'listo').length;
+  const pendientes = pendingCarnetRows().length;
   summaryBar.classList.toggle('hidden', _resultados.length === 0);
   summaryCount.innerHTML = `<strong>${listos}</strong> de ${_resultados.length} fotos listas para guardar.`;
   btnAprobarTodo.disabled = listos === 0;
+  btnRevisarCarnets.classList.toggle('hidden', pendientes === 0);
+  btnRevisarCarnets.textContent = `✏️ Escribir carnés pendientes (${pendientes})`;
+}
+
+/** Filas con respuestas ya leídas pero sin carné escrito todavía. */
+function pendingCarnetRows() {
+  return _resultados.filter(r => r.respuestas && !r.carnetManual);
 }
 
 function escapeHtml(s) {
@@ -363,19 +371,22 @@ function discardRow(row) {
 }
 
 // ---------------------------------------------------------------------------
-// Modal de revisión / corrección manual
+// Modal de revisión / corrección manual del carné
 // ---------------------------------------------------------------------------
-function openDetail(row) {
-  const carnetActual = row.carnetManual ?? row.carnetDetectado ?? '';
+let _sequential = false;
+
+function openDetail(row, { sequential = false } = {}) {
+  _sequential = sequential;
+  const carnetActual = row.carnetManual ?? '';
   detailBody.innerHTML = `
     <img src="${row.thumb}" alt="">
     ${row.avisos.length ? `<div class="badge warn" style="display:block;padding:10px;margin-bottom:12px">${row.avisos.map(escapeHtml).join('<br>')}</div>` : ''}
     <div class="field" style="margin-bottom:10px">
-      <label for="carnetInput">Carné (corregilo si la app se equivocó)</label>
-      <input type="text" id="carnetInput" value="${escapeHtml(carnetActual)}" inputmode="numeric">
+      <label for="carnetInput">Carné del alumno (mirá la hoja y escribilo)</label>
+      <input type="text" id="carnetInput" value="${escapeHtml(carnetActual)}" inputmode="numeric" autofocus>
     </div>
     <div id="matchPreview" style="font-size:0.85rem;margin-bottom:14px"></div>
-    <button class="btn primary" id="btnAplicarCarnet">Aplicar</button>
+    <button class="btn primary" id="btnAplicarCarnet">${sequential ? 'Aplicar y seguir con el siguiente →' : 'Aplicar'}</button>
     <button class="btn outline" id="btnDescartarFoto" style="margin-top:8px">🗑 Descartar esta foto</button>
   `;
   detailModal.classList.remove('hidden');
@@ -390,8 +401,9 @@ function openDetail(row) {
   }
   carnetInput.addEventListener('input', updatePreview);
   updatePreview();
+  carnetInput.focus();
 
-  document.getElementById('btnAplicarCarnet').addEventListener('click', () => {
+  function aplicar() {
     const alumnoIdAnterior = row.alumno?.id ?? null;
     row.carnetManual = carnetInput.value.trim();
     resolveRow(row);
@@ -400,22 +412,41 @@ function openDetail(row) {
     if (alumnoIdAnterior && alumnoIdAnterior !== row.alumno?.id) {
       _resultados.filter(r => r !== row && r.alumno?.id === alumnoIdAnterior).forEach(resolveRow);
     }
-    closeDetail();
     renderResultsTable();
-  });
+
+    if (_sequential) {
+      const [next] = pendingCarnetRows();
+      if (next) { openDetail(next, { sequential: true }); return; }
+    }
+    closeDetail();
+  }
+
+  document.getElementById('btnAplicarCarnet').addEventListener('click', aplicar);
+  carnetInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') aplicar(); });
+
   document.getElementById('btnDescartarFoto').addEventListener('click', () => {
     discardRow(row);
-    closeDetail();
     renderResultsTable();
+    if (_sequential) {
+      const [next] = pendingCarnetRows();
+      if (next) { openDetail(next, { sequential: true }); return; }
+    }
+    closeDetail();
   });
 }
 
 function closeDetail() {
+  _sequential = false;
   detailModal.classList.add('hidden');
   detailBody.innerHTML = '';
 }
 document.getElementById('btnCloseDetail').addEventListener('click', closeDetail);
 detailModal.addEventListener('click', (e) => { if (e.target === e.currentTarget) closeDetail(); });
+
+btnRevisarCarnets.addEventListener('click', () => {
+  const [first] = pendingCarnetRows();
+  if (first) openDetail(first, { sequential: true });
+});
 
 // ---------------------------------------------------------------------------
 // Aprobar y guardar
