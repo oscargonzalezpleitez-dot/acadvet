@@ -55,13 +55,14 @@
     <div class="panel">
       <h2>Estado</h2>
       <div id="instruction">Subí una foto para empezar.</div>
-      <button id="btnReset" class="secondary">↺ Reiniciar toques</button>
+      <button id="btnReset" class="secondary">↺ Reintentar automático</button>
+      <button id="btnManual" class="secondary">✏️ Ajustar a mano</button>
       <div id="resultsBox"></div>
     </div>
   </div>
 
   <script type="module">
-    import { detectRespuestas } from './js/omr-core.js';
+    import { detectRespuestas, detectCorners } from './js/omr-core.js';
 
     const fileInput   = document.getElementById('fileInput');
     const canvas      = document.getElementById('canvas');
@@ -96,7 +97,7 @@
         canvas.width  = img.naturalWidth;
         canvas.height = img.naturalHeight;
         redraw();
-        resetTaps();
+        tryAutoDetect();
       };
       img.src = url;
     });
@@ -106,14 +107,45 @@
       if (img) ctx.drawImage(img, 0, 0);
     }
 
-    function resetTaps() {
+    function tryAutoDetect() {
+      instruction.textContent = '🔎 Buscando las 4 marcas automáticamente…';
+      resultsBox.innerHTML = '';
+      // setTimeout para que el navegador alcance a pintar el mensaje antes
+      // de bloquear el hilo con la búsqueda de esquinas.
+      setTimeout(() => {
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const found = detectCorners(imageData);
+        if (found) {
+          corners = found;
+          instruction.textContent = '✅ Esquinas detectadas automáticamente — calculando…';
+          runDetection();
+        } else {
+          instruction.innerHTML = '⚠️ No pude ubicar las 4 marcas solo. Tocalas a mano abajo.';
+          startManualTaps();
+        }
+      }, 30);
+    }
+
+    function startManualTaps() {
       corners = {};
       stepIndex = 0;
+      redraw();
+      instruction.textContent = STEPS[0].label;
+    }
+
+    function resetTaps() {
       resultsBox.innerHTML = '';
       redraw();
-      updateInstruction();
+      tryAutoDetect();
     }
-    btnReset.addEventListener('click', resetTaps);
+    btnReset.addEventListener('click', () => { if (img) resetTaps(); });
+
+    document.getElementById('btnManual').addEventListener('click', () => {
+      if (!img) return;
+      resultsBox.innerHTML = '';
+      redraw();
+      startManualTaps();
+    });
 
     function updateInstruction() {
       instruction.textContent = img
@@ -218,9 +250,9 @@
       const avisoAlineacion = vacias >= 10
         ? `<div class="warn" style="background:#FFF0EE;border:1px solid #FF3B30;border-radius:6px;padding:8px 10px;margin-bottom:10px">
              ⚠️ ${vacias} preguntas salieron "vacías" — mirá los círculos rojos sobre la
-             foto: si NO están centrados en las burbujas impresas, el problema es que
-             algún toque de esquina quedó impreciso. Reiniciá y usá la lupa con más
-             cuidado (mantené presionado y ajustá antes de soltar).
+             foto: si NO están centrados en las burbujas impresas, la ubicación de las
+             esquinas quedó mal. Probá "✏️ Ajustar a mano" y tocá las 4 marcas vos mismo
+             con la lupa.
            </div>`
         : '';
 
