@@ -29,7 +29,7 @@ const ROWS_PER_COL = 15;
 // yStart empieza más abajo que antes (era 0.26) para dejar espacio arriba a
 // la grilla de carné (ver CARNET_GRID) — ver carnetPositions().
 const GRID = {
-  yStart: 0.40,
+  yStart: 0.41,
   yEnd:   0.96,
   colStartX: [0.06, 0.54],
   optionOffsets: [0.11, 0.19, 0.27, 0.35],
@@ -76,7 +76,7 @@ export const CARNET_BUBBLE_SIZE_MM = 5;
 
 const CARNET_GRID = {
   yStart: 0.135,
-  yEnd:   0.385,
+  yEnd:   0.37,
   colX: [0.08, 0.164, 0.248, 0.332, 0.416, 0.50],
 };
 
