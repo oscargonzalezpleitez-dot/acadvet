@@ -6,7 +6,9 @@
 // aunque esté rotada o en perspectiva — y mide qué tan "llena" está cada una.
 // =============================================================================
 
-import { bubblePositions, versionCodePositions, bitsToVersion, OPTIONS } from './omr-template.js';
+import {
+  bubblePositions, versionCodePositions, bitsToVersion, carnetPositions, CARNET_DIGITS, OPTIONS,
+} from './omr-template.js';
 
 // ---------------------------------------------------------------------------
 // Homografía 3x3 a partir de 4 correspondencias de puntos (DLT clásico).
@@ -250,6 +252,51 @@ export function detectRespuestas(imageData, corners) {
   const version = bitsToVersion(bits);
 
   return { resultado, muestras, version };
+}
+
+// ---------------------------------------------------------------------------
+// Carné — mismo mecanismo que las respuestas (una burbuja por columna,
+// dígitos 0-9), para identificar al alumno sin depender de reconocer letra
+// manuscrita. corners = las mismas 4 esquinas que ya se usaron para
+// detectRespuestas (auto o manual).
+// ---------------------------------------------------------------------------
+const CARNET_RADIUS_FRAC = 0.0117; // burbuja de carné es más chica (5mm) que la de respuesta (6mm)
+
+export function detectCarnet(imageData, corners) {
+  const H = computeHomography(
+    [{ x: 0, y: 0 }, { x: 1, y: 0 }, { x: 1, y: 1 }, { x: 0, y: 1 }],
+    [corners.tl, corners.tr, corners.br, corners.bl]
+  );
+  const anchoPx  = Math.hypot(corners.tr.x - corners.tl.x, corners.tr.y - corners.tl.y);
+  const radiusPx = Math.max(3, anchoPx * CARNET_RADIUS_FRAC);
+
+  const porDigito = {};
+  const muestras = [];
+  carnetPositions().forEach(({ digitIndex, valor, xFrac, yFrac }) => {
+    const { x, y } = applyHomography(H, xFrac, yFrac);
+    const luminancia = sampleLuminance(imageData, x, y, radiusPx);
+    const llenado = 255 - luminancia;
+    (porDigito[digitIndex] ??= []).push({ valor, llenado });
+    muestras.push({ q: `c${digitIndex}`, opt: String(valor), x, y, radiusPx, llenado });
+  });
+
+  const digitos = [];
+  for (let i = 0; i < CARNET_DIGITS; i++) {
+    const ordenados = [...(porDigito[i] || [])].sort((a, b) => b.llenado - a.llenado);
+    const [top, second] = ordenados;
+    if (!top || top.llenado < SIN_RESPUESTA_UMBRAL) {
+      digitos.push({ digitIndex: i, valor: null, motivo: 'sin_respuesta' });
+    } else if (top.llenado - second.llenado < CONTRASTE_MIN) {
+      digitos.push({ digitIndex: i, valor: null, motivo: 'ambigua', candidatos: ordenados.slice(0, 3).map(o => o.valor) });
+    } else {
+      digitos.push({ digitIndex: i, valor: top.valor });
+    }
+  }
+
+  const confiable = digitos.every(d => d.valor != null);
+  const carnet = confiable ? digitos.map(d => d.valor).join('') : null;
+
+  return { carnet, digitos, confiable, muestras };
 }
 
 export { OPTIONS };
