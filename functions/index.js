@@ -2,4 +2,5 @@
 exports.onTareaAsignada   = require('./src/triggers/onTareaAsignada').onTareaAsignada;
 exports.onParcialWritten  = require('./src/triggers/onParcialWritten').onParcialWritten;
 exports.onReminderCreated = require('./src/triggers/onReminderCreated').onReminderCreated;
+exports.onParcialRevisionWritten = require('./src/triggers/onParcialRevisionWritten').onParcialRevisionWritten;
 exports.sendBroadcast     = require('./src/broadcast').sendBroadcast;

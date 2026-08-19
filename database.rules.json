@@ -209,6 +209,28 @@
       }
     },
 
+    "parciales_rubricas": {
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      "$materiaId": {
+        "$parcialId": {
+          ".validate": "newData.hasChildren(['texto'])"
+        }
+      }
+    },
+
+    "parciales_revision": {
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      "$materiaId": {
+        "$parcialId": {
+          "$alumnoId": {
+            ".validate": "newData.hasChildren(['fotos', 'estado'])"
+          }
+        }
+      }
+    },
+
     "student_competencies": {
       ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       "$studentKey": {

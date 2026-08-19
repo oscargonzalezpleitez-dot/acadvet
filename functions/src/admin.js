@@ -6,4 +6,5 @@ admin.initializeApp();
 module.exports = {
   db:        admin.database(),
   messaging: admin.messaging(),
+  bucket:    admin.storage().bucket(),
 };

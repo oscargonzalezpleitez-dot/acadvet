@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Prueba de Detección — Hoja de Burbujas</title>
+  <style>
+    :root { --primary: #0056A6; --bg: #F2F6FB; --border: rgba(0,86,166,0.2); }
+    * { box-sizing: border-box; }
+    body { font-family: Arial, sans-serif; background: var(--bg); margin: 0; padding: 16px; }
+    h1 { font-size: 1.1rem; color: var(--primary); margin-bottom: 4px; }
+    p.hint { color: #555; font-size: 0.85rem; margin-bottom: 14px; }
+
+    .layout { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+    .canvas-wrap { flex: 2; min-width: 300px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 10px; }
+    #canvas { max-width: 100%; display: block; cursor: crosshair; border: 1px solid #ddd; }
+
+    .panel { flex: 1; min-width: 260px; background: #fff; border: 1px solid var(--border); border-radius: 10px; padding: 14px; }
+    .panel h2 { font-size: 0.95rem; color: var(--primary); margin-bottom: 8px; }
+    #instruction { font-weight: bold; padding: 8px 10px; background: #FFF8E1; border-radius: 6px; margin-bottom: 10px; font-size: 0.85rem; }
+
+    input[type=file] { margin-bottom: 10px; }
+    button { padding: 8px 14px; border: none; border-radius: 6px; background: var(--primary); color: #fff; font-weight: 700; cursor: pointer; margin-right: 6px; }
+    button.secondary { background: #888; }
+
+    table { width: 100%; border-collapse: collapse; font-size: 0.8rem; margin-top: 10px; }
+    th, td { text-align: left; padding: 3px 6px; border-bottom: 1px solid #eee; }
+    .ok { color: #00875A; font-weight: 700; }
+    .warn { color: #C0392B; font-weight: 700; }
+  </style>
+</head>
+<body>
+
+  <h1>🔬 Prueba de detección — hoja de burbujas</h1>
+  <p class="hint">
+    Herramienta de calibración: subí una foto de una hoja de respuestas ya llena,
+    tocá las 4 marcas negras de las esquinas en el orden indicado, y revisá si el
+    detector leyó bien cada pregunta. Esto NO guarda nada — es solo para probar.
+  </p>
+
+  <div class="layout">
+    <div class="canvas-wrap">
+      <input type="file" id="fileInput" accept="image/*">
+      <canvas id="canvas"></canvas>
+    </div>
+
+    <div class="panel">
+      <h2>Estado</h2>
+      <div id="instruction">Subí una foto para empezar.</div>
+      <button id="btnReset" class="secondary">↺ Reiniciar toques</button>
+      <div id="resultsBox"></div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { detectRespuestas } from './js/omr-core.js';
+
+    const fileInput   = document.getElementById('fileInput');
+    const canvas      = document.getElementById('canvas');
+    const ctx         = canvas.getContext('2d');
+    const instruction = document.getElementById('instruction');
+    const resultsBox  = document.getElementById('resultsBox');
+    const btnReset    = document.getElementById('btnReset');
+
+    const STEPS = [
+      { key: 'tl', label: '1/4 — Tocá la marca ARRIBA-IZQUIERDA' },
+      { key: 'tr', label: '2/4 — Tocá la marca ARRIBA-DERECHA' },
+      { key: 'br', label: '3/4 — Tocá la marca ABAJO-DERECHA' },
+      { key: 'bl', label: '4/4 — Tocá la marca ABAJO-IZQUIERDA' },
+    ];
+
+    let img = null;
+    let corners = {};
+    let stepIndex = 0;
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      img = new Image();
+      img.onload = () => {
+        canvas.width  = img.naturalWidth;
+        canvas.height = img.naturalHeight;
+        redraw();
+        resetTaps();
+      };
+      img.src = url;
+    });
+
+    function redraw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      if (img) ctx.drawImage(img, 0, 0);
+    }
+
+    function resetTaps() {
+      corners = {};
+      stepIndex = 0;
+      resultsBox.innerHTML = '';
+      redraw();
+      updateInstruction();
+    }
+    btnReset.addEventListener('click', resetTaps);
+
+    function updateInstruction() {
+      instruction.textContent = img
+        ? (stepIndex < 4 ? STEPS[stepIndex].label : '✅ Las 4 esquinas están marcadas — calculando…')
+        : 'Subí una foto para empezar.';
+    }
+
+    canvas.addEventListener('click', (e) => {
+      if (!img || stepIndex >= 4) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width  / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const x = (e.clientX - rect.left) * scaleX;
+      const y = (e.clientY - rect.top)  * scaleY;
+
+      const key = STEPS[stepIndex].key;
+      corners[key] = { x, y };
+
+      ctx.fillStyle = 'lime';
+      ctx.beginPath();
+      ctx.arc(x, y, Math.max(4, canvas.width * 0.006), 0, Math.PI * 2);
+      ctx.fill();
+
+      stepIndex++;
+      updateInstruction();
+      if (stepIndex === 4) runDetection();
+    });
+
+    function runDetection() {
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      let out;
+      try {
+        out = detectRespuestas(imageData, corners);
+      } catch (e) {
+        resultsBox.innerHTML = `<p class="warn">Error: ${e.message}</p>`;
+        return;
+      }
+
+      // Overlay de depuración: un punto por cada burbuja muestreada.
+      out.muestras.forEach(m => {
+        const marcada = out.resultado[m.q]?.marcada === m.opt;
+        ctx.strokeStyle = marcada ? '#00C853' : 'rgba(255,0,0,0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(m.x, m.y, m.radiusPx, 0, Math.PI * 2);
+        ctx.stroke();
+      });
+
+      const rows = Object.keys(out.resultado)
+        .sort((a, b) => Number(a) - Number(b))
+        .map(q => {
+          const r = out.resultado[q];
+          const val = r.marcada
+            ? `<span class="ok">${r.marcada}</span>`
+            : `<span class="warn">${r.motivo === 'sin_respuesta' ? '— (vacía)' : '¿? (ambigua: ' + r.candidatos.join(',') + ')'}</span>`;
+          return `<tr><td>${q}</td><td>${val}</td></tr>`;
+        }).join('');
+
+      resultsBox.innerHTML = `
+        <table>
+          <thead><tr><th>Pregunta</th><th>Detectado</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        <p style="font-size:0.75rem;color:#888;margin-top:8px">
+          Círculos verdes = respuesta detectada. Rojos = burbujas vacías/no elegidas.
+          Si algo no calzó con la burbuja real, es que las 4 marcas no quedaron
+          justo en el centro — probá "Reiniciar toques" y tocá con más precisión
+          (podés hacer zoom en la imagen del navegador antes de tocar).
+        </p>`;
+    }
+  </script>
+</body>
+</html>
