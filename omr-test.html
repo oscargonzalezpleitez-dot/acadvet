@@ -63,6 +63,7 @@
 
   <script type="module">
     import { detectRespuestas, detectCorners } from './js/omr-core.js';
+    import { detectVersionQR } from './js/qr-detect.js';
 
     const fileInput   = document.getElementById('fileInput');
     const canvas      = document.getElementById('canvas');
@@ -217,8 +218,10 @@
     function runDetection() {
       const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
       let out;
+      let version;
       try {
         out = detectRespuestas(imageData, corners);
+        version = detectVersionQR(imageData);
       } catch (e) {
         resultsBox.innerHTML = `<p class="warn">Error: ${e.message}</p>`;
         return;
@@ -258,7 +261,7 @@
 
       resultsBox.innerHTML = `
         ${avisoAlineacion}
-        <p><strong>Versión detectada:</strong> <span class="${out.version ? 'ok' : 'warn'}">${out.version ?? 'no se pudo leer'}</span></p>
+        <p><strong>Versión detectada (QR):</strong> <span class="${version ? 'ok' : 'warn'}">${version ?? 'no se encontró el QR'}</span></p>
         <table>
           <thead><tr><th>Pregunta</th><th>Detectado</th></tr></thead>
           <tbody>${rows}</tbody>

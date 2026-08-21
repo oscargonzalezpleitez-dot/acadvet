@@ -12,6 +12,7 @@
 import { getMaterias, getAlumnos, alumnosByMateria } from './db.js';
 import { getClave, saveClave, calcularNota, aprobarNotaOmr } from './parciales-omr.js';
 import { detectCorners, detectRespuestas } from './omr-core.js';
+import { detectVersionQR } from './qr-detect.js';
 import { VERSIONS, OPTIONS } from './omr-template.js';
 import { drawScaledToCanvas, loadImageFile } from './lab-reports.js';
 
@@ -251,10 +252,10 @@ async function processFile(file) {
     return;
   }
 
-  const { resultado, version } = detectRespuestas(imageData, corners);
+  const { resultado } = detectRespuestas(imageData, corners);
 
   row.respuestas = resultado;
-  row.version = version;
+  row.version = detectVersionQR(imageData);
 
   resolveRow(row);
 }

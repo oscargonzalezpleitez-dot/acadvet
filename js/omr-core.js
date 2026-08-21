@@ -6,7 +6,7 @@
 // aunque esté rotada o en perspectiva — y mide qué tan "llena" está cada una.
 // =============================================================================
 
-import { bubblePositions, versionCodePositions, bitsToVersion, OPTIONS } from './omr-template.js';
+import { bubblePositions, OPTIONS } from './omr-template.js';
 
 // ---------------------------------------------------------------------------
 // Homografía 3x3 a partir de 4 correspondencias de puntos (DLT clásico).
@@ -236,20 +236,7 @@ export function detectRespuestas(imageData, corners) {
     }
   }
 
-  // Código de versión "escondido" (impreso, no lo llena el alumno): mismo
-  // muestreo que las burbujas, pero decidido por presencia/ausencia de tinta
-  // en vez de contraste relativo entre opciones de una fila.
-  const BIT_UMBRAL = 100; // llenado mínimo para contar como "cuadrado impreso"
-  const bits = versionCodePositions().map(({ bit, xFrac, yFrac }) => {
-    const { x, y } = applyHomography(H, xFrac, yFrac);
-    const luminancia = sampleLuminance(imageData, x, y, radiusPx);
-    const llenado = 255 - luminancia;
-    muestras.push({ q: `v${bit}`, opt: '•', x, y, radiusPx, llenado });
-    return llenado > BIT_UMBRAL ? 1 : 0;
-  });
-  const version = bitsToVersion(bits);
-
-  return { resultado, muestras, version };
+  return { resultado, muestras };
 }
 
 export { OPTIONS };

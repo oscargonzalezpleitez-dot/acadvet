@@ -51,10 +51,7 @@
       display: flex; align-items: center; justify-content: center;
       font-size: 8pt; font-weight: bold;
     }
-    .version-mark {
-      position: absolute; background: #000;
-      transform: translate(-50%, -50%);
-    }
+    .qr-module { position: absolute; background: #000; }
 
     .version-picker { margin-top: 10px; }
     .version-picker button {
@@ -82,9 +79,9 @@
       <strong>Versión a imprimir:</strong> <span id="versionLabel"></span><br>
       <span style="font-size:0.78rem">
         Si vas a usar varias claves de respuestas distintas, imprimí un lote por
-        cada versión (cambiá acá y volvé a imprimir). El alumno nunca ve esta
-        letra — queda codificada como unas marcas chiquitas cerca del margen
-        inferior, invisibles a simple vista como "versión".
+        cada versión (cambiá acá y volvé a imprimir). Cada versión lleva un QR
+        chiquito, siempre del mismo tamaño y en el mismo lugar — se ven todos
+        iguales a simple vista, hace falta escanearlo para saber qué versión es.
       </span>
       <div id="versionButtons" style="margin-top:6px"></div>
     </div>
@@ -95,8 +92,9 @@
   <script type="module">
     import {
       MARKERS_MM, MARKER_SIZE_MM, bubblePositions, rowLabelPositions, fracToMm,
-      VERSIONS, versionCodePositions, versionToBits, VERSION_MARK_SIZE_MM,
+      VERSIONS, QR_MM,
     } from './js/omr-template.js';
+    import qrcodeFactory from 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/+esm';
 
     const page = document.getElementById('page');
 
@@ -161,16 +159,30 @@
       page.appendChild(el('div', 'bubble', { left: `${x}mm`, top: `${y}mm` }, opt));
     });
 
-    // ── Código de versión escondido (impreso, el alumno no lo llena) ──
-    const bits = versionToBits(version);
-    versionCodePositions().forEach(({ bit, xFrac, yFrac }) => {
-      if (!bits[bit]) return; // bit 0 = no se imprime nada ahí
-      const { x, y } = fracToMm({ xFrac, yFrac });
-      page.appendChild(el('div', 'version-mark', {
-        left: `${x}mm`, top: `${y}mm`,
-        width: `${VERSION_MARK_SIZE_MM}mm`, height: `${VERSION_MARK_SIZE_MM}mm`,
-      }));
-    });
+    // ── QR de versión (impreso, el alumno no lo llena) — mismo tamaño y
+    // lugar para las 5 versiones, así se ven todos iguales a simple vista.
+    const qr = qrcodeFactory(1, 'M');
+    qr.addData(version);
+    qr.make();
+    const moduleCount = qr.getModuleCount();
+    const moduleSize = QR_MM.size / moduleCount;
+    // Cada módulo se dibuja un poco más grande que su celda (nunca movemos
+    // la esquina superior-izquierda) para que se solapen apenas con los
+    // vecinos — sin esto, el redondeo del navegador deja huecos de menos
+    // de 1px entre módulos, y eso alcanza para que un lector de QR no
+    // reconozca los patrones de búsqueda.
+    const moduleDraw = moduleSize * 1.15;
+    for (let row = 0; row < moduleCount; row++) {
+      for (let col = 0; col < moduleCount; col++) {
+        if (!qr.isDark(row, col)) continue;
+        page.appendChild(el('div', 'qr-module', {
+          left: `${QR_MM.x + col * moduleSize}mm`,
+          top: `${QR_MM.y + row * moduleSize}mm`,
+          width: `${moduleDraw}mm`,
+          height: `${moduleDraw}mm`,
+        }));
+      }
+    }
   </script>
 </body>
 </html>
