@@ -77,6 +77,32 @@ export const VERSIONS = ['A', 'B', 'C', 'D', 'E'];
 // de preguntas (82.2mm) — no compite con ninguna burbuja.
 export const QR_MM = { x: 165, y: 55, size: 22 };
 
+// El QR no dice "A", "B", etc. — codifica un código sin sentido aparente,
+// para que un alumno que lo escanee por curiosidad no vea nada que le
+// indique que es un código de versión de examen. El mapeo solo lo conoce
+// esta app (acá y en la lectura, js/qr-detect.js).
+const QR_CODE_BY_VERSION = {
+  A: '5279vru',
+  B: 'q4be99w',
+  C: 'ywjqrn6',
+  D: 'qcp624x',
+  E: '2cpvfz5',
+};
+const VERSION_BY_QR_CODE = Object.fromEntries(
+  Object.entries(QR_CODE_BY_VERSION).map(([v, code]) => [code, v])
+);
+
+export function versionToQrPayload(version) {
+  const code = QR_CODE_BY_VERSION[version];
+  if (!code) throw new Error(`Versión desconocida: ${version}`);
+  return code;
+}
+
+/** Devuelve la versión (A-E) para un texto ya decodificado del QR, o null si no matchea ninguna. */
+export function qrPayloadToVersion(payload) {
+  return VERSION_BY_QR_CODE[payload] ?? null;
+}
+
 /** Ancho/alto del rectángulo de marcas, en mm — útil para dibujar la plantilla. */
 export function contentSizeMm() {
   return {

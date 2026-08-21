@@ -92,7 +92,7 @@
   <script type="module">
     import {
       MARKERS_MM, MARKER_SIZE_MM, bubblePositions, rowLabelPositions, fracToMm,
-      VERSIONS, QR_MM,
+      VERSIONS, QR_MM, versionToQrPayload,
     } from './js/omr-template.js';
     import qrcodeFactory from 'https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/+esm';
 
@@ -162,7 +162,7 @@
     // ── QR de versión (impreso, el alumno no lo llena) — mismo tamaño y
     // lugar para las 5 versiones, así se ven todos iguales a simple vista.
     const qr = qrcodeFactory(1, 'M');
-    qr.addData(version);
+    qr.addData(versionToQrPayload(version));
     qr.make();
     const moduleCount = qr.getModuleCount();
     const moduleSize = QR_MM.size / moduleCount;
