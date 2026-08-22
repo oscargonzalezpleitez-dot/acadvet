@@ -230,8 +230,26 @@ fileInputBatch.addEventListener('change', async () => {
   progressText.textContent = `Listo — ${files.length} foto(s) procesadas.`;
 });
 
+// Placeholder gris para filas cuya imagen ni siquiera se pudo abrir (ej.
+// formato HEIC) — sin esto la fila no tiene miniatura que mostrar.
+const THUMB_ERROR = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="220" height="280"><rect width="220" height="280" fill="%23eee"/><text x="110" y="140" font-size="60" text-anchor="middle" fill="%23999">⚠️</text></svg>'
+);
+
 async function processFile(file) {
-  const img = await loadImageFile(file);
+  let img;
+  try {
+    img = await loadImageFile(file);
+  } catch (e) {
+    _resultados.push({
+      id: ++_rowSeq, thumb: THUMB_ERROR, nombreArchivo: file.name,
+      carnetManual: null,
+      alumno: null, version: null, respuestas: null, nota: null,
+      estado: 'sin_esquinas', avisos: [e.message],
+    });
+    return;
+  }
+
   const canvas = document.createElement('canvas');
   drawScaledToCanvas(canvas, img, img.naturalWidth, img.naturalHeight);
   const ctx = canvas.getContext('2d');
@@ -381,6 +399,7 @@ function openDetail(row, { sequential = false } = {}) {
   const carnetActual = row.carnetManual ?? '';
   detailBody.innerHTML = `
     <img src="${row.thumb}" alt="">
+    <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:8px">📄 ${escapeHtml(row.nombreArchivo || '')}</div>
     ${row.avisos.length ? `<div class="badge warn" style="display:block;padding:10px;margin-bottom:12px">${row.avisos.map(escapeHtml).join('<br>')}</div>` : ''}
     <div class="field" style="margin-bottom:10px">
       <label for="carnetInput">Carné del alumno (mirá la hoja y escribilo)</label>

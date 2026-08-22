@@ -132,13 +132,43 @@ export function drawScaledToCanvas(canvas, source, sourceW, sourceH) {
 
 // ---------------------------------------------------------------------------
 // Carga un File (input de galería) como HTMLImageElement
+//
+// Causa más común de que esto falle: el archivo es HEIC/HEIF — el formato
+// que usan por defecto muchos celulares (iPhone siempre, y Samsung/Android
+// si tienen activado "imágenes de alta eficiencia"). Ningún navegador puede
+// decodificar HEIC desde una página web (no es un tema de esta app), así
+// que lo detectamos antes de intentar y avisamos con una solución concreta
+// en vez del error genérico del navegador.
 // ---------------------------------------------------------------------------
+function esProbableHeic(file) {
+  const tipo = (file.type || '').toLowerCase();
+  const nombre = (file.name || '').toLowerCase();
+  return tipo.includes('heic') || tipo.includes('heif')
+    || nombre.endsWith('.heic') || nombre.endsWith('.heif');
+}
+
 export function loadImageFile(file) {
+  if (esProbableHeic(file)) {
+    return Promise.reject(new Error(
+      'Esta foto está en formato HEIC/HEIF, que el navegador no puede leer. ' +
+      'Usá "Capturar" para tomarla directo con la cámara, o en el celular activá ' +
+      '"Formatos compatibles" / "Guardar como JPG" en Ajustes de Cámara (en iPhone: ' +
+      'Ajustes > Cámara > Formatos > Más compatible) y volvé a intentar.'
+    ));
+  }
+
   return new Promise((resolve, reject) => {
     const url = URL.createObjectURL(file);
     const img = new Image();
     img.onload  = () => { URL.revokeObjectURL(url); resolve(img); };
-    img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('No se pudo leer la imagen seleccionada')); };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error(
+        'No se pudo leer esta imagen. Puede ser un formato no compatible o el ' +
+        'archivo estar dañado — probá tomar la foto directo con la cámara en vez ' +
+        'de elegirla de la galería.'
+      ));
+    };
     img.src = url;
   });
 }
