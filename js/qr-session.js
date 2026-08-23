@@ -464,6 +464,7 @@ async function syncAttendees(asistentes) {
         fecha:     localDate(a.ts),
         estado:    'presente',
         checkType: a.checkType ?? 'unico',
+        selfieB64: a.selfie ?? null,
       });
       if (!a.alumnoId) await setQRAsistenteAlumno(_s.id, a.id, alumnoId);
       _s.syncedIds.add(a.id);

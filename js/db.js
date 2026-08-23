@@ -5,7 +5,7 @@
 
 import { getDatabase, ref, get, set, push, update, remove, onValue, onDisconnect, runTransaction }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-import { getStorage, ref as sRef, deleteObject }
+import { getStorage, ref as sRef, deleteObject, uploadBytes, getDownloadURL }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
 import { app } from './firebase-config.js';
 
@@ -439,13 +439,37 @@ export async function setQRAsistenteAlumno(sessionId, asistenteId, alumnoId) {
 }
 
 /**
+ * Sube a Storage la selfie (base64 JPEG, sin el prefijo data:) tomada al
+ * marcar asistencia por QR. Corre en el navegador del docente (auth con
+ * password), que es quien copia el registro al expediente del alumno.
+ */
+async function uploadAsistenciaSelfie(base64, alumnoId, asistenteId) {
+  const blob = await (await fetch(`data:image/jpeg;base64,${base64}`)).blob();
+  const path = `asistencia-fotos/${alumnoId}/${asistenteId}.jpg`;
+  const snap = await uploadBytes(sRef(storage, path), blob, { contentType: 'image/jpeg' });
+  const url  = await getDownloadURL(snap.ref);
+  return { fotoUrl: url, fotoPath: path };
+}
+
+/**
  * Aplica al expediente la asistencia de un registro QR.
  * Usa el id del asistente como clave para que reintentos no dupliquen.
+ * Si el registro trae selfie, la sube a Storage y guarda la URL junto con
+ * el resto de la asistencia (si la subida falla, la asistencia igual se
+ * guarda sin foto en vez de perderse).
  */
-export async function applyQRAsistencia(alumnoId, materiaId, asistenteId, { fecha, estado, checkType }) {
+export async function applyQRAsistencia(alumnoId, materiaId, asistenteId, { fecha, estado, checkType, selfieB64 = null }) {
+  let foto = {};
+  if (selfieB64) {
+    try {
+      foto = await uploadAsistenciaSelfie(selfieB64, alumnoId, asistenteId);
+    } catch (err) {
+      console.error('[AcadVet] Error subiendo selfie de asistencia:', err);
+    }
+  }
   await set(
     ref(db, `${inscRef(alumnoId, materiaId)}/asistencias/qr_${asistenteId}`),
-    { fecha, estado, checkType }
+    { fecha, estado, checkType, ...foto }
   );
 }
 

@@ -382,11 +382,17 @@ function asistRowHTML(asist) {
   const ctChip = (ct && ct !== 'unico')
     ? `<span class="asist-ct-chip asist-ct-chip--${ct}">${ct === 'inicio' ? '🟢 Inicio' : '🔴 Fin'}</span>`
     : '';
+  const fotoHtml = asist.fotoUrl
+    ? `<a href="${escHtml(asist.fotoUrl)}" target="_blank" rel="noopener" title="Ver foto de asistencia">
+         <img src="${escHtml(asist.fotoUrl)}" class="arch-selfie-thumb" alt="Foto de asistencia" loading="lazy">
+       </a>`
+    : '';
   return `
     <div class="asist-row">
       <div class="asist-estado-dot" style="background:${cfg.dot}" title="${cfg.label}"></div>
       <div class="asist-fecha">${formatFecha(asist.fecha)}</div>
       ${ctChip}
+      ${fotoHtml}
       <span class="badge ${cfg.badgeCls}">${cfg.label}</span>
       <div class="asist-row-actions">
         <button class="btn btn--ghost btn--sm"
