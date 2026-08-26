@@ -14,6 +14,7 @@ import { navigate } from '../router.js';
 import { openQRSession } from '../qr-session.js';
 import { openGruposSorteo } from '../grupos-trabajo.js';
 import { openCalificarExposiciones } from '../exposiciones-grupos.js';
+import { openCargarExamenCorto } from '../examen-corto-masivo.js';
 
 const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
 
@@ -143,6 +144,12 @@ function paint() {
               <path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
             </svg>
             Calificar Exposiciones
+          </button>
+          <button class="btn btn--secondary btn--sm" id="btnExamenCorto" title="Cargar nota de Examen Corto para todos los alumnos">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
+            </svg>
+            Examen Corto
           </button>
           <button class="btn btn--secondary btn--sm" id="btnExportGrupal" title="Exportar Excel grupal">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -363,6 +370,10 @@ function wireEvents() {
 
   document.getElementById('btnCalificarExpo')?.addEventListener('click', () => {
     openCalificarExposiciones(_materia);
+  });
+
+  document.getElementById('btnExamenCorto')?.addEventListener('click', () => {
+    openCargarExamenCorto(_materia, _alumnos, { onSaved: reload });
   });
 
   document.getElementById('btnExportGrupal')?.addEventListener('click', e => {
