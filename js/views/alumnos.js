@@ -656,9 +656,18 @@ function calcAlumnoStats(insc) {
   const parc       = insc.parciales ?? {};
   const expos      = snap(insc.exposiciones);
 
-  // Asistencia (justificado = presente)
-  const total     = asists.length;
-  const efectivos = asists.filter(a => a.estado === 'presente' || a.estado === 'justificado').length;
+  // Asistencia agrupada por día: un día cuenta como asistido si al menos uno
+  // de sus registros (inicio o fin) quedó presente/justificado, aunque el
+  // otro checkType de ese mismo día no se haya registrado o esté ausente.
+  const porFecha = new Map();
+  asists.forEach(a => {
+    const f = a.fecha ?? `sin-fecha-${a.id}`;
+    if (!porFecha.has(f)) porFecha.set(f, []);
+    porFecha.get(f).push(a);
+  });
+  const total     = porFecha.size;
+  const efectivos = [...porFecha.values()]
+    .filter(entries => entries.some(a => a.estado === 'presente' || a.estado === 'justificado')).length;
   const asistPct  = total > 0 ? Math.round((efectivos / total) * 100) : null;
 
   // Quizzes por área + exposiciones en área 3

@@ -1532,12 +1532,25 @@ function editNotaDiag() {
   });
 }
 
+// Agrupa por fecha: un día cuenta como una sola clase, aunque tenga registro
+// de inicio y de fin por separado. Si al menos uno de los dos quedó
+// presente/justificado, el día completo cuenta como asistido.
 function calcAsistSummary(asists) {
-  const total       = asists.length;
-  const presentes   = asists.filter(a => a.estado === 'presente').length;
-  const justificados = asists.filter(a => a.estado === 'justificado').length;
-  const ausentes    = asists.filter(a => a.estado === 'ausente').length;
-  // Justificado cuenta como presente
+  const porFecha = new Map();
+  asists.forEach(a => {
+    const f = a.fecha ?? `sin-fecha-${a.id}`;
+    if (!porFecha.has(f)) porFecha.set(f, []);
+    porFecha.get(f).push(a);
+  });
+
+  let presentes = 0, justificados = 0, ausentes = 0;
+  porFecha.forEach(entries => {
+    if      (entries.some(e => e.estado === 'presente'))    presentes++;
+    else if (entries.some(e => e.estado === 'justificado')) justificados++;
+    else                                                     ausentes++;
+  });
+
+  const total = porFecha.size;
   const pct = total > 0
     ? Math.round(((presentes + justificados) / total) * 100)
     : 0;

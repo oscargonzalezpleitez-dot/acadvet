@@ -419,10 +419,20 @@ function snapToArray(s) {
 // ---------------------------------------------------------------------------
 // Cálculos (misma fórmula que el expediente del docente)
 // ---------------------------------------------------------------------------
+// Agrupa por fecha: un día cuenta como una sola clase aunque tenga registro
+// de inicio y de fin por separado. Si al menos uno de los dos quedó
+// presente/justificado, el día completo cuenta como asistido.
 function calcAsistPct(asists) {
-  const total = asists.length;
+  const porFecha = new Map();
+  asists.forEach(a => {
+    const f = a.fecha ?? `sin-fecha-${a.id}`;
+    if (!porFecha.has(f)) porFecha.set(f, []);
+    porFecha.get(f).push(a);
+  });
+  const total = porFecha.size;
   if (!total) return null;
-  const ok = asists.filter(a => a.estado === 'presente' || a.estado === 'justificado').length;
+  const ok = [...porFecha.values()]
+    .filter(entries => entries.some(a => a.estado === 'presente' || a.estado === 'justificado')).length;
   return Math.round((ok / total) * 100);
 }
 
