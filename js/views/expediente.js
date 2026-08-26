@@ -868,12 +868,12 @@ async function saveObservaciones() {
 // ---------------------------------------------------------------------------
 
 function notaRowHTML(item, type) {
-  const isQuiz = type === 'quiz';
-  const nombre = escHtml(isQuiz ? (item.nombre ?? '—') : (item.tema ?? '—'));
-  const nota   = item.nota ?? 0;
-  const fecha  = item.fecha ? formatFecha(item.fecha) : null;
-  const pct    = Math.min((nota / 10) * 100, 100);
-  const notaCls = notaColorCls(nota);
+  const isQuiz  = type === 'quiz';
+  const nombre  = escHtml(isQuiz ? (item.nombre ?? '—') : (item.tema ?? '—'));
+  const fecha   = item.fecha ? formatFecha(item.fecha) : null;
+  const tieneNota = typeof item.nota === 'number';
+  const pct     = tieneNota ? Math.min((item.nota / 10) * 100, 100) : 0;
+  const notaCls = tieneNota ? notaColorCls(item.nota) : 'nota--neutral';
 
   return `
     <div class="nota-row">
@@ -882,10 +882,14 @@ function notaRowHTML(item, type) {
         ${fecha ? `<span class="text-muted text-xs">${fecha}</span>` : ''}
       </div>
       <div class="nota-row__right">
+        ${tieneNota ? `
         <div class="nota-bar-wrap">
           <div class="nota-bar ${notaCls}" style="width:${pct}%"></div>
         </div>
-        <span class="nota-val ${notaCls}">${typeof nota === 'number' ? nota.toFixed(1) : nota}<span class="nota-max">/10</span></span>
+        <span class="nota-val ${notaCls}">${item.nota.toFixed(1)}<span class="nota-max">/10</span></span>
+        ` : `
+        <span class="nota-val nota--neutral text-muted">Sin nota</span>
+        `}
       </div>
       <div class="nota-row__actions">
         <button class="btn btn--ghost btn--sm"
