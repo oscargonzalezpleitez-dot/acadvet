@@ -351,12 +351,15 @@ const ESTADO_BADGE = {
 function renderResultsTable() {
   resultsBody.innerHTML = _resultados.map(row => {
     const badge = ESTADO_BADGE[row.estado];
-    const carnet = row.carnetManual ?? '—';
+    const carnetCell = row.estado === 'aprobado'
+      ? escapeHtml(row.carnetManual ?? '—')
+      : `<input type="text" class="carnet-input" inputmode="numeric" placeholder="Carné"
+           value="${escapeHtml(row.carnetManual ?? '')}">`;
     return `
       <tr data-id="${row.id}">
         <td><img class="thumb" src="${row.thumb}" alt=""></td>
-        <td>${carnet}</td>
-        <td>${row.alumno ? escapeHtml(row.alumno.nombre) : '<span style="color:var(--danger)">no encontrado</span>'}</td>
+        <td>${carnetCell}</td>
+        <td class="alumno-cell">${row.alumno ? escapeHtml(row.alumno.nombre) : (row.carnetManual ? '<span style="color:var(--danger)">no encontrado</span>' : '<span style="color:var(--text-muted)">—</span>')}</td>
         <td>${row.version || '—'}</td>
         <td>${row.nota != null ? row.nota : '—'}</td>
         <td><span class="badge ${badge.cls}">${badge.label}</span></td>
@@ -400,6 +403,61 @@ resultsBody.addEventListener('click', (e) => {
     renderResultsTable();
     scheduleSaveBorrador();
   }
+});
+
+// ---------------------------------------------------------------------------
+// Casilla de carné directamente en la fila (alternativa rápida al modal)
+// ---------------------------------------------------------------------------
+function rowOfInput(input) {
+  const id = Number(input.closest('tr').dataset.id);
+  return _resultados.find(r => r.id === id);
+}
+
+/** Mientras se escribe: solo actualiza la vista previa del alumno, sin re-renderizar la tabla (perdería el foco). */
+resultsBody.addEventListener('input', (e) => {
+  const input = e.target.closest('.carnet-input');
+  if (!input) return;
+  const row = rowOfInput(input);
+  if (!row) return;
+  const carnet = input.value.trim();
+  const alumno = carnet ? _carnetMap.get(carnet) : null;
+  const alumnoCell = input.closest('tr').querySelector('.alumno-cell');
+  if (alumnoCell) {
+    alumnoCell.innerHTML = alumno
+      ? escapeHtml(alumno.nombre)
+      : (carnet ? '<span style="color:var(--danger)">no encontrado</span>' : '<span style="color:var(--text-muted)">—</span>');
+  }
+});
+
+/** Al salir del campo (blur/Enter): aplica de verdad — recalcula nota, estado y duplicados. */
+function aplicarCarnetInline(input) {
+  const row = rowOfInput(input);
+  if (!row) return;
+  const alumnoIdAnterior = row.alumno?.id ?? null;
+  row.carnetManual = input.value.trim();
+  resolveRow(row);
+  if (alumnoIdAnterior && alumnoIdAnterior !== row.alumno?.id) {
+    _resultados.filter(r => r !== row && r.alumno?.id === alumnoIdAnterior).forEach(resolveRow);
+  }
+  renderResultsTable();
+  scheduleSaveBorrador();
+}
+
+resultsBody.addEventListener('change', (e) => {
+  const input = e.target.closest('.carnet-input');
+  if (input) aplicarCarnetInline(input);
+});
+
+resultsBody.addEventListener('keydown', (e) => {
+  const input = e.target.closest('.carnet-input');
+  if (!input || e.key !== 'Enter') return;
+  e.preventDefault();
+  const inputsAntes = [...resultsBody.querySelectorAll('.carnet-input')];
+  const idx = inputsAntes.indexOf(input);
+  aplicarCarnetInline(input);
+  const inputsDespues = [...resultsBody.querySelectorAll('.carnet-input')];
+  const siguiente = inputsDespues[idx + 1];
+  if (siguiente) { siguiente.focus(); siguiente.select(); }
 });
 
 /** Saca una fila del lote y re-evalúa a las que compartían su mismo alumno
