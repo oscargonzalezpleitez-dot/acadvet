@@ -300,11 +300,19 @@ function resolveRow(row) {
   const dup = row.alumno && _resultados.some(r => r !== row && r.alumno?.id === row.alumno.id);
   if (dup) row.avisos.push('Este alumno ya tiene otra foto en este lote — revisá cuál es la correcta.');
 
-  if (row.alumno && row.version && _claves[row.version] && !dup) {
+  // La nota se calcula en cuanto hay versión + clave, sin necesidad de que el
+  // carné ya esté asignado — así podés calificar todo el lote primero y
+  // asignar los alumnos después, a tu ritmo.
+  if (row.version && _claves[row.version]) {
     row.nota = calcularNota(row.respuestas, _claves[row.version].respuestas, _claves[row.version].numPreguntas || _numPreguntas);
-    row.estado = 'listo';
-  } else {
+  }
+
+  if (dup || row.nota == null) {
     row.estado = 'revisar';
+  } else if (!row.alumno) {
+    row.estado = 'sin_alumno';
+  } else {
+    row.estado = 'listo';
   }
 
   // Re-evaluar duplicados existentes también (por si este alumno ya estaba "listo").
@@ -325,6 +333,7 @@ function resolveRow(row) {
 // ---------------------------------------------------------------------------
 const ESTADO_BADGE = {
   listo:         { cls: 'ok',    label: '✅ Listo' },
+  sin_alumno:    { cls: 'warn',  label: '📝 Calificado, falta asignar' },
   revisar:       { cls: 'warn',  label: '⚠️ Revisar' },
   sin_esquinas:  { cls: 'error', label: '❌ Sin esquinas' },
   aprobado:      { cls: 'ok',    label: '💾 Guardado' },
@@ -350,9 +359,12 @@ function renderResultsTable() {
   }).join('');
 
   const listos = _resultados.filter(r => r.estado === 'listo').length;
+  const calificadas = _resultados.filter(r => r.nota != null).length;
   const pendientes = pendingCarnetRows().length;
   summaryBar.classList.toggle('hidden', _resultados.length === 0);
-  summaryCount.innerHTML = `<strong>${listos}</strong> de ${_resultados.length} fotos listas para guardar.`;
+  summaryCount.innerHTML = `<strong>${calificadas}</strong> de ${_resultados.length} fotos calificadas`
+    + (listos !== calificadas ? ` — <strong>${listos}</strong> listas para guardar (con alumno asignado)` : '')
+    + '.';
   btnAprobarTodo.disabled = listos === 0;
   btnRevisarCarnets.classList.toggle('hidden', pendientes === 0);
   btnRevisarCarnets.textContent = `✏️ Escribir carnés pendientes (${pendientes})`;
