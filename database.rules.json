@@ -221,6 +221,11 @@
       }
     },
 
+    "parciales_borrador": {
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
+    },
+
     "parciales_rubricas": {
       ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",

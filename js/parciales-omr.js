@@ -45,3 +45,25 @@ export async function aprobarNotaOmr(alumnoId, materiaId, parcialId, notaFinal) 
   const actuales = await getParciales(alumnoId, materiaId);
   await updateParciales(alumnoId, materiaId, { ...actuales, [parcialId]: notaFinal });
 }
+
+// ---------------------------------------------------------------------------
+// BORRADOR — guarda el lote de fotos ya calificadas (pero sin terminar de
+// asignar alumnos) para que sobreviva a un cierre de pestaña/navegador.
+// Solo se guardan datos livianos (miniatura + respuestas ya leídas), nunca
+// la foto original en resolución completa.
+// ---------------------------------------------------------------------------
+
+export async function getBorrador(materiaId, parcialId) {
+  const s = await get(ref(db, `parciales_borrador/${materiaId}/${parcialId}`));
+  return s.exists() ? s.val() : null;
+}
+
+export async function saveBorrador(materiaId, parcialId, { filas, numPreguntas }) {
+  await set(ref(db, `parciales_borrador/${materiaId}/${parcialId}`), {
+    filas, numPreguntas, actualizadoEn: Date.now(),
+  });
+}
+
+export async function clearBorrador(materiaId, parcialId) {
+  await set(ref(db, `parciales_borrador/${materiaId}/${parcialId}`), null);
+}

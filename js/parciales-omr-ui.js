@@ -10,7 +10,7 @@
 // =============================================================================
 
 import { getMaterias, getAlumnos, alumnosByMateria } from './db.js';
-import { getClave, saveClave, calcularNota, aprobarNotaOmr } from './parciales-omr.js';
+import { getClave, saveClave, calcularNota, aprobarNotaOmr, getBorrador, saveBorrador, clearBorrador } from './parciales-omr.js';
 import { detectCorners, detectRespuestas } from './omr-core.js';
 import { detectVersionQR } from './qr-detect.js';
 import { VERSIONS, OPTIONS } from './omr-template.js';
@@ -61,6 +61,10 @@ const summaryBar      = document.getElementById('summaryBar');
 const summaryCount    = document.getElementById('summaryCount');
 const btnAprobarTodo  = document.getElementById('btnAprobarTodo');
 const btnRevisarCarnets = document.getElementById('btnRevisarCarnets');
+
+const draftBanner       = document.getElementById('draftBanner');
+const draftBannerText   = document.getElementById('draftBannerText');
+const btnDescartarBorrador = document.getElementById('btnDescartarBorrador');
 
 const detailModal = document.getElementById('detailModal');
 const detailBody  = document.getElementById('detailBody');
@@ -118,6 +122,8 @@ async function onSelectionChanged() {
 
   renderVersionTabs();
   renderClaveGrid();
+
+  await restoreBorradorSiExiste();
 }
 
 // ---------------------------------------------------------------------------
@@ -196,6 +202,7 @@ function resetBatch() {
   summaryBar.classList.add('hidden');
   progressWrap.classList.add('hidden');
   progressText.textContent = '';
+  draftBanner.classList.add('hidden');
 }
 
 function drawThumb(source, sw, sh, maxDim = 220) {
@@ -224,10 +231,12 @@ fileInputBatch.addEventListener('change', async () => {
       console.error('[parciales-omr] error procesando', files[i].name, e);
     }
     renderResultsTable();
+    scheduleSaveBorrador();
     // Cede el hilo entre foto y foto para que la barra de progreso se pinte.
     await new Promise(r => setTimeout(r, 0));
   }
   progressText.textContent = `Listo — ${files.length} foto(s) procesadas.`;
+  await persistBorradorAhora();
 });
 
 // Placeholder gris para filas cuya imagen ni siquiera se pudo abrir (ej.
@@ -389,6 +398,7 @@ resultsBody.addEventListener('click', (e) => {
   if (btn.dataset.action === 'descartar') {
     discardRow(row);
     renderResultsTable();
+    scheduleSaveBorrador();
   }
 });
 
@@ -445,6 +455,7 @@ function openDetail(row, { sequential = false } = {}) {
       _resultados.filter(r => r !== row && r.alumno?.id === alumnoIdAnterior).forEach(resolveRow);
     }
     renderResultsTable();
+    scheduleSaveBorrador();
 
     if (_sequential) {
       const [next] = pendingCarnetRows();
@@ -459,6 +470,7 @@ function openDetail(row, { sequential = false } = {}) {
   document.getElementById('btnDescartarFoto').addEventListener('click', () => {
     discardRow(row);
     renderResultsTable();
+    scheduleSaveBorrador();
     if (_sequential) {
       const [next] = pendingCarnetRows();
       if (next) { openDetail(next, { sequential: true }); return; }
@@ -504,5 +516,61 @@ btnAprobarTodo.addEventListener('click', async () => {
   renderResultsTable();
   btnAprobarTodo.textContent = '✅ Aprobar y guardar notas listas';
   btnAprobarTodo.disabled = false;
+  await persistBorradorAhora(); // las filas "aprobado" ya no viajan al borrador
   alert(`Listo: ${ok} nota(s) guardada(s)${fail ? `, ${fail} con error (revisá la consola)` : ''}.`);
+});
+
+// ---------------------------------------------------------------------------
+// Borrador — persiste el lote en Firebase para sobrevivir a cerrar la pestaña
+// ---------------------------------------------------------------------------
+let _saveTimer = null;
+
+function scheduleSaveBorrador() {
+  clearTimeout(_saveTimer);
+  _saveTimer = setTimeout(() => { persistBorradorAhora(); }, 1000);
+}
+
+async function persistBorradorAhora() {
+  if (!_materiaId) return;
+  clearTimeout(_saveTimer);
+  const pendientes = _resultados.filter(r => r.estado !== 'aprobado');
+  try {
+    if (pendientes.length === 0) {
+      await clearBorrador(_materiaId, _parcialId);
+    } else {
+      const filas = pendientes.map(r => ({
+        id: r.id, thumb: r.thumb, nombreArchivo: r.nombreArchivo,
+        carnetManual: r.carnetManual, version: r.version, respuestas: r.respuestas,
+      }));
+      await saveBorrador(_materiaId, _parcialId, { filas, numPreguntas: _numPreguntas });
+    }
+  } catch (e) {
+    console.error('[parciales-omr] error guardando borrador', e);
+  }
+}
+
+async function restoreBorradorSiExiste() {
+  const borrador = await getBorrador(_materiaId, _parcialId);
+  if (!borrador?.filas?.length) return;
+
+  _resultados = borrador.filas.map(f => ({
+    id: f.id, thumb: f.thumb, nombreArchivo: f.nombreArchivo,
+    carnetManual: f.carnetManual, alumno: null, version: f.version,
+    respuestas: f.respuestas, nota: null, estado: 'revisar', avisos: [],
+  }));
+  _rowSeq = Math.max(_rowSeq, ..._resultados.map(r => r.id));
+  _resultados.forEach(resolveRow);
+
+  resultsTable.classList.remove('hidden');
+  renderResultsTable();
+
+  const fecha = borrador.actualizadoEn ? new Date(borrador.actualizadoEn).toLocaleString('es-SV') : '';
+  draftBannerText.textContent = `📋 Se restauró un borrador sin terminar (${_resultados.length} foto(s), guardado ${fecha}).`;
+  draftBanner.classList.remove('hidden');
+}
+
+btnDescartarBorrador.addEventListener('click', async () => {
+  if (!confirm('¿Descartar el borrador guardado y empezar de nuevo? Se perderán las fotos ya calificadas que no hayas guardado.')) return;
+  resetBatch();
+  await clearBorrador(_materiaId, _parcialId);
 });
