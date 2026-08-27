@@ -348,14 +348,36 @@ const ESTADO_BADGE = {
   aprobado:      { cls: 'ok',    label: '💾 Guardado' },
 };
 
+/** Orden de las filas: agrupadas por versión detectada (A, B, C…), sin
+ * versión al final, y estable por orden de subida dentro de cada grupo. */
+function ordenarPorVersion() {
+  const rango = v => v ? VERSIONS.indexOf(v) : VERSIONS.length;
+  _resultados.sort((a, b) => rango(a.version) - rango(b.version) || a.id - b.id);
+}
+
 function renderResultsTable() {
+  ordenarPorVersion();
+
+  let grupoActual;
   resultsBody.innerHTML = _resultados.map(row => {
     const badge = ESTADO_BADGE[row.estado];
     const carnetCell = row.estado === 'aprobado'
       ? escapeHtml(row.carnetManual ?? '—')
       : `<input type="text" class="carnet-input" inputmode="numeric" placeholder="Carné"
            value="${escapeHtml(row.carnetManual ?? '')}">`;
-    return `
+
+    let headerHtml = '';
+    if (row.version !== grupoActual) {
+      grupoActual = row.version;
+      const enGrupo = _resultados.filter(r => r.version === grupoActual).length;
+      const tieneClave = grupoActual && _claves[grupoActual];
+      const label = grupoActual ? `Versión ${grupoActual}` : 'Sin código de versión detectado';
+      headerHtml = `<tr class="version-group"><td colspan="7">${label} — ${enGrupo} foto(s)${
+        grupoActual && !tieneClave ? ' · ⚠️ falta guardar la clave de esta versión' : ''
+      }</td></tr>`;
+    }
+
+    return headerHtml + `
       <tr data-id="${row.id}">
         <td><img class="thumb" src="${row.thumb}" alt=""></td>
         <td>${carnetCell}</td>
