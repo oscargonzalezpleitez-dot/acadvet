@@ -283,8 +283,21 @@ async function processFile(file) {
 
   row.respuestas = resultado;
   row.version = detectVersionQR(imageData);
+  row.carnetManual = extraerCarnetDeNombre(file.name);
 
   resolveRow(row);
+}
+
+/** Si el nombre del archivo trae el carné (ej. "12345 - Juan Pérez.jpg"), lo
+ * detecta buscando cada secuencia de dígitos del nombre contra los carnés de
+ * alumnos inscritos en esta materia. Solo lo toma si hay una única
+ * coincidencia inequívoca — si no, se deja para escribirlo a mano. */
+function extraerCarnetDeNombre(nombreArchivo) {
+  if (!nombreArchivo) return null;
+  const base = nombreArchivo.replace(/\.[^.]+$/, '');
+  const candidatos = [...new Set(base.match(/\d+/g) || [])];
+  const coincidencias = candidatos.filter(c => _carnetMap.has(c));
+  return coincidencias.length === 1 ? coincidencias[0] : null;
 }
 
 /** Resuelve alumno + nota a partir de row.carnetManual (siempre a mano), y decide el estado. */
