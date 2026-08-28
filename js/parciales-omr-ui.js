@@ -253,7 +253,7 @@ async function processFile(file) {
     _resultados.push({
       id: ++_rowSeq, thumb: THUMB_ERROR, nombreArchivo: file.name,
       carnetManual: null,
-      alumno: null, version: null, respuestas: null, nota: null,
+      alumno: null, version: null, respuestas: null, respuestasOverride: {}, nota: null,
       estado: 'sin_esquinas', avisos: [e.message],
     });
     return;
@@ -267,7 +267,7 @@ async function processFile(file) {
   const row = {
     id: ++_rowSeq, thumb, nombreArchivo: file.name,
     carnetManual: null,
-    alumno: null, version: null, respuestas: null, nota: null,
+    alumno: null, version: null, respuestas: null, respuestasOverride: {}, nota: null,
     estado: 'sin_esquinas', avisos: [],
   };
   _resultados.push(row);
@@ -300,6 +300,27 @@ function extraerCarnetDeNombre(nombreArchivo) {
   return coincidencias.length === 1 ? coincidencias[0] : null;
 }
 
+/** Combina lo leído por la cámara con las correcciones a mano del docente
+ * (row.respuestasOverride), pregunta por pregunta. Las corregidas a mano
+ * siempre ganan. */
+function respuestasEfectivas(row) {
+  if (!row.respuestas) return row.respuestas;
+  const out = {};
+  for (const q of Object.keys(row.respuestas)) {
+    const corregida = row.respuestasOverride?.[q];
+    out[q] = corregida ? { marcada: corregida } : row.respuestas[q];
+  }
+  return out;
+}
+
+/** Cuántas preguntas quedaron sin una respuesta clara (ni de la cámara ni corregida a mano). */
+function preguntasSinLeer(row) {
+  if (!row.respuestas) return 0;
+  return Object.keys(row.respuestas)
+    .filter(q => !row.respuestas[q]?.marcada && !row.respuestasOverride?.[q])
+    .length;
+}
+
 /** Resuelve alumno + nota a partir de row.carnetManual (siempre a mano), y decide el estado. */
 function resolveRow(row) {
   const carnet = row.carnetManual;
@@ -322,11 +343,17 @@ function resolveRow(row) {
   const dup = row.alumno && _resultados.some(r => r !== row && r.alumno?.id === row.alumno.id);
   if (dup) row.avisos.push('Este alumno ya tiene otra foto en este lote — revisá cuál es la correcta.');
 
+  const sinLeer = preguntasSinLeer(row);
+  if (sinLeer > 0) {
+    row.avisos.push(`${sinLeer} respuesta(s) no se pudieron leer con confianza (marca muy clara/ambigua) — usá "🔍" para revisarlas y elegirlas a mano.`);
+  }
+
   // La nota se calcula en cuanto hay versión + clave, sin necesidad de que el
   // carné ya esté asignado — así podés calificar todo el lote primero y
-  // asignar los alumnos después, a tu ritmo.
+  // asignar los alumnos después, a tu ritmo. Las preguntas que corregiste a
+  // mano (respuestasOverride) reemplazan lo que había leído la cámara.
   if (row.version && _claves[row.version]) {
-    row.nota = calcularNota(row.respuestas, _claves[row.version].respuestas, _claves[row.version].numPreguntas || _numPreguntas);
+    row.nota = calcularNota(respuestasEfectivas(row), _claves[row.version].respuestas, _claves[row.version].numPreguntas || _numPreguntas);
   }
 
   if (dup || row.nota == null) {
@@ -399,16 +426,21 @@ function renderResultsTable() {
       }</td></tr>`;
     }
 
+    const sinLeer = preguntasSinLeer(row);
+    const notaCell = row.nota != null
+      ? `${row.nota}${sinLeer ? ` <span class="badge warn" style="margin-left:4px" title="${sinLeer} respuesta(s) sin leer con confianza">❓${sinLeer}</span>` : ''}`
+      : '—';
+
     return headerHtml + `
       <tr data-id="${row.id}">
         <td><img class="thumb" src="${row.thumb}" alt=""></td>
         <td>${carnetCell}</td>
         <td class="alumno-cell">${row.alumno ? escapeHtml(row.alumno.nombre) : (row.carnetManual ? '<span style="color:var(--danger)">no encontrado</span>' : '<span style="color:var(--text-muted)">—</span>')}</td>
         <td>${versionCell}</td>
-        <td>${row.nota != null ? row.nota : '—'}</td>
+        <td>${notaCell}</td>
         <td><span class="badge ${badge.cls}">${badge.label}</span></td>
         <td>
-          <button class="btn outline small" data-action="revisar">🔍</button>
+          <button class="btn outline small" data-action="revisar">${sinLeer ? '🔍❓' : '🔍'}</button>
           <button class="btn outline small" data-action="descartar">🗑</button>
         </td>
       </tr>`;
@@ -530,13 +562,44 @@ function discardRow(row) {
 // ---------------------------------------------------------------------------
 let _sequential = false;
 
+/** HTML de la lista de preguntas sin leer con confianza, con botones A/B/C/D
+ * para que el docente elija la que realmente marcó el alumno en la hoja. */
+function renderAmbiguasHtml(row) {
+  if (!row.respuestas) return '';
+  const pendientes = Object.keys(row.respuestas)
+    .map(Number)
+    .filter(q => !row.respuestas[q]?.marcada && !row.respuestasOverride?.[q])
+    .sort((a, b) => a - b);
+  if (!pendientes.length) return '';
+  return `
+    <div class="ambiguas-panel" id="ambiguasPanel">
+      <div class="ambiguas-title" id="ambiguasTitle">❓ ${pendientes.length} respuesta(s) sin leer con confianza — mirá la hoja y elegí la que marcó el alumno:</div>
+      ${pendientes.map(q => {
+        const candidatos = row.respuestas[q]?.candidatos;
+        return `
+        <div class="ambigua-row" data-q="${q}">
+          <span class="ambigua-qnum">#${q}</span>
+          <div class="ambigua-opts">
+            ${OPTIONS.map(opt => `<button type="button" class="ambigua-opt" data-opt="${opt}">${opt}</button>`).join('')}
+          </div>
+          ${candidatos?.length ? `<span class="ambigua-hint">más oscura: ${candidatos[0]}</span>` : ''}
+        </div>`;
+      }).join('')}
+    </div>
+  `;
+}
+
 function openDetail(row, { sequential = false } = {}) {
   _sequential = sequential;
   const carnetActual = row.carnetManual ?? '';
   detailBody.innerHTML = `
     <img src="${row.thumb}" alt="">
     <div style="font-size:0.75rem;color:var(--text-muted);margin-bottom:8px">📄 ${escapeHtml(row.nombreArchivo || '')}</div>
+    <div id="notaEnVivoWrap" style="font-size:0.85rem;margin-bottom:8px;${row.nota == null ? 'display:none' : ''}">
+      Nota con lo resuelto hasta ahora: <strong id="notaEnVivo">${row.nota ?? '—'}</strong>
+    </div>
     ${row.avisos.length ? `<div class="badge warn" style="display:block;padding:10px;margin-bottom:12px">${row.avisos.map(escapeHtml).join('<br>')}</div>` : ''}
+    ${renderAmbiguasHtml(row)}
     <div class="field" style="margin-bottom:10px">
       <label for="carnetInput">Carné del alumno (mirá la hoja y escribilo)</label>
       <input type="text" id="carnetInput" value="${escapeHtml(carnetActual)}" inputmode="numeric" autofocus>
@@ -546,6 +609,28 @@ function openDetail(row, { sequential = false } = {}) {
     <button class="btn outline" id="btnDescartarFoto" style="margin-top:8px">🗑 Descartar esta foto</button>
   `;
   detailModal.classList.remove('hidden');
+
+  const ambiguasPanel = document.getElementById('ambiguasPanel');
+  ambiguasPanel?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.ambigua-opt');
+    if (!btn) return;
+    const q = btn.closest('.ambigua-row').dataset.q;
+    row.respuestasOverride ??= {};
+    row.respuestasOverride[q] = btn.dataset.opt;
+    resolveRow(row);
+    renderResultsTable();
+    scheduleSaveBorrador();
+
+    btn.closest('.ambigua-row').remove();
+    const restantes = ambiguasPanel.querySelectorAll('.ambigua-row').length;
+    document.getElementById('ambiguasTitle').textContent =
+      `❓ ${restantes} respuesta(s) sin leer con confianza — mirá la hoja y elegí la que marcó el alumno:`;
+    if (restantes === 0) ambiguasPanel.remove();
+
+    const notaWrap = document.getElementById('notaEnVivoWrap');
+    document.getElementById('notaEnVivo').textContent = row.nota ?? '—';
+    notaWrap.style.display = row.nota == null ? 'none' : '';
+  });
 
   const carnetInput = document.getElementById('carnetInput');
   const matchPreview = document.getElementById('matchPreview');
@@ -655,6 +740,7 @@ async function persistBorradorAhora() {
       const filas = pendientes.map(r => ({
         id: r.id, thumb: r.thumb, nombreArchivo: r.nombreArchivo,
         carnetManual: r.carnetManual, version: r.version, respuestas: r.respuestas,
+        respuestasOverride: r.respuestasOverride,
       }));
       await saveBorrador(_materiaId, _parcialId, { filas, numPreguntas: _numPreguntas });
     }
@@ -670,7 +756,8 @@ async function restoreBorradorSiExiste() {
   _resultados = borrador.filas.map(f => ({
     id: f.id, thumb: f.thumb, nombreArchivo: f.nombreArchivo,
     carnetManual: f.carnetManual, alumno: null, version: f.version,
-    respuestas: f.respuestas, nota: null, estado: 'revisar', avisos: [],
+    respuestas: f.respuestas, respuestasOverride: f.respuestasOverride || {},
+    nota: null, estado: 'revisar', avisos: [],
   }));
   _rowSeq = Math.max(_rowSeq, ..._resultados.map(r => r.id));
   _resultados.forEach(resolveRow);
