@@ -84,6 +84,11 @@ const veredictoBar     = document.getElementById('veredictoBar');
 const veredictoIcono   = document.getElementById('veredictoIcono');
 const veredictoTexto   = document.getElementById('veredictoTexto');
 const veredictoDetalle = document.getElementById('veredictoDetalle');
+const carnetPrompt        = document.getElementById('carnetPrompt');
+const carnetPromptInput   = document.getElementById('carnetPromptInput');
+const carnetPromptMatch   = document.getElementById('carnetPromptMatch');
+const btnCarnetPromptListo   = document.getElementById('btnCarnetPromptListo');
+const btnCarnetPromptOmitir  = document.getElementById('btnCarnetPromptOmitir');
 
 // ---------------------------------------------------------------------------
 // Init
@@ -295,6 +300,8 @@ function closeCamera() {
   stopCameraStream();
   cameraModal.classList.add('hidden');
   _lastCapturedCanvas = null;
+  carnetPrompt.classList.add('hidden');
+  _rowEnPromptCarnet = null;
 }
 
 function showVistaEnVivo() {
@@ -303,6 +310,8 @@ function showVistaEnVivo() {
   veredictoBar.classList.add('hidden');
   cameraBarViva.classList.remove('hidden');
   captureActions.classList.add('hidden');
+  carnetPrompt.classList.add('hidden');
+  _rowEnPromptCarnet = null;
 }
 
 btnCapturarFoto.addEventListener('click', () => {
@@ -370,6 +379,8 @@ function mostrarVeredicto(v) {
   veredictoBar.classList.remove('hidden');
 }
 
+let _rowEnPromptCarnet = null;
+
 async function aceptarFotoCapturada() {
   if (!_lastCapturedCanvas) return;
   const canvas = _lastCapturedCanvas;
@@ -381,8 +392,9 @@ async function aceptarFotoCapturada() {
   progressWrap.classList.remove('hidden');
   resultsTable.classList.remove('hidden');
   progressText.textContent = 'Procesando foto de la cámara…';
+  let row = null;
   try {
-    await processFile(file);
+    row = await processFile(file);
   } catch (e) {
     console.error('[parciales-omr] error procesando foto de cámara', e);
   }
@@ -391,6 +403,52 @@ async function aceptarFotoCapturada() {
   progressText.textContent = `Listo — ${_fotosCamaraSesion} foto(s) de cámara agregada(s) en esta sesión.`;
 
   _lastCapturedCanvas = null;
+
+  // Las fotos de cámara no traen carné en el nombre de archivo (a diferencia
+  // de subir desde galería) — se pide acá mismo, al toque, para no tener que
+  // buscar la fila después en la tabla.
+  if (row) {
+    mostrarPromptCarnet(row);
+  } else {
+    cameraHint.textContent = 'Foto agregada ✅ — encuadrá la del siguiente alumno';
+    showVistaEnVivo();
+  }
+}
+
+function mostrarPromptCarnet(row) {
+  _rowEnPromptCarnet = row;
+  captureActions.classList.add('hidden');
+  carnetPromptInput.value = '';
+  carnetPromptMatch.textContent = '';
+  carnetPrompt.classList.remove('hidden');
+  carnetPromptInput.focus();
+}
+
+function actualizarMatchCarnet() {
+  const valor = carnetPromptInput.value.trim();
+  if (!valor) { carnetPromptMatch.textContent = ''; return; }
+  const alumno = _carnetMap.get(valor);
+  carnetPromptMatch.textContent = alumno ? `✅ ${alumno.nombre}` : '❌ No se encontró ningún alumno con ese carné en esta materia.';
+}
+
+carnetPromptInput.addEventListener('input', actualizarMatchCarnet);
+carnetPromptInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') confirmarPromptCarnet(); });
+btnCarnetPromptListo.addEventListener('click', confirmarPromptCarnet);
+btnCarnetPromptOmitir.addEventListener('click', () => siguienteCapturaTrasPrompt());
+
+function confirmarPromptCarnet() {
+  if (_rowEnPromptCarnet) {
+    _rowEnPromptCarnet.carnetManual = carnetPromptInput.value.trim();
+    resolveRow(_rowEnPromptCarnet);
+    renderResultsTable();
+    scheduleSaveBorrador();
+  }
+  siguienteCapturaTrasPrompt();
+}
+
+function siguienteCapturaTrasPrompt() {
+  carnetPrompt.classList.add('hidden');
+  _rowEnPromptCarnet = null;
   cameraHint.textContent = 'Foto agregada ✅ — encuadrá la del siguiente alumno';
   showVistaEnVivo();
 }
@@ -406,13 +464,14 @@ async function processFile(file) {
   try {
     img = await loadImageFile(file);
   } catch (e) {
-    _resultados.push({
+    const rowError = {
       id: ++_rowSeq, thumb: THUMB_ERROR, nombreArchivo: file.name,
       carnetManual: null,
       alumno: null, version: null, respuestas: null, respuestasOverride: {}, nota: null,
       estado: 'sin_esquinas', avisos: [e.message],
-    });
-    return;
+    };
+    _resultados.push(rowError);
+    return rowError;
   }
 
   const canvas = document.createElement('canvas');
@@ -432,7 +491,7 @@ async function processFile(file) {
   const corners = detectCorners(imageData);
   if (!corners) {
     row.avisos.push('No se pudieron ubicar las 4 marcas automáticamente. Repetí la foto (mejor luz/encuadre) o usá omr-test.html para revisarla a mano.');
-    return;
+    return row;
   }
 
   const { resultado } = detectRespuestas(imageData, corners);
@@ -442,6 +501,7 @@ async function processFile(file) {
   row.carnetManual = extraerCarnetDeNombre(file.name);
 
   resolveRow(row);
+  return row;
 }
 
 /** Si el nombre del archivo trae el carné (ej. "12345 - Juan Pérez.jpg"), lo

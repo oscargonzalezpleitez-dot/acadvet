@@ -130,6 +130,17 @@
     .capture-actions { display: flex; gap: 10px; padding: 12px 16px; background: rgba(0,0,0,0.85); }
     .capture-actions .btn { flex: 1; }
 
+    .carnet-prompt { background: rgba(0,0,0,0.92); padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .carnet-prompt-match { color: #fff; font-size: 0.82rem; font-weight: 700; min-height: 18px; }
+    .carnet-prompt-row { display: flex; gap: 8px; }
+    .carnet-prompt-row input {
+      flex: 1; padding: 12px 14px; border-radius: var(--r-md); border: 2px solid var(--primary-light);
+      font-size: 1rem; font-family: var(--fb);
+    }
+    .carnet-prompt-row input:focus { outline: none; border-color: var(--primary); }
+    .carnet-prompt-row .btn { flex-shrink: 0; }
+    .btn-omitir-carnet { background: none; border: none; color: rgba(255,255,255,0.75); font-size: 0.78rem; cursor: pointer; text-align: center; }
+
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
     .modal-overlay.hidden { display: none; }
     .modal-box { background: var(--surface); border-radius: var(--r-lg); width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; }
@@ -246,6 +257,14 @@
     <div class="capture-actions hidden" id="captureActions">
       <button class="btn outline" id="btnRepetirFoto">🔄 Repetir foto</button>
       <button class="btn success" id="btnUsarFoto">✅ Usar esta foto</button>
+    </div>
+    <div class="carnet-prompt hidden" id="carnetPrompt">
+      <div class="carnet-prompt-match" id="carnetPromptMatch"></div>
+      <div class="carnet-prompt-row">
+        <input type="text" id="carnetPromptInput" inputmode="numeric" placeholder="Carné del alumno (mirá la hoja y escribilo)">
+        <button class="btn success" id="btnCarnetPromptListo">✅ Listo</button>
+      </div>
+      <button class="btn-omitir-carnet" id="btnCarnetPromptOmitir">Omitir por ahora — lo escribo después en la tabla</button>
     </div>
   </div>
 
