@@ -366,6 +366,15 @@ function renderResultsTable() {
       : `<input type="text" class="carnet-input" inputmode="numeric" placeholder="Carné"
            value="${escapeHtml(row.carnetManual ?? '')}">`;
 
+    // Si el QR no se pudo leer (foto borrosa, tapada, etc.) se puede elegir
+    // la versión a mano — sin esto la foto queda trabada sin poder calificarla.
+    const versionCell = (row.estado === 'aprobado' || row.estado === 'sin_esquinas')
+      ? (row.version || '—')
+      : `<select class="version-select">
+          <option value="">—</option>
+          ${VERSIONS.map(v => `<option value="${v}" ${row.version === v ? 'selected' : ''}>${v}</option>`).join('')}
+        </select>`;
+
     let headerHtml = '';
     if (row.version !== grupoActual) {
       grupoActual = row.version;
@@ -382,7 +391,7 @@ function renderResultsTable() {
         <td><img class="thumb" src="${row.thumb}" alt=""></td>
         <td>${carnetCell}</td>
         <td class="alumno-cell">${row.alumno ? escapeHtml(row.alumno.nombre) : (row.carnetManual ? '<span style="color:var(--danger)">no encontrado</span>' : '<span style="color:var(--text-muted)">—</span>')}</td>
-        <td>${row.version || '—'}</td>
+        <td>${versionCell}</td>
         <td>${row.nota != null ? row.nota : '—'}</td>
         <td><span class="badge ${badge.cls}">${badge.label}</span></td>
         <td>
@@ -465,9 +474,21 @@ function aplicarCarnetInline(input) {
   scheduleSaveBorrador();
 }
 
+/** Cambiar la versión a mano (cuando el QR no se pudo leer): recalcula nota y estado. */
+function aplicarVersionInline(select) {
+  const row = rowOfInput(select);
+  if (!row) return;
+  row.version = select.value || null;
+  resolveRow(row);
+  renderResultsTable();
+  scheduleSaveBorrador();
+}
+
 resultsBody.addEventListener('change', (e) => {
   const input = e.target.closest('.carnet-input');
-  if (input) aplicarCarnetInline(input);
+  if (input) { aplicarCarnetInline(input); return; }
+  const select = e.target.closest('.version-select');
+  if (select) aplicarVersionInline(select);
 });
 
 resultsBody.addEventListener('keydown', (e) => {
