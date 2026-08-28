@@ -69,6 +69,22 @@ const btnDescartarBorrador = document.getElementById('btnDescartarBorrador');
 const detailModal = document.getElementById('detailModal');
 const detailBody  = document.getElementById('detailBody');
 
+const btnAbrirCamara  = document.getElementById('btnAbrirCamara');
+const cameraModal     = document.getElementById('cameraModal');
+const cameraVideo     = document.getElementById('cameraVideo');
+const frozenFrame     = document.getElementById('frozenFrame');
+const cameraBarViva   = document.getElementById('cameraBarViva');
+const cameraHint      = document.getElementById('cameraHint');
+const btnCapturarFoto = document.getElementById('btnCapturarFoto');
+const btnCancelarCamara = document.getElementById('btnCancelarCamara');
+const captureActions  = document.getElementById('captureActions');
+const btnRepetirFoto  = document.getElementById('btnRepetirFoto');
+const btnUsarFoto     = document.getElementById('btnUsarFoto');
+const veredictoBar     = document.getElementById('veredictoBar');
+const veredictoIcono   = document.getElementById('veredictoIcono');
+const veredictoTexto   = document.getElementById('veredictoTexto');
+const veredictoDetalle = document.getElementById('veredictoDetalle');
+
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
@@ -238,6 +254,146 @@ fileInputBatch.addEventListener('change', async () => {
   progressText.textContent = `Listo — ${files.length} foto(s) procesadas.`;
   await persistBorradorAhora();
 });
+
+// ---------------------------------------------------------------------------
+// Captura directa desde la cámara del celular — evalúa la foto al instante
+// (mismo detector que usa el procesamiento real) antes de aceptarla, para
+// poder repetirla ahí mismo si salió mal en vez de descubrirlo después.
+// ---------------------------------------------------------------------------
+let _cameraStream = null;
+let _lastCapturedCanvas = null;
+let _fotosCamaraSesion = 0;
+
+const AMBIGUAS_RATIO_ADVERTENCIA = 0.2; // más de 20% de preguntas dudosas → advertir
+
+btnAbrirCamara.addEventListener('click', openCamera);
+btnCancelarCamara.addEventListener('click', closeCamera);
+btnRepetirFoto.addEventListener('click', () => { _lastCapturedCanvas = null; showVistaEnVivo(); });
+btnUsarFoto.addEventListener('click', aceptarFotoCapturada);
+
+async function openCamera() {
+  _fotosCamaraSesion = 0;
+  cameraHint.textContent = 'Encuadrá toda la hoja, con las 4 marcas de esquina visibles';
+  cameraModal.classList.remove('hidden');
+  showVistaEnVivo();
+  try {
+    _cameraStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1600 }, height: { ideal: 1200 } },
+    });
+    cameraVideo.srcObject = _cameraStream;
+  } catch (e) {
+    alert(`❌ No se pudo acceder a la cámara: ${e.message}\n\nPodés usar "Elegir archivos" en vez de la cámara.`);
+    closeCamera();
+  }
+}
+
+function stopCameraStream() {
+  if (_cameraStream) { _cameraStream.getTracks().forEach(t => t.stop()); _cameraStream = null; }
+}
+
+function closeCamera() {
+  stopCameraStream();
+  cameraModal.classList.add('hidden');
+  _lastCapturedCanvas = null;
+}
+
+function showVistaEnVivo() {
+  cameraVideo.classList.remove('hidden');
+  frozenFrame.classList.add('hidden');
+  veredictoBar.classList.add('hidden');
+  cameraBarViva.classList.remove('hidden');
+  captureActions.classList.add('hidden');
+}
+
+btnCapturarFoto.addEventListener('click', () => {
+  const w = cameraVideo.videoWidth  || 1280;
+  const h = cameraVideo.videoHeight || 960;
+  const canvas = document.createElement('canvas');
+  drawScaledToCanvas(canvas, cameraVideo, w, h);
+  _lastCapturedCanvas = canvas;
+
+  frozenFrame.src = canvas.toDataURL('image/jpeg', 0.85);
+  cameraVideo.classList.add('hidden');
+  frozenFrame.classList.remove('hidden');
+  cameraBarViva.classList.add('hidden');
+  captureActions.classList.remove('hidden');
+
+  mostrarVeredicto(evaluarCaptura(canvas));
+});
+
+/** Corre el mismo detector de esquinas/respuestas que el procesamiento real,
+ * para avisar al toque si la foto sirve o hay que repetirla. */
+function evaluarCaptura(canvas) {
+  const ctx = canvas.getContext('2d');
+  const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  const corners = detectCorners(imageData);
+  if (!corners) {
+    return {
+      nivel: 'error',
+      icono: '❌',
+      texto: 'No apta — no se ubicaron las 4 marcas de esquina',
+      detalle: 'Repetí con mejor luz, encuadrando toda la hoja bien de frente.',
+    };
+  }
+
+  const { resultado } = detectRespuestas(imageData, corners);
+  const preguntas = Object.values(resultado);
+  const total = preguntas.length || _numPreguntas;
+  const dudosas = preguntas.filter(r => r.marcada == null).length;
+  const ratio = total ? dudosas / total : 0;
+
+  if (ratio > AMBIGUAS_RATIO_ADVERTENCIA) {
+    return {
+      nivel: 'warn',
+      icono: '⚠️',
+      texto: `Dudosa — ${dudosas} de ${total} respuestas no se leen con claridad`,
+      detalle: 'Probá con más luz pareja (sin sombras ni brillo) y bien enfocada. Podés repetirla o usarla igual y corregir a mano después.',
+    };
+  }
+
+  return {
+    nivel: 'ok',
+    icono: '✅',
+    texto: 'Apta — se lee bien',
+    detalle: dudosas
+      ? `${dudosas} respuesta(s) para revisar a mano, el resto se leyó claro.`
+      : 'Las 4 esquinas y todas las respuestas se leyeron claro.',
+  };
+}
+
+function mostrarVeredicto(v) {
+  veredictoBar.className = `veredicto-bar ${v.nivel}`;
+  veredictoIcono.textContent = v.icono;
+  veredictoTexto.textContent = v.texto;
+  veredictoDetalle.textContent = v.detalle;
+  veredictoBar.classList.remove('hidden');
+}
+
+async function aceptarFotoCapturada() {
+  if (!_lastCapturedCanvas) return;
+  const canvas = _lastCapturedCanvas;
+  _fotosCamaraSesion++;
+
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.88));
+  const file = new File([blob], `camara_${Date.now()}_${_fotosCamaraSesion}.jpg`, { type: 'image/jpeg' });
+
+  progressWrap.classList.remove('hidden');
+  resultsTable.classList.remove('hidden');
+  progressText.textContent = 'Procesando foto de la cámara…';
+  try {
+    await processFile(file);
+  } catch (e) {
+    console.error('[parciales-omr] error procesando foto de cámara', e);
+  }
+  renderResultsTable();
+  scheduleSaveBorrador();
+  progressText.textContent = `Listo — ${_fotosCamaraSesion} foto(s) de cámara agregada(s) en esta sesión.`;
+
+  _lastCapturedCanvas = null;
+  cameraHint.textContent = 'Foto agregada ✅ — encuadrá la del siguiente alumno';
+  showVistaEnVivo();
+}
 
 // Placeholder gris para filas cuya imagen ni siquiera se pudo abrir (ej.
 // formato HEIC) — sin esto la fila no tiene miniatura que mostrar.

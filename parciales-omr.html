@@ -112,6 +112,24 @@
     .ambigua-opt:hover { border-color: var(--primary); }
     .ambigua-hint { font-size: 0.72rem; color: var(--text-muted); margin-left: 4px; }
 
+    /* ── Captura por cámara ── */
+    .camera-modal { position: fixed; inset: 0; background: #000; z-index: 200; display: flex; flex-direction: column; }
+    .camera-modal.hidden { display: none; }
+    .camera-modal video, .camera-modal img.frozen-frame { flex: 1; width: 100%; object-fit: cover; }
+    .camera-bar { background: rgba(0,0,0,0.85); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+    .btn-shutter { width: 62px; height: 62px; border-radius: 50%; background: #fff; border: 4px solid var(--primary); font-size: 0; cursor: pointer; flex-shrink: 0; }
+    .btn-cancel-camera { background: none; border: none; color: #fff; font-weight: 700; cursor: pointer; }
+    .camera-hint { color: #fff; font-size: 0.78rem; opacity: 0.85; }
+
+    .veredicto-bar { padding: 14px 16px; font-size: 0.85rem; font-weight: 700; display: flex; align-items: center; gap: 8px; }
+    .veredicto-bar.ok    { background: rgba(0,184,148,0.9); color: #fff; }
+    .veredicto-bar.warn  { background: rgba(253,203,110,0.95); color: #7A5200; }
+    .veredicto-bar.error { background: rgba(255,107,107,0.95); color: #fff; }
+    .veredicto-detalle { font-weight: 500; font-size: 0.78rem; opacity: 0.9; }
+
+    .capture-actions { display: flex; gap: 10px; padding: 12px 16px; background: rgba(0,0,0,0.85); }
+    .capture-actions .btn { flex: 1; }
+
     .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.55); z-index: 100; display: flex; align-items: center; justify-content: center; padding: 16px; }
     .modal-overlay.hidden { display: none; }
     .modal-box { background: var(--surface); border-radius: var(--r-lg); width: 100%; max-width: 520px; max-height: 92vh; overflow-y: auto; }
@@ -188,7 +206,10 @@
       <span id="draftBannerText"></span>
       <button class="btn outline small" id="btnDescartarBorrador">🗑 Descartar borrador</button>
     </div>
-    <input type="file" id="fileInputBatch" accept="image/*" multiple>
+    <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:center">
+      <input type="file" id="fileInputBatch" accept="image/*" multiple>
+      <button type="button" class="btn primary small" id="btnAbrirCamara">📷 Tomar foto con el celular</button>
+    </div>
     <div class="progress-wrap hidden" id="progressWrap"><div class="progress-bar" id="progressBar"></div></div>
     <div id="progressText" style="font-size:0.8rem;color:var(--text-muted);margin-top:6px"></div>
 
@@ -203,6 +224,28 @@
       <span class="summary-count" id="summaryCount"></span>
       <button class="btn primary hidden" id="btnRevisarCarnets">✏️ Escribir carnés pendientes</button>
       <button class="btn success" id="btnAprobarTodo">✅ Aprobar y guardar notas listas</button>
+    </div>
+  </div>
+
+  <!-- Modal cámara: captura + veredicto de calidad al instante -->
+  <div class="camera-modal hidden" id="cameraModal">
+    <video id="cameraVideo" autoplay playsinline muted></video>
+    <img id="frozenFrame" class="frozen-frame hidden" alt="Foto capturada">
+    <div class="veredicto-bar hidden" id="veredictoBar">
+      <span id="veredictoIcono"></span>
+      <span>
+        <div id="veredictoTexto"></div>
+        <div class="veredicto-detalle" id="veredictoDetalle"></div>
+      </span>
+    </div>
+    <div class="camera-bar" id="cameraBarViva">
+      <button class="btn-cancel-camera" id="btnCancelarCamara">✕ Cancelar</button>
+      <span class="camera-hint" id="cameraHint">Encuadrá toda la hoja, con las 4 marcas de esquina visibles</span>
+      <button class="btn-shutter" id="btnCapturarFoto" title="Capturar foto">⬤</button>
+    </div>
+    <div class="capture-actions hidden" id="captureActions">
+      <button class="btn outline" id="btnRepetirFoto">🔄 Repetir foto</button>
+      <button class="btn success" id="btnUsarFoto">✅ Usar esta foto</button>
     </div>
   </div>
 
