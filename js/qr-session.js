@@ -58,6 +58,7 @@ export async function openQRSession(materia, alumnos) {
     aulaLat:          stored.aulaLat          ?? null,
     aulaLng:          stored.aulaLng          ?? null,
     checkType:        stored.checkType        ?? 'unico',
+    area:             stored.area              ?? 1,
     sessionStartedAt: now,
   };
 
@@ -150,6 +151,16 @@ function buildOverlay(materia) {
           <button class="qr-checktype-btn${c.checkType !== 'inicio' && c.checkType !== 'fin' ? ' active' : ''}" data-ct="unico">✅ Único</button>
           <button class="qr-checktype-btn${c.checkType === 'inicio' ? ' active' : ''}" data-ct="inicio">🟢 Inicio</button>
           <button class="qr-checktype-btn${c.checkType === 'fin' ? ' active' : ''}" data-ct="fin">🔴 Fin</button>
+        </div>
+      </div>
+
+      <!-- ── Área de la asistencia ── -->
+      <div class="qr-config-section">
+        <div class="qr-config-title">Área</div>
+        <div class="qr-checktype-btns">
+          <button class="qr-checktype-btn${(c.area ?? 1) === 1 ? ' active' : ''}" data-area="1">Área 1</button>
+          <button class="qr-checktype-btn${(c.area ?? 1) === 2 ? ' active' : ''}" data-area="2">Área 2</button>
+          <button class="qr-checktype-btn${(c.area ?? 1) === 3 ? ' active' : ''}" data-area="3">Área 3</button>
         </div>
       </div>
 
@@ -303,6 +314,16 @@ function wireEvents() {
     btn.addEventListener('click', () => {
       _s.config.checkType = btn.dataset.ct;
       document.querySelectorAll('.qr-checktype-btn[data-ct]').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      pushConfig();
+    });
+  });
+
+  // Área selector
+  document.querySelectorAll('.qr-checktype-btn[data-area]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      _s.config.area = parseInt(btn.dataset.area, 10);
+      document.querySelectorAll('.qr-checktype-btn[data-area]').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       pushConfig();
     });
@@ -464,6 +485,7 @@ async function syncAttendees(asistentes) {
         fecha:     localDate(a.ts),
         estado:    'presente',
         checkType: a.checkType ?? 'unico',
+        area:      _s.config?.area ?? 1,
         selfieB64: a.selfie ?? null,
       });
       if (!a.alumnoId) await setQRAsistenteAlumno(_s.id, a.id, alumnoId);

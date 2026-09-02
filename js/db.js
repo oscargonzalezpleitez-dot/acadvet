@@ -256,9 +256,9 @@ export async function getAsistencias(alumnoId, materiaId) {
   return snapToArray(s);
 }
 
-export async function addAsistencia(alumnoId, materiaId, { fecha, estado }) {
+export async function addAsistencia(alumnoId, materiaId, { fecha, estado, area = 1 }) {
   const newRef = push(ref(db, `${inscRef(alumnoId, materiaId)}/asistencias`));
-  await set(newRef, { fecha, estado });
+  await set(newRef, { fecha, estado, area });
   return newRef.key;
 }
 
@@ -402,6 +402,7 @@ export async function createQRSession({ materiaId, materiaNombre, ciclo, token, 
       aulaLat:          config.aulaLat          ?? null,
       aulaLng:          config.aulaLng          ?? null,
       checkType:        config.checkType        ?? 'unico',
+      area:             config.area              ?? 1,
       sessionStartedAt: now,
     },
   });
@@ -458,7 +459,7 @@ async function uploadAsistenciaSelfie(base64, alumnoId, asistenteId) {
  * el resto de la asistencia (si la subida falla, la asistencia igual se
  * guarda sin foto en vez de perderse).
  */
-export async function applyQRAsistencia(alumnoId, materiaId, asistenteId, { fecha, estado, checkType, selfieB64 = null }) {
+export async function applyQRAsistencia(alumnoId, materiaId, asistenteId, { fecha, estado, checkType, area = 1, selfieB64 = null }) {
   let foto = {};
   if (selfieB64) {
     try {
@@ -469,7 +470,7 @@ export async function applyQRAsistencia(alumnoId, materiaId, asistenteId, { fech
   }
   await set(
     ref(db, `${inscRef(alumnoId, materiaId)}/asistencias/qr_${asistenteId}`),
-    { fecha, estado, checkType, ...foto }
+    { fecha, estado, checkType, area, ...foto }
   );
 }
 

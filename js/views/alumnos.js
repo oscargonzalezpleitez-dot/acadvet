@@ -659,16 +659,22 @@ function calcAlumnoStats(insc) {
   // Asistencia agrupada por día: un día cuenta como asistido si al menos uno
   // de sus registros (inicio o fin) quedó presente/justificado, aunque el
   // otro checkType de ese mismo día no se haya registrado o esté ausente.
-  const porFecha = new Map();
-  asists.forEach(a => {
-    const f = a.fecha ?? `sin-fecha-${a.id}`;
-    if (!porFecha.has(f)) porFecha.set(f, []);
-    porFecha.get(f).push(a);
-  });
-  const total     = porFecha.size;
-  const efectivos = [...porFecha.values()]
-    .filter(entries => entries.some(a => a.estado === 'presente' || a.estado === 'justificado')).length;
-  const asistPct  = total > 0 ? Math.round((efectivos / total) * 100) : null;
+  // Se calcula por separado para cada área (1/2/3).
+  const asistPctArea = areaNum => {
+    const porFecha = new Map();
+    asists.filter(a => Number(a.area ?? 1) === areaNum).forEach(a => {
+      const f = a.fecha ?? `sin-fecha-${a.id}`;
+      if (!porFecha.has(f)) porFecha.set(f, []);
+      porFecha.get(f).push(a);
+    });
+    const total     = porFecha.size;
+    const efectivos = [...porFecha.values()]
+      .filter(entries => entries.some(a => a.estado === 'presente' || a.estado === 'justificado')).length;
+    return total > 0 ? Math.round((efectivos / total) * 100) : null;
+  };
+  const asistPct1 = asistPctArea(1);
+  const asistPct2 = asistPctArea(2);
+  const asistPct3 = asistPctArea(3);
 
   // Quizzes por área + exposiciones en área 3
   const nums = arr => arr.map(x => x.nota).filter(n => typeof n === 'number');
@@ -704,8 +710,12 @@ function calcAlumnoStats(insc) {
   const parcVals    = [p1, p2, p3].filter(v => v !== null);
 
   return {
-    asistPct:       asistPct !== null ? `${asistPct}%` : '—',
-    asistNum:       asistPct,
+    asistPct1:      asistPct1 !== null ? `${asistPct1}%` : '—',
+    asistNum1:      asistPct1,
+    asistPct2:      asistPct2 !== null ? `${asistPct2}%` : '—',
+    asistNum2:      asistPct2,
+    asistPct3:      asistPct3 !== null ? `${asistPct3}%` : '—',
+    asistNum3:      asistPct3,
     promQuiz:       avg(allQnotas) !== null ? avg(allQnotas).toFixed(1) : '—',
     promQuizNum:    avg(allQnotas),
     promParciales:  parcVals.length ? (avg(parcVals) * 10).toFixed(1) : '—',
@@ -720,7 +730,9 @@ function calcAlumnoStats(insc) {
 
 function _emptyStats() {
   return {
-    asistPct: '—', asistNum: null,
+    asistPct1: '—', asistNum1: null,
+    asistPct2: '—', asistNum2: null,
+    asistPct3: '—', asistNum3: null,
     promQuiz: '—', promQuizNum: null,
     promParciales: '—', promParcNum: null,
     notaFinal: null, notaFinalStr: '—',
@@ -797,15 +809,17 @@ async function exportGrupoExcel(btn) {
       pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1 },
     });
 
-    const COLS = 7;
+    const COLS = 9;
     ws.columns = [
       { width: 38 }, // A Nombre
       { width: 16 }, // B Carné
-      { width: 13 }, // C Asistencia
-      { width: 15 }, // D Prom. Quizzes
-      { width: 16 }, // E Prom. Parciales
-      { width: 13 }, // F Nota Final
-      { width: 13 }, // G Estado
+      { width: 13 }, // C Asist. Área 1
+      { width: 13 }, // D Asist. Área 2
+      { width: 13 }, // E Asist. Área 3
+      { width: 15 }, // F Prom. Quizzes
+      { width: 16 }, // G Prom. Parciales
+      { width: 13 }, // H Nota Final
+      { width: 13 }, // I Estado
     ];
 
     const C = {
@@ -845,7 +859,7 @@ async function exportGrupoExcel(btn) {
 
     // ── Column headers ────────────────────────────────────────────────────────
     ws.getRow(r).height = 18;
-    ['Nombre', 'Carné', '% Asistencia', 'Prom. Quizzes', 'Prom. Parciales', 'Nota Final', 'Estado']
+    ['Nombre', 'Carné', 'Asist. Área 1', 'Asist. Área 2', 'Asist. Área 3', 'Prom. Quizzes', 'Prom. Parciales', 'Nota Final', 'Estado']
       .forEach((h, i) => {
         const c = ws.getCell(r, i + 1);
         c.value = h;  c.font = fnt(true, 9.5, C.white);  c.fill = fgFill(C.primary);
@@ -856,7 +870,7 @@ async function exportGrupoExcel(btn) {
     // ── Data rows ─────────────────────────────────────────────────────────────
     const sorted = [..._alumnos].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es'));
 
-    const acc = { asist: [], quiz: [], parc: [], nota: [] };
+    const acc = { asist1: [], asist2: [], asist3: [], quiz: [], parc: [], nota: [] };
 
     sorted.forEach((alumno, idx) => {
       const insc  = alumno.inscripciones?.[_materiaId];
@@ -867,7 +881,9 @@ async function exportGrupoExcel(btn) {
       [
         [alumno.nombre ?? '—', 0, C.text,           null ],
         [alumno.carnet  ?? '—',0, C.text,           null ],
-        [stats.asistPct,       1, C.text,           null ],
+        [stats.asistPct1,      1, C.text,           null ],
+        [stats.asistPct2,      1, C.text,           null ],
+        [stats.asistPct3,      1, C.text,           null ],
         [stats.promQuiz,       1, C.text,           null ],
         [stats.promParciales,  1, C.text,           null ],
         [stats.notaFinalStr,   1, C.text,           '0.00'],
@@ -875,7 +891,7 @@ async function exportGrupoExcel(btn) {
       ].forEach(([val, colGroup, argb, numFmt], i) => {
         const c = ws.getCell(r, i + 1);
         c.value = val;
-        c.font  = fnt(i === 6, 9, argb);
+        c.font  = fnt(i === 8, 9, argb);
         c.fill  = fgFill(bg);
         c.alignment = aln(i < 2 ? 'left' : 'center', i < 2 ? 1 : 0);
         if (numFmt && stats.notaFinal !== null) c.numFmt = numFmt;
@@ -883,7 +899,9 @@ async function exportGrupoExcel(btn) {
       r++;
 
       // Accumulate for averages
-      if (stats.asistNum   !== null) acc.asist.push(stats.asistNum);
+      if (stats.asistNum1  !== null) acc.asist1.push(stats.asistNum1);
+      if (stats.asistNum2  !== null) acc.asist2.push(stats.asistNum2);
+      if (stats.asistNum3  !== null) acc.asist3.push(stats.asistNum3);
       if (stats.promQuizNum !== null) acc.quiz.push(stats.promQuizNum);
       if (stats.promParcNum !== null) acc.parc.push(stats.promParcNum);
       if (stats.notaFinal   !== null) acc.nota.push(stats.notaFinal);
@@ -899,7 +917,9 @@ async function exportGrupoExcel(btn) {
     [
       [`PROMEDIO GRUPAL (${sorted.length} alumnos)`, false],
       ['',                                           false],
-      [fmtAvg(acc.asist, 1, '%'),                   false],
+      [fmtAvg(acc.asist1, 1, '%'),                  false],
+      [fmtAvg(acc.asist2, 1, '%'),                  false],
+      [fmtAvg(acc.asist3, 1, '%'),                  false],
       [fmtAvg(acc.quiz),                            false],
       [fmtAvg(acc.parc),                            false],
       [fmtAvg(acc.nota, 2),                         false],

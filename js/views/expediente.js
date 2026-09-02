@@ -209,8 +209,16 @@ function statsHTML(s) {
   const dxEditable   = !isEPS();
   return `
     <div class="exp-stat-card">
-      <span class="exp-stat-num">${s.asistPct}</span>
-      <span class="exp-stat-label">Asistencia</span>
+      <span class="exp-stat-num">${s.asistPct1}</span>
+      <span class="exp-stat-label">Asist. Área 1</span>
+    </div>
+    <div class="exp-stat-card">
+      <span class="exp-stat-num">${s.asistPct2}</span>
+      <span class="exp-stat-label">Asist. Área 2</span>
+    </div>
+    <div class="exp-stat-card">
+      <span class="exp-stat-num">${s.asistPct3}</span>
+      <span class="exp-stat-label">Asist. Área 3</span>
     </div>
     <div class="exp-stat-card">
       <span class="exp-stat-num">${s.promQuiz}</span>
@@ -302,7 +310,38 @@ function paintTabContent() {
 // ---------------------------------------------------------------------------
 
 function paintAsistencias(el) {
-  const asists  = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
+  const allAsists = snapToArray(_insc.asistencias);
+  const byArea    = n => allAsists.filter(a => Number(a.area ?? 1) === n).sort(sortByFechaDesc);
+  const a1 = byArea(1), a2 = byArea(2), a3 = byArea(3);
+
+  el.innerHTML = `
+    <div class="tab-section">
+      ${asistAreaHTML(1, a1)}
+      ${asistAreaHTML(2, a2)}
+      ${asistAreaHTML(3, a3)}
+    </div>
+  `;
+
+  [1, 2, 3].forEach(n => {
+    el.querySelector(`[data-add-asist-area="${n}"]`)
+      ?.addEventListener('click', () => openAsistModal(null, n));
+  });
+
+  el.querySelectorAll('[data-asist-action]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const { asistAction: action, asistId: id } = btn.dataset;
+      const asist = allAsists.find(a => a.id === id);
+      if (!asist) return;
+      if (action === 'edit')   openAsistModal(asist);
+      if (action === 'delete') confirmDeleteAsist(asist);
+    });
+  });
+}
+
+// Sección de asistencias de una sola área (misma estructura visual que
+// quizAreaHTML, para que Asistencias y Ex. Cortos se lean igual).
+function asistAreaHTML(areaNum, asists) {
+  const labels  = ['', 'Área 1', 'Área 2', 'Área 3'];
   const summary = calcAsistSummary(asists);
 
   // Agrupar por fecha para mostrar estado combinado inicio/fin
@@ -335,45 +374,26 @@ function paintAsistencias(el) {
     return `<div class="asist-date-group">${headerHtml}${entries.map(a => asistRowHTML(a)).join('')}</div>`;
   }).join('');
 
-  el.innerHTML = `
-    <div class="tab-section">
-
-      <!-- Toolbar -->
-      <div class="tab-toolbar">
-        <div class="asist-summary-chips">
-          <span class="asist-chip asist-chip--total">${summary.total} clases</span>
-          <span class="asist-chip asist-chip--presente">${summary.presentes} presentes</span>
-          ${summary.justificados > 0 ? `<span class="asist-chip asist-chip--justificado">${summary.justificados} justificados</span>` : ''}
-          <span class="asist-chip asist-chip--ausente">${summary.ausentes} ausentes</span>
-          <span class="asist-chip asist-chip--pct">${summary.pct}%</span>
+  return `
+    <div class="quiz-area-section">
+      <div class="quiz-area-header">
+        <div class="quiz-area-title">
+          <span class="quiz-area-label">${labels[areaNum]}</span>
         </div>
-        <button class="btn btn--primary btn--sm" id="btnAddAsist">+ Agregar</button>
+        <button class="btn btn--secondary btn--sm" data-add-asist-area="${areaNum}">+ Agregar</button>
       </div>
-
-      <!-- Lista de asistencias agrupada por fecha -->
+      <div class="asist-summary-chips" style="margin:var(--space-2) 0 var(--space-3)">
+        <span class="asist-chip asist-chip--total">${summary.total} clases</span>
+        <span class="asist-chip asist-chip--presente">${summary.presentes} presentes</span>
+        ${summary.justificados > 0 ? `<span class="asist-chip asist-chip--justificado">${summary.justificados} justificados</span>` : ''}
+        <span class="asist-chip asist-chip--ausente">${summary.ausentes} ausentes</span>
+        <span class="asist-chip asist-chip--pct">${summary.pct}%</span>
+      </div>
       ${asists.length === 0
-        ? `<div class="empty-state" style="padding:var(--space-10)">
-             <div class="empty-state__icon">📅</div>
-             <h3 class="empty-state__title">Sin asistencias registradas</h3>
-             <p class="empty-state__text">Empezá registrando la primera clase.</p>
-           </div>`
-        : `<div class="asist-list">${listHTML}</div>`
-      }
-
+        ? `<p class="quiz-area-empty">Sin asistencias registradas en esta área.</p>`
+        : `<div class="asist-list">${listHTML}</div>`}
     </div>
   `;
-
-  document.getElementById('btnAddAsist')?.addEventListener('click', () => openAsistModal());
-
-  el.querySelectorAll('[data-asist-action]').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const { asistAction: action, asistId: id } = btn.dataset;
-      const asist = snapToArray(_insc.asistencias).find(a => a.id === id);
-      if (!asist) return;
-      if (action === 'edit')   openAsistModal(asist);
-      if (action === 'delete') confirmDeleteAsist(asist);
-    });
-  });
 }
 
 function asistRowHTML(asist) {
@@ -418,10 +438,12 @@ function asistRowHTML(asist) {
 }
 
 // --- Modal agregar/editar asistencia ---
-function openAsistModal(asist = null) {
+// defaultArea: área preseleccionada al crear (viene del botón "+ Agregar" de esa sección).
+function openAsistModal(asist = null, defaultArea = 1) {
   const isEdit   = !!asist;
   const defFecha = asist?.fecha ?? todayStr();
   const defState = asist?.estado ?? 'presente';
+  const defArea  = Number(asist?.area ?? defaultArea);
 
   openModal({
     title: isEdit ? 'Editar Asistencia' : 'Nueva Asistencia',
@@ -439,11 +461,20 @@ function openAsistModal(asist = null) {
           <option value="ausente"     ${defState === 'ausente'     ? 'selected' : ''}>✕ Ausente</option>
           <option value="justificado" ${defState === 'justificado' ? 'selected' : ''}>⚡ Justificado</option>
         </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" for="fAsistArea">Área</label>
+        <select class="form-input" id="fAsistArea">
+          <option value="1" ${defArea === 1 ? 'selected' : ''}>Área 1</option>
+          <option value="2" ${defArea === 2 ? 'selected' : ''}>Área 2</option>
+          <option value="3" ${defArea === 3 ? 'selected' : ''}>Área 3</option>
+        </select>
       </div>`,
     confirmLabel: isEdit ? 'Guardar cambios' : 'Registrar',
     async onConfirm() {
       const fecha  = document.getElementById('fAsistFecha')?.value;
       const estado = document.getElementById('fAsistEstado')?.value;
+      const area   = Number(document.getElementById('fAsistArea')?.value ?? 1);
       const errEl  = document.getElementById('fAsistFechaErr');
 
       if (!fecha) {
@@ -454,10 +485,10 @@ function openAsistModal(asist = null) {
 
       try {
         if (isEdit) {
-          await updateAsistencia(_alumnoId, _materiaId, asist.id, { fecha, estado });
+          await updateAsistencia(_alumnoId, _materiaId, asist.id, { fecha, estado, area });
           showToast('Asistencia actualizada');
         } else {
-          await addAsistencia(_alumnoId, _materiaId, { fecha, estado });
+          await addAsistencia(_alumnoId, _materiaId, { fecha, estado, area });
           showToast('Asistencia registrada');
         }
         closeModal();
@@ -1361,8 +1392,10 @@ function calcStats() {
   const parc       = _insc.parciales ?? {};
   const expos      = snapToArray(_insc.exposiciones);
 
-  // % Asistencia (justificado = presente)
-  const asistSummary = calcAsistSummary(asists);
+  // % Asistencia (justificado = presente) — separado por área
+  const asistSummary1 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 1));
+  const asistSummary2 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 2));
+  const asistSummary3 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 3));
 
   // Quiz promedios por área
   const numNotas = arr => arr.map(x => x.nota).filter(n => typeof n === 'number');
@@ -1423,7 +1456,9 @@ function calcStats() {
   const nd = _insc.nota_diagnostico;
 
   return {
-    asistPct:      asistSummary.total > 0 ? asistSummary.pct + '%' : '—',
+    asistPct1:     asistSummary1.total > 0 ? asistSummary1.pct + '%' : '—',
+    asistPct2:     asistSummary2.total > 0 ? asistSummary2.pct + '%' : '—',
+    asistPct3:     asistSummary3.total > 0 ? asistSummary3.pct + '%' : '—',
     promQuiz:      promQuizDisplay,
     promParciales: promParcDisplay,
     notaDiag:      (typeof nd === 'number') ? nd.toFixed(1) : '—',
@@ -1698,7 +1733,9 @@ async function exportPDF(btn) {
 
     doc.setTextColor(26, 26, 46);
     const resumeRows = [
-      ['Asistencia',      stats.asistPct],
+      ['Asist. Área 1',   stats.asistPct1],
+      ['Asist. Área 2',   stats.asistPct2],
+      ['Asist. Área 3',   stats.asistPct3],
       ['Prom. Quizzes',   stats.promQuiz],
       ['Prom. Parciales', stats.promParciales + (stats.promParciales !== '—' ? ' / 100' : '')],
       ['Nota Final',      stats.notaFinal + (stats.notaFinal !== '—' ? ' / 10' : '')],
@@ -1717,14 +1754,17 @@ async function exportPDF(btn) {
     y = pdfCheckPage(doc, y, 25, ph);
     y = pdfSection(doc, 'ASISTENCIAS', ML, y, CW);
 
-    const asists   = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
-    const asistSum = calcAsistSummary(asists);
+    const asists    = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
+    const asistArea = n => asists.filter(a => Number(a.area ?? 1) === n);
+    const asistSum1 = calcAsistSummary(asistArea(1));
+    const asistSum2 = calcAsistSummary(asistArea(2));
+    const asistSum3 = calcAsistSummary(asistArea(3));
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
     doc.setTextColor(74, 74, 106);
     doc.text(
-      `Total: ${asistSum.total}  ·  Presentes: ${asistSum.presentes}  ·  Justificados: ${asistSum.justificados}  ·  Ausentes: ${asistSum.ausentes}  ·  ${asistSum.pct}%`,
+      `Área 1: ${asistSum1.total} clases · ${asistSum1.pct}%   ·   Área 2: ${asistSum2.total} clases · ${asistSum2.pct}%   ·   Área 3: ${asistSum3.total} clases · ${asistSum3.pct}%`,
       ML, y,
     );
     y += 5;
@@ -1733,15 +1773,16 @@ async function exportPDF(btn) {
       doc.autoTable({
         startY: y,
         margin: { left: ML, right: MR },
-        head: [['Fecha', 'Estado']],
+        head: [['Fecha', 'Área', 'Estado']],
         body: asists.map(a => [
           formatFecha(a.fecha),
+          `Área ${Number(a.area ?? 1)}`,
           { presente: 'Presente', ausente: 'Ausente', justificado: 'Justificado' }[a.estado] ?? a.estado,
         ]),
         styles:              { fontSize: 8, cellPadding: 2 },
         headStyles:          { fillColor: [108, 99, 255], textColor: 255, fontStyle: 'bold' },
         alternateRowStyles:  { fillColor: [240, 242, 255] },
-        columnStyles:        { 0: { cellWidth: 90 } },
+        columnStyles:        { 0: { cellWidth: 70 }, 1: { cellWidth: 30 } },
       });
       y = doc.lastAutoTable.finalY + 8;
     } else {
@@ -2033,8 +2074,12 @@ async function exportWord(btn) {
     ch.push(new Paragraph({
       spacing: { after: 80 },
       children: [
-        new TextRun({ text: 'Asistencia: ',      bold: true,  size: 20 }),
-        new TextRun({ text: stats.asistPct,                   size: 20 }),
+        new TextRun({ text: 'Asist. Área 1: ',   bold: true,  size: 20 }),
+        new TextRun({ text: stats.asistPct1,                  size: 20 }),
+        new TextRun({ text: '   Área 2: ',       bold: true,  size: 20 }),
+        new TextRun({ text: stats.asistPct2,                  size: 20 }),
+        new TextRun({ text: '   Área 3: ',       bold: true,  size: 20 }),
+        new TextRun({ text: stats.asistPct3,                  size: 20 }),
         new TextRun({ text: '   Prom. Quizzes: ', bold: true, size: 20 }),
         new TextRun({ text: stats.promQuiz,                   size: 20 }),
         new TextRun({ text: '   Prom. Parciales: ', bold: true, size: 20 }),
@@ -2052,22 +2097,26 @@ async function exportWord(btn) {
     }));
 
     // Asistencias
-    const asists   = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
-    const asistSum = calcAsistSummary(asists);
+    const asists    = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
+    const asistArea = n => asists.filter(a => Number(a.area ?? 1) === n);
+    const asistSum1 = calcAsistSummary(asistArea(1));
+    const asistSum2 = calcAsistSummary(asistArea(2));
+    const asistSum3 = calcAsistSummary(asistArea(3));
 
     ch.push(mkSection('ASISTENCIAS'));
     ch.push(new Paragraph({
       spacing: { after: 120 },
       children: [new TextRun({
-        text: `Total: ${asistSum.total}  ·  Presentes: ${asistSum.presentes}  ·  Justificados: ${asistSum.justificados}  ·  Ausentes: ${asistSum.ausentes}  ·  ${asistSum.pct}%`,
+        text: `Área 1: ${asistSum1.total} clases · ${asistSum1.pct}%   ·   Área 2: ${asistSum2.total} clases · ${asistSum2.pct}%   ·   Área 3: ${asistSum3.total} clases · ${asistSum3.pct}%`,
         size: 18, color: '4A4A6A',
       })],
     }));
     ch.push(asists.length > 0
       ? mkTable(
-          ['Fecha', 'Estado'],
+          ['Fecha', 'Área', 'Estado'],
           asists.map(a => [
             formatFecha(a.fecha),
+            `Área ${Number(a.area ?? 1)}`,
             { presente: 'Presente', ausente: 'Ausente', justificado: 'Justificado' }[a.estado] ?? a.estado,
           ]),
         )
@@ -2293,7 +2342,9 @@ async function exportExcel(btn) {
     }[stats.estadoCls] ?? C.muted;
 
     for (const [lbl, val, argb] of [
-      ['Asistencia',      stats.asistPct,     null     ],
+      ['Asist. Área 1',   stats.asistPct1,    null     ],
+      ['Asist. Área 2',   stats.asistPct2,    null     ],
+      ['Asist. Área 3',   stats.asistPct3,    null     ],
       ['Prom. Quizzes',   stats.promQuiz,     null     ],
       ['Prom. Parciales', stats.promParciales,null     ],
       ['Nota Final',      stats.notaFinal,    null     ],
@@ -2310,18 +2361,22 @@ async function exportExcel(btn) {
     blankRow(r++);
 
     // ── Asistencias ──────────────────────────────────────────────────────────
-    const asists   = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
-    const asistSum = calcAsistSummary(asists);
+    const asists    = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
+    const asistArea = n => asists.filter(a => Number(a.area ?? 1) === n);
+    const asistSum1 = calcAsistSummary(asistArea(1));
+    const asistSum2 = calcAsistSummary(asistArea(2));
+    const asistSum3 = calcAsistSummary(asistArea(3));
 
     sec(r++, 'ASISTENCIAS');
     mergedCell(r++,
-      `Total: ${asistSum.total}  ·  Presentes: ${asistSum.presentes}  ·  Justificados: ${asistSum.justificados}  ·  Ausentes: ${asistSum.ausentes}  ·  ${asistSum.pct}%`,
+      `Área 1: ${asistSum1.total} clases · ${asistSum1.pct}%   ·   Área 2: ${asistSum2.total} clases · ${asistSum2.pct}%   ·   Área 3: ${asistSum3.total} clases · ${asistSum3.pct}%`,
       C.odd, fnt(false, 8.5, C.secondary),
     );
     if (asists.length > 0) {
-      tblHeader(r++, ['Fecha', 'Estado']);
+      tblHeader(r++, ['Fecha', 'Área', 'Estado']);
       asists.forEach((a, i) => tblRow(r++, [
         formatFecha(a.fecha),
+        `Área ${Number(a.area ?? 1)}`,
         { presente: 'Presente', ausente: 'Ausente', justificado: 'Justificado' }[a.estado] ?? a.estado,
       ], i));
     } else {

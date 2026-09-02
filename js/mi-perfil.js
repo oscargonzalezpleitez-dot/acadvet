@@ -422,9 +422,9 @@ function snapToArray(s) {
 // Agrupa por fecha: un día cuenta como una sola clase aunque tenga registro
 // de inicio y de fin por separado. Si al menos uno de los dos quedó
 // presente/justificado, el día completo cuenta como asistido.
-function calcAsistPct(asists) {
+function calcAsistPct(asists, areaNum) {
   const porFecha = new Map();
-  asists.forEach(a => {
+  asists.filter(a => Number(a.area ?? 1) === areaNum).forEach(a => {
     const f = a.fecha ?? `sin-fecha-${a.id}`;
     if (!porFecha.has(f)) porFecha.set(f, []);
     porFecha.get(f).push(a);
@@ -462,7 +462,9 @@ function calcStats(m) {
   }
 
   return {
-    asistPct: calcAsistPct(m.asists),
+    asistPct1: calcAsistPct(m.asists, 1),
+    asistPct2: calcAsistPct(m.asists, 2),
+    asistPct3: calcAsistPct(m.asists, 3),
     notaFinal: notaFinal !== null ? notaFinal.toFixed(2) : null,
     estado, estadoLabel,
   };
@@ -494,8 +496,16 @@ function renderProfile(alumno, materias) {
         </div>
         <div class="mat-stats">
           <div class="mat-stat">
-            <span class="mat-stat-num">${s.asistPct !== null ? s.asistPct + '%' : '—'}</span>
-            <span class="mat-stat-label">Asistencia</span>
+            <span class="mat-stat-num">${s.asistPct1 !== null ? s.asistPct1 + '%' : '—'}</span>
+            <span class="mat-stat-label">Asist. Área 1</span>
+          </div>
+          <div class="mat-stat">
+            <span class="mat-stat-num">${s.asistPct2 !== null ? s.asistPct2 + '%' : '—'}</span>
+            <span class="mat-stat-label">Asist. Área 2</span>
+          </div>
+          <div class="mat-stat">
+            <span class="mat-stat-num">${s.asistPct3 !== null ? s.asistPct3 + '%' : '—'}</span>
+            <span class="mat-stat-label">Asist. Área 3</span>
           </div>
           <div class="mat-stat">
             <span class="mat-stat-num">${fmtParcial(m.parc.parcial_1)}</span>
