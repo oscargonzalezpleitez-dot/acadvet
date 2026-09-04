@@ -339,14 +339,17 @@ async function buildPDF({ nombre, desc, laboratorio, alumno, items, fecha, filen
   }
 
   for (const item of items) {
-    y = checkPage(y, 16);
-    doc.setFillColor(230, 244, 244);
-    doc.rect(MARGIN, y - 5, maxW, 8, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10.5);
+    const tituloLines = doc.splitTextToSize(item.titulo || 'Sección', maxW - 4);
+    const tituloBoxH  = tituloLines.length * 5 + 3;
+
+    y = checkPage(y, tituloBoxH + 8);
+    doc.setFillColor(230, 244, 244);
+    doc.rect(MARGIN, y - 5, maxW, tituloBoxH, 'F');
     doc.setTextColor(15, 92, 92);
-    doc.text(item.titulo || 'Sección', MARGIN + 2, y);
-    y += 8;
+    tituloLines.forEach((line, i) => doc.text(line, MARGIN + 2, y + i * 5));
+    y += tituloBoxH;
 
     if (item.instrucciones) {
       doc.setFont('helvetica', 'italic');
