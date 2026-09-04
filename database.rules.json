@@ -183,6 +183,22 @@
       }
     },
 
+    "lab_report_templates": {
+      ".read":  "auth != null",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      "$templateId": {
+        ".validate": "newData.hasChildren(['nombre', 'activo', 'secciones'])"
+      }
+    },
+
+    "lab_report_submissions": {
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null",
+      "$subId": {
+        ".validate": "newData.hasChildren(['templateId', 'alumno']) && !data.exists()"
+      }
+    },
+
     "lab_reports": {
       ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       ".write": "auth != null",

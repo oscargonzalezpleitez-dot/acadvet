@@ -907,3 +907,92 @@ export async function deleteResultadosByQuiz(quizId) {
   if (Object.keys(updates).length > 0) await update(ref(db), updates);
   return ids.length;
 }
+
+// ---------------------------------------------------------------------------
+// REPORTES DE LABORATORIO — PLANTILLAS EDITABLES Y ENTREGAS DE ALUMNOS
+//
+// Distinto del módulo lab_reports (captura de foto de la práctica): acá el
+// docente arma una plantilla con secciones de texto (objetivos, materiales,
+// procedimiento, etc.) por práctica, y el alumno la llena en línea desde
+// lab-report.html. Sin nodo de respuestas correctas — no se califica
+// automáticamente, el docente revisa el texto entregado.
+// ---------------------------------------------------------------------------
+
+export async function createLabReportTemplate({ nombre, desc, secciones }) {
+  const newRef = push(ref(db, 'lab_report_templates'));
+  await set(newRef, {
+    nombre,
+    desc: desc || '',
+    creado_en: Date.now(),
+    activo: true,
+    secciones: secciones || [],
+  });
+  return newRef.key;
+}
+
+export async function getLabReportTemplates() {
+  const s = await get(ref(db, 'lab_report_templates'));
+  return snapToArray(s).sort((a, b) => (b.creado_en || 0) - (a.creado_en || 0));
+}
+
+export async function getLabReportTemplate(id) {
+  const s = await get(ref(db, `lab_report_templates/${id}`));
+  if (!s.exists()) return null;
+  return { id, ...s.val() };
+}
+
+export async function updateLabReportTemplate(id, { nombre, desc, secciones }) {
+  await update(ref(db, `lab_report_templates/${id}`), {
+    nombre,
+    desc: desc || '',
+    secciones: secciones || [],
+  });
+}
+
+export async function toggleLabReportTemplateActivo(id, activo) {
+  await update(ref(db, `lab_report_templates/${id}`), { activo });
+}
+
+export async function deleteLabReportTemplate(id) {
+  await Promise.all([
+    remove(ref(db, `lab_report_templates/${id}`)),
+    deleteLabReportSubmissionsByTemplate(id),
+  ]);
+}
+
+/**
+ * Guarda la entrega de un alumno. 'secciones' del alumno se copian junto con
+ * la respuesta (titulo, tipo) para que la entrega quede autocontenida y se
+ * pueda exportar aunque el docente después edite o borre la plantilla.
+ */
+export async function saveLabReportSubmission({ templateId, templateNombre, templateDesc, alumno, respuestas }) {
+  const newRef = push(ref(db, 'lab_report_submissions'));
+  await set(newRef, {
+    templateId,
+    templateNombre,
+    templateDesc: templateDesc || '',
+    alumno,
+    respuestas,
+    submitTime: Date.now(),
+  });
+  return newRef.key;
+}
+
+export async function getLabReportSubmissions() {
+  const s = await get(ref(db, 'lab_report_submissions'));
+  return snapToArray(s).sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
+}
+
+export async function deleteLabReportSubmission(id) {
+  await remove(ref(db, `lab_report_submissions/${id}`));
+}
+
+export async function deleteLabReportSubmissionsByTemplate(templateId) {
+  const s   = await get(ref(db, 'lab_report_submissions'));
+  const ids = snapToArray(s).filter(r => r.templateId === templateId).map(r => r.id);
+
+  const updates = {};
+  ids.forEach(id => { updates[`lab_report_submissions/${id}`] = null; });
+  if (Object.keys(updates).length > 0) await update(ref(db), updates);
+  return ids.length;
+}
