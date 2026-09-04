@@ -119,8 +119,22 @@
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
     }
-    .sec-title { font-family: var(--fd); font-weight: 700; font-size: .98rem; margin-bottom: 12px; }
+    .sec-title { font-family: var(--fd); font-weight: 700; font-size: .98rem; margin-bottom: 6px; }
     .sec-title .req { color: var(--danger); }
+    .sec-instrucciones { font-size: .82rem; color: var(--muted); line-height: 1.5; margin-bottom: 12px; font-style: italic; }
+
+    .sec-table-wrap { overflow-x: auto; }
+    .sec-table { width: 100%; border-collapse: collapse; min-width: 480px; }
+    .sec-table th, .sec-table td {
+      border: 1px solid var(--border); padding: 8px 10px; font-size: .85rem; text-align: left;
+    }
+    .sec-table th { background: var(--surface2); color: var(--text); font-family: var(--fd); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; }
+    .sec-table td:first-child { font-weight: 600; background: rgba(108,99,255,.06); white-space: nowrap; }
+    .sec-table input {
+      width: 100%; min-width: 100px; background: var(--surface2); border: 1.5px solid var(--border);
+      border-radius: 8px; padding: 7px 9px; color: var(--text); font-family: var(--fb); font-size: .85rem; outline: none;
+    }
+    .sec-table input:focus { border-color: var(--primary); }
 
     .center-msg {
       display: flex; flex-direction: column; align-items: center; justify-content: center;
@@ -177,6 +191,7 @@
     <div id="vForm" class="hidden">
       <div class="tpl-info-card">
         <div class="tpl-info-nombre" id="tplNombre"></div>
+        <div class="tpl-info-desc" id="tplLab" style="font-style:italic"></div>
         <div class="tpl-info-desc" id="tplDesc"></div>
       </div>
 
@@ -202,6 +217,10 @@
           <label class="form-label">Correo institucional *</label>
           <input class="form-input" id="rEmail" type="email" placeholder="carnet@usam.edu.sv" autocomplete="email">
           <div class="form-error hidden" id="errEmail"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Mesa / Grupo (opcional)</label>
+          <input class="form-input" id="rMesa" type="text" placeholder="Ej. Mesa 3" maxlength="40">
         </div>
       </div>
 
@@ -282,7 +301,7 @@
           return;
         }
         const secciones = Array.isArray(raw.secciones) ? raw.secciones : Object.values(raw.secciones || {});
-        template = { id, nombre: raw.nombre, desc: raw.desc || '', secciones };
+        template = { id, nombre: raw.nombre, desc: raw.desc || '', laboratorio: raw.laboratorio || '', secciones };
         setupForm();
         showView('vForm');
       } catch (err) {
@@ -292,17 +311,47 @@
       }
     }
 
+    function renderSeccionField(s, i) {
+      if (s.tipo === 'tabla') {
+        const columnas = s.columnas || [];
+        const filas    = s.filas || [];
+        return `
+          <div class="sec-table-wrap">
+            <table class="sec-table">
+              <thead>
+                <tr>
+                  <th>${esc(s.colLabel || '')}</th>
+                  ${columnas.map(c => `<th>${esc(c)}</th>`).join('')}
+                </tr>
+              </thead>
+              <tbody>
+                ${filas.map((fila, fi) => `
+                  <tr>
+                    <td>${esc(fila)}</td>
+                    ${columnas.map((_, ci) => `<td><input type="text" id="sec-${i}-${fi}-${ci}" placeholder="—"></td>`).join('')}
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      }
+      return s.tipo === 'corta'
+        ? `<input class="form-input" id="sec-${i}" type="text" placeholder="Tu respuesta">`
+        : `<textarea class="form-textarea" id="sec-${i}" placeholder="Escribí tu respuesta aquí…"></textarea>`;
+    }
+
     function setupForm() {
       document.getElementById('tplNombre').textContent = template.nombre || 'Reporte de laboratorio';
+      document.getElementById('tplLab').textContent     = template.laboratorio || '';
       document.getElementById('tplDesc').textContent    = template.desc || '';
 
       const cont = document.getElementById('seccionesContainer');
       cont.innerHTML = template.secciones.map((s, i) => `
         <div class="sec-card">
           <div class="sec-title">${esc(s.titulo)}${s.obligatoria !== false ? ' <span class="req">*</span>' : ''}</div>
-          ${s.tipo === 'corta'
-            ? `<input class="form-input" id="sec-${i}" type="text" placeholder="Tu respuesta">`
-            : `<textarea class="form-textarea" id="sec-${i}" placeholder="Escribí tu respuesta aquí…"></textarea>`}
+          ${s.instrucciones ? `<div class="sec-instrucciones">${esc(s.instrucciones)}</div>` : ''}
+          ${renderSeccionField(s, i)}
           <div class="form-error hidden" id="errSec-${i}"></div>
         </div>
       `).join('');
@@ -344,6 +393,7 @@
       const nombre = document.getElementById('rNombre').value.trim();
       const carnet = document.getElementById('rCarnet').value.trim();
       const email  = document.getElementById('rEmail').value.trim();
+      const mesa   = document.getElementById('rMesa').value.trim();
 
       clearErr('errNombre'); clearErr('errCarnet'); clearErr('errEmail');
       let ok = true;
@@ -358,14 +408,28 @@
       else if (!EMAIL_RE.test(email)) { showErr('errEmail', 'Debés usar tu correo institucional @usam.edu.sv.'); ok = false; }
 
       const respuestas = template.secciones.map((s, i) => {
+        clearErr(`errSec-${i}`);
+
+        if (s.tipo === 'tabla') {
+          const columnas = s.columnas || [];
+          const filas    = s.filas || [];
+          const valores  = filas.map((_, fi) => columnas.map((_, ci) =>
+            document.getElementById(`sec-${i}-${fi}-${ci}`).value.trim()
+          ));
+          if (s.obligatoria !== false && valores.some(row => row.some(v => !v))) {
+            showErr(`errSec-${i}`, 'Completá todas las celdas de la tabla.');
+            ok = false;
+          }
+          return { titulo: s.titulo, tipo: s.tipo, instrucciones: s.instrucciones || '', colLabel: s.colLabel, columnas, filas, valores };
+        }
+
         const el  = document.getElementById(`sec-${i}`);
         const val = el.value.trim();
-        clearErr(`errSec-${i}`);
         if (s.obligatoria !== false && !val) {
           showErr(`errSec-${i}`, 'Esta sección es obligatoria.');
           ok = false;
         }
-        return { titulo: s.titulo, tipo: s.tipo, respuesta: val };
+        return { titulo: s.titulo, tipo: s.tipo, instrucciones: s.instrucciones || '', respuesta: val };
       });
 
       if (!ok) {
@@ -377,13 +441,14 @@
       btn.disabled = true;
       btn.textContent = 'Enviando…';
 
-      const alumno = { nombre, carnet, email };
+      const alumno = { nombre, carnet, email, ...(mesa ? { mesa } : {}) };
 
       try {
         await saveLabReportSubmission({
           templateId:   template.id,
           templateNombre: template.nombre,
           templateDesc: template.desc,
+          templateLaboratorio: template.laboratorio,
           alumno,
           respuestas,
         });
@@ -391,6 +456,7 @@
         lastSubmission = {
           templateNombre: template.nombre,
           templateDesc:   template.desc,
+          templateLaboratorio: template.laboratorio,
           alumno,
           respuestas,
           submitTime: Date.now(),

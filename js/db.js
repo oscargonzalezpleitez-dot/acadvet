@@ -918,11 +918,12 @@ export async function deleteResultadosByQuiz(quizId) {
 // automáticamente, el docente revisa el texto entregado.
 // ---------------------------------------------------------------------------
 
-export async function createLabReportTemplate({ nombre, desc, secciones }) {
+export async function createLabReportTemplate({ nombre, desc, laboratorio, secciones }) {
   const newRef = push(ref(db, 'lab_report_templates'));
   await set(newRef, {
     nombre,
     desc: desc || '',
+    laboratorio: laboratorio || '',
     creado_en: Date.now(),
     activo: true,
     secciones: secciones || [],
@@ -941,10 +942,11 @@ export async function getLabReportTemplate(id) {
   return { id, ...s.val() };
 }
 
-export async function updateLabReportTemplate(id, { nombre, desc, secciones }) {
+export async function updateLabReportTemplate(id, { nombre, desc, laboratorio, secciones }) {
   await update(ref(db, `lab_report_templates/${id}`), {
     nombre,
     desc: desc || '',
+    laboratorio: laboratorio || '',
     secciones: secciones || [],
   });
 }
@@ -965,12 +967,13 @@ export async function deleteLabReportTemplate(id) {
  * la respuesta (titulo, tipo) para que la entrega quede autocontenida y se
  * pueda exportar aunque el docente después edite o borre la plantilla.
  */
-export async function saveLabReportSubmission({ templateId, templateNombre, templateDesc, alumno, respuestas }) {
+export async function saveLabReportSubmission({ templateId, templateNombre, templateDesc, templateLaboratorio, alumno, respuestas }) {
   const newRef = push(ref(db, 'lab_report_submissions'));
   await set(newRef, {
     templateId,
     templateNombre,
     templateDesc: templateDesc || '',
+    templateLaboratorio: templateLaboratorio || '',
     alumno,
     respuestas,
     submitTime: Date.now(),

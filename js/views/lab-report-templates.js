@@ -24,7 +24,7 @@ let _secciones      = [];
 let _filterTplId    = '';
 let _editId         = null;   // null = creando nuevo, string = editando esa plantilla
 
-const TIPO_LABEL = { corta: 'Respuesta corta', larga: 'Respuesta extensa' };
+const TIPO_LABEL = { corta: 'Respuesta corta', larga: 'Respuesta extensa', tabla: 'Tabla' };
 
 // ---------------------------------------------------------------------------
 // Entrada pública
@@ -133,6 +133,12 @@ function renderTabCrear(el) {
             placeholder="Instrucciones u observaciones (opcional)" maxlength="500"
           >${esc(tpl?.desc || '')}</textarea>
         </div>
+        <div class="form-group">
+          <label class="form-label">Laboratorio / cátedra (aparece en el membrete del Word y PDF)</label>
+          <input class="form-input" id="tLaboratorio" type="text" maxlength="150"
+            placeholder="Ej. Laboratorio de Bacteriología y Micología Veterinaria"
+            value="${esc(tpl?.laboratorio || '')}">
+        </div>
       </div>
 
       <div class="cuest-section-card">
@@ -145,6 +151,7 @@ function renderTabCrear(el) {
             <select class="form-input form-input--sm" id="sTypeSelect">
               <option value="larga">Respuesta extensa</option>
               <option value="corta">Respuesta corta</option>
+              <option value="tabla">Tabla</option>
             </select>
             <button class="btn btn--primary btn--sm" id="btnAddS">+ Agregar sección</button>
           </div>
@@ -172,7 +179,11 @@ function renderTabCrear(el) {
   document.getElementById('btnAddS').addEventListener('click', () => {
     syncSeccionesFromDOM();
     const tipo = document.getElementById('sTypeSelect').value;
-    _secciones.push({ titulo: '', tipo, obligatoria: true });
+    if (tipo === 'tabla') {
+      _secciones.push({ titulo: '', tipo, obligatoria: true, instrucciones: '', colLabel: '', columnas: [''], filas: [''] });
+    } else {
+      _secciones.push({ titulo: '', tipo, obligatoria: true, instrucciones: '' });
+    }
     renderSList();
     setTimeout(() => {
       const last = document.querySelectorAll('.cuest-q-card');
@@ -201,16 +212,30 @@ function renderTabCrear(el) {
   document.getElementById('btnSaveTpl').addEventListener('click', saveTemplate);
 }
 
+const csvToList = s => String(s || '').split(',').map(v => v.trim()).filter(Boolean);
+
 function syncSeccionesFromDOM() {
   _secciones.forEach((s, i) => {
     const tituloEl = document.getElementById(`s-${i}-titulo`);
     if (tituloEl) s.titulo = tituloEl.value;
 
-    const tipoEl = document.getElementById(`s-${i}-tipo`);
-    if (tipoEl) s.tipo = tipoEl.value;
+    const insEl = document.getElementById(`s-${i}-instrucciones`);
+    if (insEl) s.instrucciones = insEl.value;
 
     const obligEl = document.getElementById(`s-${i}-obligatoria`);
     if (obligEl) s.obligatoria = obligEl.checked;
+
+    if (s.tipo === 'tabla') {
+      const colLabelEl = document.getElementById(`s-${i}-collabel`);
+      const columnasEl = document.getElementById(`s-${i}-columnas`);
+      const filasEl    = document.getElementById(`s-${i}-filas`);
+      if (colLabelEl) s.colLabel = colLabelEl.value;
+      if (columnasEl) s.columnas = csvToList(columnasEl.value);
+      if (filasEl)    s.filas    = csvToList(filasEl.value);
+    } else {
+      const tipoEl = document.getElementById(`s-${i}-tipo`);
+      if (tipoEl) s.tipo = tipoEl.value;
+    }
   });
 }
 
@@ -235,6 +260,36 @@ function renderSList() {
 
 function buildSCard(s, i) {
   const total = _secciones.length;
+
+  const tipoBlock = s.tipo === 'tabla' ? `
+    <div class="cuest-row-2" style="margin-top:var(--space-3)">
+      <div class="form-group">
+        <label class="form-label">Título de la columna de filas *</label>
+        <input class="form-input" id="s-${i}-collabel" type="text" value="${esc(s.colLabel || '')}"
+          placeholder="Ej. Medio de Cultivo / Parámetro">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Columnas de datos * (separadas por coma)</label>
+        <input class="form-input" id="s-${i}-columnas" type="text" value="${esc((s.columnas || []).join(', '))}"
+          placeholder="Ej. Vol. (mL), Fórmula / Cálculo, Gramos a Pesar (g)">
+      </div>
+    </div>
+    <div class="form-group" style="margin-top:var(--space-3)">
+      <label class="form-label">Filas * (separadas por coma)</label>
+      <input class="form-input" id="s-${i}-filas" type="text" value="${esc((s.filas || []).join(', '))}"
+        placeholder="Ej. Agar TSA (Tripticasa Soya), Caldo TSB (Tripticasa Soya)">
+    </div>
+    <p class="cuest-hint">El alumno llena una celda por cada cruce de fila × columna de datos.</p>
+  ` : `
+    <div class="form-group" style="margin-top:var(--space-3);max-width:260px">
+      <label class="form-label">Tipo de respuesta</label>
+      <select class="form-input form-input--sm" id="s-${i}-tipo">
+        <option value="larga" ${s.tipo === 'larga' ? 'selected' : ''}>Respuesta extensa (párrafo)</option>
+        <option value="corta" ${s.tipo === 'corta' ? 'selected' : ''}>Respuesta corta (una línea)</option>
+      </select>
+    </div>
+  `;
+
   return `
     <div class="cuest-q-card">
       <div class="cuest-q-card-header">
@@ -259,20 +314,20 @@ function buildSCard(s, i) {
         <input class="form-input" id="s-${i}-titulo" type="text" value="${esc(s.titulo)}"
           placeholder="Ej. Objetivos / Materiales y reactivos / Procedimiento / Resultados / Conclusiones">
       </div>
-      <div class="form-group" style="margin-top:var(--space-3);max-width:260px">
-        <label class="form-label">Tipo de respuesta</label>
-        <select class="form-input form-input--sm" id="s-${i}-tipo">
-          <option value="larga" ${s.tipo === 'larga' ? 'selected' : ''}>Respuesta extensa (párrafo)</option>
-          <option value="corta" ${s.tipo === 'corta' ? 'selected' : ''}>Respuesta corta (una línea)</option>
-        </select>
+      <div class="form-group" style="margin-top:var(--space-3)">
+        <label class="form-label">Instrucciones para el alumno (opcional)</label>
+        <input class="form-input" id="s-${i}-instrucciones" type="text" value="${esc(s.instrucciones || '')}"
+          placeholder="Ej. Calcule los gramos necesarios basándose en las indicaciones del fabricante.">
       </div>
+      ${tipoBlock}
     </div>
   `;
 }
 
 async function saveTemplate() {
-  const nombre = document.getElementById('tNombre')?.value.trim();
-  const desc   = document.getElementById('tDesc')?.value.trim() || '';
+  const nombre      = document.getElementById('tNombre')?.value.trim();
+  const desc        = document.getElementById('tDesc')?.value.trim() || '';
+  const laboratorio = document.getElementById('tLaboratorio')?.value.trim() || '';
 
   if (!nombre) {
     showToast('El nombre de la práctica es obligatorio.', 'error');
@@ -288,10 +343,28 @@ async function saveTemplate() {
   }
 
   for (let i = 0; i < _secciones.length; i++) {
-    if (!_secciones[i].titulo.trim()) {
+    const s = _secciones[i];
+    if (!s.titulo.trim()) {
       showToast(`La sección ${i + 1} no tiene título.`, 'error');
       document.getElementById(`s-${i}-titulo`)?.focus();
       return;
+    }
+    if (s.tipo === 'tabla') {
+      if (!s.colLabel?.trim()) {
+        showToast(`La sección ${i + 1} (tabla) necesita un título para la columna de filas.`, 'error');
+        document.getElementById(`s-${i}-collabel`)?.focus();
+        return;
+      }
+      if (!s.columnas?.length) {
+        showToast(`La sección ${i + 1} (tabla) necesita al menos una columna de datos.`, 'error');
+        document.getElementById(`s-${i}-columnas`)?.focus();
+        return;
+      }
+      if (!s.filas?.length) {
+        showToast(`La sección ${i + 1} (tabla) necesita al menos una fila.`, 'error');
+        document.getElementById(`s-${i}-filas`)?.focus();
+        return;
+      }
     }
   }
 
@@ -300,10 +373,10 @@ async function saveTemplate() {
 
   try {
     if (_editId) {
-      await updateLabReportTemplate(_editId, { nombre, desc, secciones: _secciones });
+      await updateLabReportTemplate(_editId, { nombre, desc, laboratorio, secciones: _secciones });
       showToast('Plantilla actualizada correctamente.', 'success');
     } else {
-      await createLabReportTemplate({ nombre, desc, secciones: _secciones });
+      await createLabReportTemplate({ nombre, desc, laboratorio, secciones: _secciones });
       showToast('Plantilla guardada correctamente.', 'success');
     }
     _templates = await getLabReportTemplates();
@@ -720,6 +793,31 @@ function paintEntregas(el) {
   });
 }
 
+function buildTablaHtml(s) {
+  const columnas = s.columnas || [];
+  const filas    = s.filas || [];
+  return `
+    <div style="overflow-x:auto;margin-top:6px">
+      <table class="data-table" style="width:100%">
+        <thead>
+          <tr>
+            <th>${esc(s.colLabel || '')}</th>
+            ${columnas.map(c => `<th>${esc(c)}</th>`).join('')}
+          </tr>
+        </thead>
+        <tbody>
+          ${filas.map((fila, fi) => `
+            <tr>
+              <td><strong>${esc(fila)}</strong></td>
+              ${columnas.map((_, ci) => `<td>${esc(s.valores?.[fi]?.[ci] || '—')}</td>`).join('')}
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+  `;
+}
+
 function openEntregaModal(r) {
   const respuestas = normSecciones(r.respuestas);
   const fecha       = r.submitTime ? new Date(r.submitTime).toLocaleString('es-SV') : '—';
@@ -729,7 +827,9 @@ function openEntregaModal(r) {
       <div class="cuest-detail-num">${i + 1}</div>
       <div class="cuest-detail-body">
         <p class="cuest-detail-q">${esc(s.titulo || '')}</p>
-        <p class="cuest-detail-a" style="white-space:pre-wrap">${esc(s.respuesta || '—')}</p>
+        ${s.tipo === 'tabla'
+          ? buildTablaHtml(s)
+          : `<p class="cuest-detail-a" style="white-space:pre-wrap">${esc(s.respuesta || '—')}</p>`}
       </div>
     </div>
   `).join('');
@@ -772,7 +872,15 @@ async function exportXLSX(rows) {
         r.alumno?.email      || '',
         r.templateNombre     || '',
         r.submitTime ? new Date(r.submitTime).toLocaleString('es-SV') : '',
-        normSecciones(r.respuestas).map(s => `${s.titulo}: ${s.respuesta || ''}`).join('\n\n'),
+        normSecciones(r.respuestas).map(s => {
+          if (s.tipo === 'tabla') {
+            const filas = (s.filas || []).map((fila, fi) =>
+              `${fila}: ` + (s.columnas || []).map((c, ci) => `${c}=${s.valores?.[fi]?.[ci] || ''}`).join(', ')
+            ).join(' | ');
+            return `${s.titulo}: ${filas}`;
+          }
+          return `${s.titulo}: ${s.respuesta || ''}`;
+        }).join('\n\n'),
       ]),
     ];
     const wb = window.XLSX.utils.book_new();
