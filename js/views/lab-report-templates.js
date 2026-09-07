@@ -71,6 +71,21 @@ function countdownClass(ts) {
   return 'cuest-status--on';
 }
 
+/**
+ * Determina si una entrega es tardía comparando su submitTime contra la
+ * fecha límite ACTUAL de la plantilla (no el campo 'tardia' guardado en la
+ * entrega, que quedó congelado al momento de entregar). Así, si el docente
+ * edita la fecha límite después, el panel refleja el cambio de inmediato
+ * sin que el alumno tenga que volver a entregar. Si la plantilla ya no
+ * existe (borrada), se usa el valor guardado como respaldo.
+ */
+function isSubmissionTardia(r) {
+  const tpl = _templates.find(t => t.id === r.templateId);
+  if (!tpl) return !!r.tardia;
+  if (!tpl.fechaLimite) return false;
+  return (r.submitTime || 0) > tpl.fechaLimite;
+}
+
 function refreshCountdownBadges() {
   _templates.forEach(t => {
     if (!t.fechaLimite) return;
@@ -692,8 +707,8 @@ function paintEntregas(el) {
     ? _submissions.filter(r => r.templateId === _filterTplId)
     : _submissions;
 
-  const aTiempo = filtered.filter(r => !r.tardia).length;
-  const tardias = filtered.filter(r => r.tardia).length;
+  const aTiempo = filtered.filter(r => !isSubmissionTardia(r)).length;
+  const tardias = filtered.filter(r => isSubmissionTardia(r)).length;
 
   const esEps = sessionStorage.getItem('acadvet_auth') === 'eps';
 
@@ -745,7 +760,8 @@ function paintEntregas(el) {
             </thead>
             <tbody>
               ${filtered.map((r, i) => {
-                const fecha = r.submitTime ? new Date(r.submitTime).toLocaleString('es-SV') : '—';
+                const fecha  = r.submitTime ? new Date(r.submitTime).toLocaleString('es-SV') : '—';
+                const tardia = isSubmissionTardia(r);
                 return `
                   <tr>
                     <td>
@@ -758,7 +774,7 @@ function paintEntregas(el) {
                     <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.templateNombre || '—')}</td>
                     <td style="white-space:nowrap;font-size:.8rem;color:var(--color-text-muted)">
                       ${fecha}
-                      ${r.tardia ? `<span class="cuest-status-badge cuest-status--off" style="margin-left:6px">Tardía</span>` : ''}
+                      ${tardia ? `<span class="cuest-status-badge cuest-status--off" style="margin-left:6px">Tardía</span>` : ''}
                     </td>
                     <td style="white-space:nowrap">
                       <button class="btn btn--secondary btn--sm" data-detail="${i}">Ver</button>
@@ -904,6 +920,7 @@ function buildTablaHtml(s) {
 function openEntregaModal(r) {
   const respuestas = normSecciones(r.respuestas);
   const fecha       = r.submitTime ? new Date(r.submitTime).toLocaleString('es-SV') : '—';
+  const tardia      = isSubmissionTardia(r);
 
   const detalleHtml = respuestas.map((s, i) => `
     <div class="cuest-detail-row">
@@ -930,7 +947,7 @@ function openEntregaModal(r) {
             <p style="color:var(--color-text-muted);font-size:.85rem">Plantilla: ${esc(r.templateNombre || '—')}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">
               Fecha: ${fecha}
-              ${r.tardia ? `<span class="cuest-status-badge cuest-status--off" style="margin-left:6px">Tardía</span>` : ''}
+              ${tardia ? `<span class="cuest-status-badge cuest-status--off" style="margin-left:6px">Tardía</span>` : ''}
             </p>
           </div>
         </div>
