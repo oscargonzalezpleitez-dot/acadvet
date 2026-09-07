@@ -26,10 +26,66 @@ let _editId         = null;   // null = creando nuevo, string = editando esa pla
 
 const TIPO_LABEL = { corta: 'Respuesta corta', larga: 'Respuesta extensa', tabla: 'Tabla' };
 
+let _countdownInterval = null;
+
+function stopCountdownRefresh() {
+  if (_countdownInterval) { clearInterval(_countdownInterval); _countdownInterval = null; }
+}
+
+// ---------------------------------------------------------------------------
+// Fecha límite: helpers de formato (input datetime-local ↔ timestamp) y contador
+// ---------------------------------------------------------------------------
+function toDatetimeLocalValue(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fromDatetimeLocalValue(v) {
+  if (!v) return null;
+  const ts = new Date(v).getTime();
+  return Number.isNaN(ts) ? null : ts;
+}
+
+function formatCountdown(ts) {
+  if (!ts) return null;
+  const diff = ts - Date.now();
+  const past = diff < 0;
+  const abs  = Math.abs(diff);
+  const d = Math.floor(abs / 86400000);
+  const h = Math.floor(abs / 3600000) % 24;
+  const m = Math.floor(abs / 60000) % 60;
+  const parts = [];
+  if (d) parts.push(`${d}d`);
+  parts.push(`${h}h`);
+  if (!d) parts.push(`${m}m`);
+  return past ? `Venció hace ${parts.join(' ')}` : `Faltan ${parts.join(' ')}`;
+}
+
+function countdownClass(ts) {
+  if (!ts) return '';
+  const diff = ts - Date.now();
+  if (diff < 0) return 'cuest-status--off';
+  if (diff < 24 * 3600000) return 'cuest-status--warn';
+  return 'cuest-status--on';
+}
+
+function refreshCountdownBadges() {
+  _templates.forEach(t => {
+    if (!t.fechaLimite) return;
+    const el = document.getElementById(`countdown-${t.id}`);
+    if (!el) return;
+    el.textContent = formatCountdown(t.fechaLimite);
+    el.className   = `cuest-status-badge ${countdownClass(t.fechaLimite)}`;
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Entrada pública
 // ---------------------------------------------------------------------------
 export async function renderLabReportTemplates(container) {
+  stopCountdownRefresh();
   _container = container;
   container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div><p>Cargando reportes de laboratorio…</p></div>`;
   try {
@@ -80,6 +136,7 @@ function paint() {
 
   _container.querySelectorAll('.tab-btn').forEach(btn => {
     btn.addEventListener('click', () => {
+      stopCountdownRefresh();
       if (btn.dataset.tab !== 'crear') {
         _editId    = null;
         _secciones = [];
@@ -138,6 +195,16 @@ function renderTabCrear(el) {
           <input class="form-input" id="tLaboratorio" type="text" maxlength="150"
             placeholder="Ej. Laboratorio de Bacteriología y Micología Veterinaria"
             value="${esc(tpl?.laboratorio || '')}">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha y hora límite de entrega (opcional)</label>
+          <input class="form-input" id="tFechaLimite" type="datetime-local"
+            value="${toDatetimeLocalValue(tpl?.fechaLimite)}">
+          <p class="cuest-hint">
+            Si la dejás vacía no hay contador ni entregas tardías. El alumno sigue pudiendo entregar
+            después de esta fecha, pero su entrega queda marcada como "Tardía" y se le envía un push
+            de aviso.
+          </p>
         </div>
       </div>
 
@@ -328,6 +395,7 @@ async function saveTemplate() {
   const nombre      = document.getElementById('tNombre')?.value.trim();
   const desc        = document.getElementById('tDesc')?.value.trim() || '';
   const laboratorio = document.getElementById('tLaboratorio')?.value.trim() || '';
+  const fechaLimite = fromDatetimeLocalValue(document.getElementById('tFechaLimite')?.value);
 
   if (!nombre) {
     showToast('El nombre de la práctica es obligatorio.', 'error');
@@ -373,10 +441,10 @@ async function saveTemplate() {
 
   try {
     if (_editId) {
-      await updateLabReportTemplate(_editId, { nombre, desc, laboratorio, secciones: _secciones });
+      await updateLabReportTemplate(_editId, { nombre, desc, laboratorio, fechaLimite, secciones: _secciones });
       showToast('Plantilla actualizada correctamente.', 'success');
     } else {
-      await createLabReportTemplate({ nombre, desc, laboratorio, secciones: _secciones });
+      await createLabReportTemplate({ nombre, desc, laboratorio, fechaLimite, secciones: _secciones });
       showToast('Plantilla guardada correctamente.', 'success');
     }
     _templates = await getLabReportTemplates();
@@ -426,6 +494,10 @@ function renderTabLista(el) {
                 <span>${secciones.length} sección${secciones.length !== 1 ? 'es' : ''}</span>
                 <span>·</span>
                 <span>${fecha}</span>
+                ${t.fechaLimite ? `
+                  <span>·</span>
+                  <span id="countdown-${t.id}" class="cuest-status-badge ${countdownClass(t.fechaLimite)}">${formatCountdown(t.fechaLimite)}</span>
+                ` : ''}
               </div>
               ${t.desc ? `<div class="cuest-row-desc">${esc(t.desc)}</div>` : ''}
             </div>
@@ -462,6 +534,9 @@ function renderTabLista(el) {
       }).join('')}
     </div>
   `;
+
+  stopCountdownRefresh();
+  _countdownInterval = setInterval(refreshCountdownBadges, 30000);
 
   el.addEventListener('click', async e => {
     const copyBtn   = e.target.closest('[data-copy]');
@@ -676,7 +751,10 @@ function paintEntregas(el) {
                     </td>
                     <td><span class="carnet-chip">${esc(r.alumno?.carnet || '—')}</span></td>
                     <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.templateNombre || '—')}</td>
-                    <td style="white-space:nowrap;font-size:.8rem;color:var(--color-text-muted)">${fecha}</td>
+                    <td style="white-space:nowrap;font-size:.8rem;color:var(--color-text-muted)">
+                      ${fecha}
+                      ${r.tardia ? `<span class="cuest-status-badge cuest-status--off" style="margin-left:6px">Tardía</span>` : ''}
+                    </td>
                     <td style="white-space:nowrap">
                       <button class="btn btn--secondary btn--sm" data-detail="${i}">Ver</button>
                       ${!esEps ? `
@@ -845,7 +923,10 @@ function openEntregaModal(r) {
             <p style="color:var(--color-text-muted);font-size:.85rem">Carnet: ${esc(r.alumno?.carnet || '—')}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Email: ${esc(r.alumno?.email || '—')}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Plantilla: ${esc(r.templateNombre || '—')}</p>
-            <p style="color:var(--color-text-muted);font-size:.85rem">Fecha: ${fecha}</p>
+            <p style="color:var(--color-text-muted);font-size:.85rem">
+              Fecha: ${fecha}
+              ${r.tardia ? `<span class="cuest-status-badge cuest-status--off" style="margin-left:6px">Tardía</span>` : ''}
+            </p>
           </div>
         </div>
         <h4 style="font-size:.85rem;font-weight:700;margin:var(--space-4) 0 var(--space-2);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em">Secciones entregadas</h4>

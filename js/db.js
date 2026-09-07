@@ -918,12 +918,13 @@ export async function deleteResultadosByQuiz(quizId) {
 // automáticamente, el docente revisa el texto entregado.
 // ---------------------------------------------------------------------------
 
-export async function createLabReportTemplate({ nombre, desc, laboratorio, secciones }) {
+export async function createLabReportTemplate({ nombre, desc, laboratorio, fechaLimite, secciones }) {
   const newRef = push(ref(db, 'lab_report_templates'));
   await set(newRef, {
     nombre,
     desc: desc || '',
     laboratorio: laboratorio || '',
+    fechaLimite: fechaLimite || null,
     creado_en: Date.now(),
     activo: true,
     secciones: secciones || [],
@@ -942,11 +943,12 @@ export async function getLabReportTemplate(id) {
   return { id, ...s.val() };
 }
 
-export async function updateLabReportTemplate(id, { nombre, desc, laboratorio, secciones }) {
+export async function updateLabReportTemplate(id, { nombre, desc, laboratorio, fechaLimite, secciones }) {
   await update(ref(db, `lab_report_templates/${id}`), {
     nombre,
     desc: desc || '',
     laboratorio: laboratorio || '',
+    fechaLimite: fechaLimite || null,
     secciones: secciones || [],
   });
 }
@@ -967,7 +969,7 @@ export async function deleteLabReportTemplate(id) {
  * la respuesta (titulo, tipo) para que la entrega quede autocontenida y se
  * pueda exportar aunque el docente después edite o borre la plantilla.
  */
-export async function saveLabReportSubmission({ templateId, templateNombre, templateDesc, templateLaboratorio, alumno, respuestas }) {
+export async function saveLabReportSubmission({ templateId, templateNombre, templateDesc, templateLaboratorio, alumno, respuestas, tardia }) {
   const newRef = push(ref(db, 'lab_report_submissions'));
   await set(newRef, {
     templateId,
@@ -976,6 +978,7 @@ export async function saveLabReportSubmission({ templateId, templateNombre, temp
     templateLaboratorio: templateLaboratorio || '',
     alumno,
     respuestas,
+    tardia: !!tardia,
     submitTime: Date.now(),
   });
   return newRef.key;

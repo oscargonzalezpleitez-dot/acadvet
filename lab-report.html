@@ -115,6 +115,18 @@
     .tpl-info-nombre { font-family: var(--fd); font-weight: 700; font-size: 1.15rem; margin-bottom: 4px; }
     .tpl-info-desc { font-size: .85rem; color: var(--muted); line-height: 1.5; }
 
+    .countdown-box {
+      margin-top: 14px; padding: 12px 16px; border-radius: 12px;
+      background: var(--surface2); border: 1.5px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+    }
+    .countdown-box.warn { border-color: var(--warning); }
+    .countdown-box.late { border-color: var(--danger); background: rgba(255,107,107,.1); }
+    .countdown-label { font-size: .78rem; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+    .countdown-clock { font-family: var(--fd); font-weight: 800; font-size: 1.1rem; color: var(--accent); letter-spacing: .03em; }
+    .countdown-box.warn .countdown-clock { color: var(--warning); }
+    .countdown-box.late .countdown-clock { color: var(--danger); }
+
     .sec-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 14px; padding: 20px 22px; margin-bottom: 16px;
@@ -193,6 +205,10 @@
         <div class="tpl-info-nombre" id="tplNombre"></div>
         <div class="tpl-info-desc" id="tplLab" style="font-style:italic"></div>
         <div class="tpl-info-desc" id="tplDesc"></div>
+        <div id="countdownBox" class="countdown-box hidden">
+          <span class="countdown-label" id="countdownLabel">Tiempo restante</span>
+          <span class="countdown-clock" id="countdownClock">—</span>
+        </div>
       </div>
 
       <div class="card">
@@ -265,8 +281,37 @@
     const CARNET_RE = /^\d{6}$|^\d{4}-\d{4}$/;
     const EMAIL_RE  = /^[^\s@]+@usam\.edu\.sv$/i;
 
-    let template     = null;   // { id, nombre, desc, secciones }
+    let template       = null; // { id, nombre, desc, fechaLimite, secciones }
     let lastSubmission = null; // datos para exportar Word/PDF luego de enviar
+    let countdownTimer = null;
+
+    function pad(n) { return String(n).padStart(2, '0'); }
+
+    function startCountdown() {
+      const box   = document.getElementById('countdownBox');
+      const clock = document.getElementById('countdownClock');
+      const label = document.getElementById('countdownLabel');
+
+      if (!template.fechaLimite) { box.classList.add('hidden'); return; }
+      box.classList.remove('hidden');
+
+      function tick() {
+        const diff = template.fechaLimite - Date.now();
+        const past = diff < 0;
+        const abs  = Math.abs(diff);
+        const d = Math.floor(abs / 86400000);
+        const h = Math.floor(abs / 3600000) % 24;
+        const m = Math.floor(abs / 60000) % 60;
+        const s = Math.floor(abs / 1000) % 60;
+        clock.textContent = (d ? `${d}d ` : '') + `${pad(h)}:${pad(m)}:${pad(s)}`;
+        label.textContent = past ? 'Plazo vencido hace' : 'Tiempo restante';
+        box.classList.toggle('late', past);
+        box.classList.toggle('warn', !past && diff < 24 * 3600000);
+      }
+      tick();
+      clearInterval(countdownTimer);
+      countdownTimer = setInterval(tick, 1000);
+    }
 
     try { await signInAnonymously(auth); } catch (_) {}
 
@@ -301,7 +346,7 @@
           return;
         }
         const secciones = Array.isArray(raw.secciones) ? raw.secciones : Object.values(raw.secciones || {});
-        template = { id, nombre: raw.nombre, desc: raw.desc || '', laboratorio: raw.laboratorio || '', secciones };
+        template = { id, nombre: raw.nombre, desc: raw.desc || '', laboratorio: raw.laboratorio || '', fechaLimite: raw.fechaLimite || null, secciones };
         setupForm();
         showView('vForm');
       } catch (err) {
@@ -359,6 +404,8 @@
       document.getElementById('btnEnviar').addEventListener('click', enviarReporte);
       document.getElementById('btnBlankWord').addEventListener('click', () => runExport('btnBlankWord', () => downloadBlankWord(template)));
       document.getElementById('btnBlankPDF').addEventListener('click',  () => runExport('btnBlankPDF',  () => downloadBlankPDF(template)));
+
+      startCountdown();
     }
 
     async function runExport(btnId, fn) {
@@ -442,6 +489,7 @@
       btn.textContent = 'Enviando…';
 
       const alumno = { nombre, carnet, email, ...(mesa ? { mesa } : {}) };
+      const tardia = !!(template.fechaLimite && Date.now() > template.fechaLimite);
 
       try {
         await saveLabReportSubmission({
@@ -451,6 +499,7 @@
           templateLaboratorio: template.laboratorio,
           alumno,
           respuestas,
+          tardia,
         });
 
         lastSubmission = {
@@ -462,8 +511,11 @@
           submitTime: Date.now(),
         };
 
-        document.getElementById('successMsg').textContent =
-          `Gracias, ${nombre.split(' ')[0]}. Tu reporte de "${template.nombre}" fue entregado correctamente.`;
+        clearInterval(countdownTimer);
+
+        document.getElementById('successMsg').textContent = tardia
+          ? `Gracias, ${nombre.split(' ')[0]}. Tu reporte de "${template.nombre}" quedó registrado como entrega tardía (después de la fecha límite).`
+          : `Gracias, ${nombre.split(' ')[0]}. Tu reporte de "${template.nombre}" fue entregado correctamente.`;
         showView('vSuccess');
       } catch (err) {
         console.error('[LabReport] Error al enviar:', err);
