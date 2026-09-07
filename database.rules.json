@@ -191,6 +191,14 @@
       }
     },
 
+    "informes_semanales": {
+      ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+      "$informeId": {
+        ".validate": "newData.hasChildren(['materiaId', 'semanaInicio', 'semanaFin', 'criterios'])"
+      }
+    },
+
     "lab_report_templates": {
       ".read":  "auth != null",
       ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",

@@ -1002,3 +1002,49 @@ export async function deleteLabReportSubmissionsByTemplate(templateId) {
   if (Object.keys(updates).length > 0) await update(ref(db), updates);
   return ids.length;
 }
+
+// ---------------------------------------------------------------------------
+// INFORMES SEMANALES POR GRUPO DE CLASE
+//
+// Reporte administrativo interno del docente (no lo llenan los alumnos):
+// una plantilla fija de 6 criterios que se llena una vez por semana/materia
+// y se puede descargar en el formato oficial de la universidad (Word/PDF).
+// ---------------------------------------------------------------------------
+
+export async function createInformeSemanal({ materiaId, materiaNombre, seccion, academico, semanaInicio, semanaFin, criterios }) {
+  const newRef = push(ref(db, 'informes_semanales'));
+  await set(newRef, {
+    materiaId, materiaNombre, seccion: seccion || '',
+    academico: academico || '',
+    semanaInicio, semanaFin,
+    criterios,
+    creado_en: Date.now(),
+    actualizado_en: Date.now(),
+  });
+  return newRef.key;
+}
+
+export async function getInformesSemanales() {
+  const s = await get(ref(db, 'informes_semanales'));
+  return snapToArray(s).sort((a, b) => (b.semanaInicio || '').localeCompare(a.semanaInicio || ''));
+}
+
+export async function getInformeSemanal(id) {
+  const s = await get(ref(db, `informes_semanales/${id}`));
+  if (!s.exists()) return null;
+  return { id, ...s.val() };
+}
+
+export async function updateInformeSemanal(id, { materiaId, materiaNombre, seccion, academico, semanaInicio, semanaFin, criterios }) {
+  await update(ref(db, `informes_semanales/${id}`), {
+    materiaId, materiaNombre, seccion: seccion || '',
+    academico: academico || '',
+    semanaInicio, semanaFin,
+    criterios,
+    actualizado_en: Date.now(),
+  });
+}
+
+export async function deleteInformeSemanal(id) {
+  await remove(ref(db, `informes_semanales/${id}`));
+}
