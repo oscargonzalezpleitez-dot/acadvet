@@ -74,7 +74,15 @@
               ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
             },
             "exposiciones": {
-              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+              ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+              "$expoId": {
+                "tema": {
+                  ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+                },
+                "fecha": {
+                  ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"
+                }
+              }
             },
             "nota_diagnostico": {
               ".read": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv' || (auth.token.email != null && auth.token.email == root.child('alumnos').child($alumnoId).child('email').val()))"

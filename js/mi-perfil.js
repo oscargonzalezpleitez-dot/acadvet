@@ -532,7 +532,7 @@ function renderProfile(alumno, materias) {
         ${m.expos.length ? `
           <div class="mat-detail-title">Exposiciones</div>
           <div class="mat-list">
-            ${m.expos.map(x => `<div class="mat-list-row"><span>${escHtml(x.tema)}</span><strong>${fmtNota(x.nota)}</strong></div>`).join('')}
+            ${m.expos.map(x => `<div class="mat-list-row"><span>${escHtml(x.tema)}</span></div>`).join('')}
           </div>` : ''}
       </div>
     `;
