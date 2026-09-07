@@ -692,6 +692,9 @@ function paintEntregas(el) {
     ? _submissions.filter(r => r.templateId === _filterTplId)
     : _submissions;
 
+  const aTiempo = filtered.filter(r => !r.tardia).length;
+  const tardias = filtered.filter(r => r.tardia).length;
+
   const esEps = sessionStorage.getItem('acadvet_auth') === 'eps';
 
   el.innerHTML = `
@@ -699,6 +702,8 @@ function paintEntregas(el) {
       <div class="cuest-results-toolbar">
         <div class="cuest-results-stats">
           <span class="cuest-stat-chip">${filtered.length} entrega${filtered.length !== 1 ? 's' : ''}</span>
+          <span class="cuest-stat-chip cuest-stat-chip--success">✅ ${aTiempo} a tiempo</span>
+          <span class="cuest-stat-chip cuest-stat-chip--danger">⏰ ${tardias} tardía${tardias !== 1 ? 's' : ''}</span>
         </div>
         <div class="cuest-results-controls">
           <select class="form-input form-input--sm" id="filterTpl" style="min-width:200px">
