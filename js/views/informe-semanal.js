@@ -9,6 +9,7 @@ import {
   getMaterias, getAlumnos, alumnosByMateria,
   createInformeSemanal, updateInformeSemanal, deleteInformeSemanal,
   getInformesSemanales, getInformeEmailDefault, setInformeEmailDefault,
+  getCuestionariosResultados, getCuestionariosCorrectMap,
 } from '../db.js';
 import { showToast, openModal, closeModal } from '../ui.js';
 import { downloadInformeSemanalWord, downloadInformeSemanalPDF, getInformeSemanalPdfBase64 } from '../informe-semanal-export.js';
@@ -71,6 +72,21 @@ const TAREA_CUMPLIMIENTO_OPCIONES = [
 ];
 const TAREA_LS_KEY = 'acadvet_ultima_tarea_cumplimiento';
 const TAREA_SIN_TAREA = { valor: 'N/A', explicacion: 'No se hicieron tareas evaluadas esta semana.' };
+
+// Variaciones para el criterio 4 (Cumplimiento de Controles de Lectura -
+// Evaluaciones). A diferencia de los criterios 2 y 3, este se calcula con el
+// botón "Calcular evaluaciones de la semana" porque depende de si realmente
+// hubo examen corto/control de lectura esa semana (manual o en línea).
+const EVALUACIONES_OPCIONES = [
+  { explicacion: 'Se realizó el control de lectura / examen corto programado para la semana.' },
+  { explicacion: 'Los estudiantes rindieron la evaluación correspondiente a la semana.' },
+  { explicacion: 'Se aplicó la evaluación de control de lectura prevista para el periodo.' },
+  { explicacion: 'Se llevó a cabo el examen corto programado para esta semana de clases.' },
+  { explicacion: 'Se cumplió con la evaluación de control de lectura correspondiente a la semana.' },
+];
+const EVALUACIONES_LS_KEY = 'acadvet_ultima_evaluacion_cumplimiento';
+const EVALUACIONES_SIN_DATOS = { valor: 'N/A', explicacion: 'No se realizaron controles de lectura ni evaluaciones esta semana.' };
+const NOTA_APROBATORIA_PCT = 60; // mismo umbral que usa el panel de Cuestionarios
 
 /** Elige una opción del pool distinta a la usada en el informe anterior. */
 function elegirDistintoAlAnterior(pool, lsKey, campo = 'valor') {
@@ -221,6 +237,7 @@ function renderTabCrear(el) {
         <div class="cuest-qeditor-header">
           <h3 class="cuest-section-title">Criterios para evaluar</h3>
           <button class="btn btn--secondary btn--sm" id="btnCalcAsist">📊 Calcular asistencia de la semana</button>
+          <button class="btn btn--secondary btn--sm" id="btnCalcEval">📝 Calcular evaluaciones de la semana</button>
         </div>
         <div id="criteriosList"></div>
       </div>
@@ -243,6 +260,7 @@ function renderTabCrear(el) {
   });
 
   document.getElementById('btnCalcAsist').addEventListener('click', calcularAsistencia);
+  document.getElementById('btnCalcEval').addEventListener('click', calcularEvaluaciones);
   document.getElementById('btnSaveInforme').addEventListener('click', saveInforme);
 }
 
@@ -352,6 +370,124 @@ async function calcularAsistencia() {
   } finally {
     btn.disabled = false;
     btn.textContent = '📊 Calcular asistencia de la semana';
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Calcular controles de lectura / evaluaciones de la semana (criterio 4):
+// revisa tanto notas manuales (quizzes cargados por el docente) como
+// resultados de exámenes cortos en línea (Cuestionarios) de esa semana para
+// los alumnos de la materia. Si hubo alguno, pone 100% + explicación
+// variada; si el examen fue en línea, agrega el % de aprobados/desaprobados.
+// ---------------------------------------------------------------------------
+function _evaluarRespuestaLocal(tipo, respuesta, correcta) {
+  if (respuesta === null || respuesta === undefined || respuesta === '') return false;
+  if (tipo === 'multiple' || tipo === 'imagen') return parseInt(respuesta) === parseInt(correcta);
+  if (tipo === 'truefalse') return String(respuesta) === String(correcta);
+  if (tipo === 'short' || tipo === 'fill') {
+    const norm = s => String(s || '').toLowerCase().trim().replace(/\s+/g, ' ');
+    return norm(respuesta) === norm(correcta);
+  }
+  return false;
+}
+
+/** Calcula el porcentaje de un resultado de cuestionario, calificando los
+ *  pendientes con las respuestas correctas (mismo criterio que el panel de
+ *  Cuestionarios). */
+function _porcentajeResultado(result, correctData) {
+  if (!result.pendiente && typeof result.porcentaje === 'number') return result.porcentaje;
+  if (!correctData?.respuestas) return result.porcentaje ?? 0;
+
+  const { respuestas, puntos: ptsPorPregunta = [] } = correctData;
+  const detalle = (result.detalle || []).map((d, i) => {
+    const correcta = respuestas[i];
+    const pts       = ptsPorPregunta[i] ?? d.puntos ?? 1;
+    const correcto  = _evaluarRespuestaLocal(d.tipo, d.respuesta, correcta);
+    return { puntos: pts, puntosObtenidos: correcto ? pts : 0 };
+  });
+  const puntos      = detalle.reduce((s, d) => s + d.puntosObtenidos, 0);
+  const puntosTotal = detalle.reduce((s, d) => s + d.puntos, 0);
+  return puntosTotal > 0 ? Math.round((puntos / puntosTotal) * 100) : 0;
+}
+
+async function calcularEvaluaciones() {
+  const materiaId = document.getElementById('iMateria').value;
+  const desde     = document.getElementById('iDesde').value;
+  const hasta     = document.getElementById('iHasta').value;
+
+  if (!materiaId || !desde || !hasta) {
+    showToast('Elegí la materia y el rango de fechas primero.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('btnCalcEval');
+  btn.disabled = true;
+  btn.textContent = 'Calculando…';
+
+  try {
+    const todos          = await getAlumnos();
+    const alumnosMateria = alumnosByMateria(todos, materiaId);
+    const carnetsMateria = new Set(alumnosMateria.map(a => String(a.carnet ?? '').trim()).filter(Boolean));
+
+    // 1) Notas manuales (quizzes) cargadas por el docente en el rango de fechas.
+    let huboManual = false;
+    alumnosMateria.forEach(a => {
+      const quizzes = a.inscripciones?.[materiaId]?.quizzes;
+      if (!quizzes) return;
+      Object.values(quizzes).forEach(q => {
+        if (q.fecha && q.fecha >= desde && q.fecha <= hasta) huboManual = true;
+      });
+    });
+
+    // 2) Exámenes cortos en línea (Cuestionarios) respondidos por alumnos de
+    // esta materia dentro del rango de fechas.
+    const desdeTs = new Date(`${desde}T00:00:00`).getTime();
+    const hastaTs = new Date(`${hasta}T23:59:59`).getTime();
+    const [rawResults, correctMap] = await Promise.all([
+      getCuestionariosResultados(),
+      getCuestionariosCorrectMap().catch(() => ({})),
+    ]);
+    const resultadosOnline = rawResults.filter(r => {
+      const ts = r.submitTime ?? r.guardado_en;
+      if (!ts || ts < desdeTs || ts > hastaTs) return false;
+      return carnetsMateria.has(String(r.carnet ?? '').trim());
+    });
+
+    syncCriteriosFromDOM();
+
+    if (huboManual || resultadosOnline.length) {
+      const variante = elegirDistintoAlAnterior(EVALUACIONES_OPCIONES, EVALUACIONES_LS_KEY, 'explicacion');
+      _criterios[3].valor = '100%';
+      let explicacion = variante.explicacion;
+
+      if (resultadosOnline.length) {
+        const aprobados   = resultadosOnline.filter(r => _porcentajeResultado(r, correctMap[r.cuestionarioId]) >= NOTA_APROBATORIA_PCT).length;
+        const total       = resultadosOnline.length;
+        const pctAprob    = Math.round((aprobados / total) * 100);
+        const pctDesaprob = 100 - pctAprob;
+        explicacion += ` Examen corto en línea: ${pctAprob}% aprobados, ${pctDesaprob}% desaprobados (${total} resultado${total !== 1 ? 's' : ''}).`;
+      }
+      _criterios[3].explicacion = explicacion;
+    } else {
+      _criterios[3].valor       = EVALUACIONES_SIN_DATOS.valor;
+      _criterios[3].explicacion = EVALUACIONES_SIN_DATOS.explicacion;
+    }
+
+    document.getElementById('c-3-valor').value       = _criterios[3].valor;
+    document.getElementById('c-3-explicacion').value = _criterios[3].explicacion;
+
+    showToast(
+      (huboManual || resultadosOnline.length)
+        ? 'Evaluaciones de la semana calculadas.'
+        : 'No se encontró examen corto ni control de lectura en ese rango de fechas.',
+      (huboManual || resultadosOnline.length) ? 'success' : 'error'
+    );
+  } catch (err) {
+    console.error('[AcadVet] Error calculando evaluaciones:', err);
+    showToast('Error al calcular. Revisá tu conexión.', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📝 Calcular evaluaciones de la semana';
   }
 }
 
