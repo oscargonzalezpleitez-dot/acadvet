@@ -129,7 +129,14 @@ export async function deleteAlumno(id) {
   await remove(ref(db, `alumnos/${id}`));
   await remove(ref(db, `alumno_observaciones/${id}`));
   await remove(ref(db, `presencia_alumnos/${id}`));
-  if (before.exists()) await remove(ref(db, `alumno_lookup/${sanitizeKey(before.val())}`));
+  if (before.exists()) {
+    const carnet = before.val();
+    await remove(ref(db, `alumno_lookup/${sanitizeKey(carnet)}`));
+    // Libera también el índice de solicitudes: sin esto, el alumno eliminado
+    // no podría volver a enviar una solicitud de inscripción (su carné
+    // quedaría marcado como "ya registrado" para siempre).
+    await remove(ref(db, `solicitudes_idx/${String(carnet).toLowerCase().trim()}`));
+  }
 }
 
 // ---------------------------------------------------------------------------
