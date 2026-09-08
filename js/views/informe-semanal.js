@@ -35,6 +35,48 @@ const DIAS_CLASE_POR_MATERIA = {
   '-OvBIKpy9g6swRnwNm7g': [1, 4], // Bacteriología y Micología — Grupo 3: lunes y jueves
 };
 
+// ---------------------------------------------------------------------------
+// Variaciones para el criterio 2 (Logro del objetivo de aprendizaje): cada
+// informe nuevo arranca con una redacción distinta a la del informe
+// inmediatamente anterior, para que no se repita literalmente semana a
+// semana. Todas las opciones son de tono positivo.
+// ---------------------------------------------------------------------------
+const LOGRO_APRENDIZAJE_OPCIONES = [
+  { valor: '90%', explicacion: 'Los estudiantes demostraron un buen dominio de los temas abordados durante la semana.' },
+  { valor: '88%', explicacion: 'La mayoría del grupo alcanzó los objetivos planteados con un desempeño satisfactorio.' },
+  { valor: '95%', explicacion: 'Se evidenció un alto nivel de comprensión y participación activa por parte del grupo.' },
+  { valor: '85%', explicacion: 'El grupo mostró un avance sólido en el logro de las competencias esperadas para la semana.' },
+  { valor: '92%', explicacion: 'Los estudiantes lograron consolidar los conocimientos clave de la semana de forma satisfactoria.' },
+  { valor: '87%', explicacion: 'Se observó un cumplimiento adecuado de los objetivos de aprendizaje planteados.' },
+  { valor: '93%', explicacion: 'El desempeño del grupo reflejó un logro significativo de los objetivos académicos de la semana.' },
+  { valor: '91%', explicacion: 'La mayoría de los estudiantes alcanzó un buen nivel de asimilación de los contenidos vistos.' },
+  { valor: '89%', explicacion: 'Se logró un avance favorable en el aprendizaje esperado para esta semana de clases.' },
+  { valor: '94%', explicacion: 'El grupo evidenció un excelente nivel de logro respecto a los objetivos de aprendizaje planteados.' },
+];
+const LOGRO_LS_KEY = 'acadvet_ultimo_logro_aprendizaje';
+
+/** Elige una opción del pool distinta a la usada en el informe anterior. */
+function siguienteLogroAprendizaje() {
+  let anterior = null;
+  try { anterior = localStorage.getItem(LOGRO_LS_KEY); } catch (_) {}
+  const disponibles = LOGRO_APRENDIZAJE_OPCIONES.filter(o => o.valor !== anterior);
+  const pool = disponibles.length ? disponibles : LOGRO_APRENDIZAJE_OPCIONES;
+  const elegido = pool[Math.floor(Math.random() * pool.length)];
+  try { localStorage.setItem(LOGRO_LS_KEY, elegido.valor); } catch (_) {}
+  return elegido;
+}
+
+/** Plantilla de criterios en blanco para un informe nuevo, con el criterio 2
+ *  ya precargado con una redacción positiva distinta a la del último informe. */
+function criteriosNuevo() {
+  const logro = siguienteLogroAprendizaje();
+  return CRITERIOS_FIJOS.map((c, i) => ({
+    ...c,
+    valor:       i === 1 ? logro.valor       : '',
+    explicacion: i === 1 ? logro.explicacion : '',
+  }));
+}
+
 let _container    = null;
 let _materias     = [];
 let _informes     = [];
@@ -63,7 +105,7 @@ export async function renderInformeSemanal(container) {
     return;
   }
   _tab       = 'crear';
-  _criterios = CRITERIOS_FIJOS.map(c => ({ ...c, valor: '', explicacion: '' }));
+  _criterios = criteriosNuevo();
   _editId    = null;
   paint();
 }
@@ -91,7 +133,7 @@ function paint() {
     btn.addEventListener('click', () => {
       if (btn.dataset.tab !== 'crear') {
         _editId    = null;
-        _criterios = CRITERIOS_FIJOS.map(c => ({ ...c, valor: '', explicacion: '' }));
+        _criterios = criteriosNuevo();
       }
       _tab = btn.dataset.tab;
       _container.querySelectorAll('.tab-btn').forEach(b => b.classList.toggle('active', b === btn));
@@ -176,7 +218,7 @@ function renderTabCrear(el) {
 
   document.getElementById('btnCancelEdit')?.addEventListener('click', () => {
     _editId    = null;
-    _criterios = CRITERIOS_FIJOS.map(c => ({ ...c, valor: '', explicacion: '' }));
+    _criterios = criteriosNuevo();
     _tab       = 'historial';
     paint();
   });
@@ -322,7 +364,7 @@ async function saveInforme() {
     }
     _informes  = await getInformesSemanales();
     _editId    = null;
-    _criterios = CRITERIOS_FIJOS.map(c => ({ ...c, valor: '', explicacion: '' }));
+    _criterios = criteriosNuevo();
     _tab       = 'historial';
     paint();
   } catch (err) {
