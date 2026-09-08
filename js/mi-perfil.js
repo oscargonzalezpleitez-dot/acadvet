@@ -357,7 +357,7 @@ function updatePushButtonState() {
 // ---------------------------------------------------------------------------
 // Carga y pinta el perfil (solo lectura)
 // ---------------------------------------------------------------------------
-async function loadProfile(alumnoId) {
+async function loadProfile(alumnoId, attempt = 0) {
   setLoading('Cargando tu expediente…');
   _currentAlumnoId = alumnoId;
   try {
@@ -399,6 +399,15 @@ async function loadProfile(alumnoId) {
     _presenceUnsub?.();
     _presenceUnsub = marcarAlumnoConectado(alumnoId, { nombre: nombreSnap.val(), carnet: carnetSnap.val() });
   } catch (err) {
+    // Justo después de iniciar sesión (o crear cuenta), la conexión de
+    // Realtime Database a veces todavía no aplicó el token nuevo y esta
+    // primera lectura choca con las reglas (permission-denied) aunque el
+    // alumno sí tenga acceso. Reintentamos un par de veces con espera antes
+    // de asumir que el error es real.
+    if (err?.code === 'PERMISSION_DENIED' && attempt < 2) {
+      await new Promise(resolve => setTimeout(resolve, 600 * (attempt + 1)));
+      return loadProfile(alumnoId, attempt + 1);
+    }
     console.error('[MiPerfil] loadProfile', err);
     clearCache();
     _currentAlumnoId = null;
