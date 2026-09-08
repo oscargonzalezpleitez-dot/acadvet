@@ -25,6 +25,16 @@ const CRITERIOS_FIJOS = [
 
 const ACADEMICO_DEFAULT = 'Oscar Alfredo Gonzalez Pleitez';
 
+// Días de clase por materia (0=domingo … 6=sábado), usados para que
+// "Calcular asistencia de la semana" ignore registros fuera del horario
+// real del grupo (p. ej. una reposición o un error de fecha) y no infle
+// el conteo del criterio 1. Solo cubre los grupos con horario irregular
+// conocido; el resto de materias no se filtra.
+const DIAS_CLASE_POR_MATERIA = {
+  '-OvBIHDTynekKuf_ZT9d': [4, 5], // Bacteriología y Micología — Grupo 2: jueves y viernes
+  '-OvBIKpy9g6swRnwNm7g': [1, 4], // Bacteriología y Micología — Grupo 3: lunes y jueves
+};
+
 let _container    = null;
 let _materias     = [];
 let _informes     = [];
@@ -229,6 +239,7 @@ async function calcularAsistencia() {
     const alumnosMateria  = alumnosByMateria(todos, materiaId);
     const porDia          = {};
     const presentes       = new Set();
+    const diasClase       = DIAS_CLASE_POR_MATERIA[materiaId] || null;
 
     alumnosMateria.forEach(a => {
       const asist = a.inscripciones?.[materiaId]?.asistencias;
@@ -236,6 +247,7 @@ async function calcularAsistencia() {
       Object.values(asist).forEach(r => {
         if (!r.fecha || r.fecha < desde || r.fecha > hasta) return;
         if (r.estado !== 'presente') return;
+        if (diasClase && !diasClase.includes(new Date(`${r.fecha}T00:00:00`).getDay())) return;
         if (!porDia[r.fecha]) porDia[r.fecha] = new Set();
         porDia[r.fecha].add(a.id);
         presentes.add(a.id);
