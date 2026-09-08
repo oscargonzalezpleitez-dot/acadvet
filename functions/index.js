@@ -5,3 +5,4 @@ exports.onReminderCreated = require('./src/triggers/onReminderCreated').onRemind
 exports.onParcialRevisionWritten = require('./src/triggers/onParcialRevisionWritten').onParcialRevisionWritten;
 exports.onLabReportSubmissionCreated = require('./src/triggers/onLabReportSubmissionCreated').onLabReportSubmissionCreated;
 exports.sendBroadcast     = require('./src/broadcast').sendBroadcast;
+exports.sendInformeSemanalEmail = require('./src/sendInformeEmail').sendInformeSemanalEmail;

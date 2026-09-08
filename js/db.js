@@ -1048,3 +1048,13 @@ export async function updateInformeSemanal(id, { materiaId, materiaNombre, secci
 export async function deleteInformeSemanal(id) {
   await remove(ref(db, `informes_semanales/${id}`));
 }
+
+/** Correo destino "habitual" recordado para el envío del informe semanal. */
+export async function getInformeEmailDefault() {
+  const s = await get(ref(db, 'config/informe_email_default'));
+  return s.exists() ? s.val() : '';
+}
+
+export async function setInformeEmailDefault(email) {
+  await set(ref(db, 'config/informe_email_default'), email || null);
+}

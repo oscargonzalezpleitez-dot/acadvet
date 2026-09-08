@@ -203,7 +203,7 @@ export async function downloadInformeSemanalWord(informe) {
 // -----------------------------------------------------------------------------
 // PDF
 // -----------------------------------------------------------------------------
-export async function downloadInformeSemanalPDF(informe) {
+async function buildInformePdfDoc(informe) {
   const { jsPDF } = await loadJsPDF();
   const [logoIzq, logoDer] = await Promise.all([loadImageEl(LOGO_USAM40), loadImageEl(LOGO_VET)]);
 
@@ -292,5 +292,24 @@ export async function downloadInformeSemanalPDF(informe) {
   doc.setTextColor(136, 136, 170);
   doc.text(`AcadVet USAM  ·  Generado el ${new Date().toLocaleDateString('es-SV')}`, PW / 2, 205, { align: 'center' });
 
-  doc.save(`Informe_Semanal_${safeFilename(informe.materiaNombre)}_${informe.semanaInicio || ''}.pdf`);
+  return doc;
+}
+
+function informePdfFilename(informe) {
+  return `Informe_Semanal_${safeFilename(informe.materiaNombre)}_${informe.semanaInicio || ''}.pdf`;
+}
+
+export async function downloadInformeSemanalPDF(informe) {
+  const doc = await buildInformePdfDoc(informe);
+  doc.save(informePdfFilename(informe));
+}
+
+/** Genera el PDF sin descargarlo — para adjuntarlo en el envío por correo. */
+export async function getInformeSemanalPdfBase64(informe) {
+  const doc      = await buildInformePdfDoc(informe);
+  const dataUri  = doc.output('datauristring');
+  return {
+    base64:   dataUri.split(',')[1],
+    filename: informePdfFilename(informe),
+  };
 }

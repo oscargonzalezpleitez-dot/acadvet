@@ -8,10 +8,11 @@
 import {
   getMaterias, getAlumnos, alumnosByMateria,
   createInformeSemanal, updateInformeSemanal, deleteInformeSemanal,
-  getInformesSemanales,
+  getInformesSemanales, getInformeEmailDefault, setInformeEmailDefault,
 } from '../db.js';
 import { showToast, openModal, closeModal } from '../ui.js';
-import { downloadInformeSemanalWord, downloadInformeSemanalPDF } from '../informe-semanal-export.js';
+import { downloadInformeSemanalWord, downloadInformeSemanalPDF, getInformeSemanalPdfBase64 } from '../informe-semanal-export.js';
+import { sendInformeSemanalEmail } from '../informe-semanal-email.js';
 
 const CRITERIOS_FIJOS = [
   { numero: 1, criterio: 'Número de estudiantes atendidos' },
@@ -24,18 +25,21 @@ const CRITERIOS_FIJOS = [
 
 const ACADEMICO_DEFAULT = 'Oscar Alfredo Gonzalez Pleitez';
 
-let _container = null;
-let _materias  = [];
-let _informes  = [];
-let _tab       = 'crear';
-let _criterios = [];
-let _editId    = null;
+let _container    = null;
+let _materias     = [];
+let _informes     = [];
+let _tab          = 'crear';
+let _criterios    = [];
+let _editId       = null;
+let _defaultEmail = '';
 
 export async function renderInformeSemanal(container) {
   _container = container;
   container.innerHTML = `<div class="loading-state"><div class="loading-spinner"></div><p>Cargando informes semanales…</p></div>`;
   try {
-    [_materias, _informes] = await Promise.all([getMaterias(), getInformesSemanales()]);
+    [_materias, _informes, _defaultEmail] = await Promise.all([
+      getMaterias(), getInformesSemanales(), getInformeEmailDefault(),
+    ]);
   } catch (err) {
     console.error('[AcadVet] Error cargando informes semanales:', err);
     container.innerHTML = `
@@ -349,6 +353,7 @@ function renderTabHistorial(el) {
             <button class="btn btn--secondary btn--sm informe-edit-btn" data-id="${i.id}">✏️ Editar</button>
             <button class="btn btn--secondary btn--sm informe-word-btn" data-id="${i.id}">📝 Word</button>
             <button class="btn btn--secondary btn--sm informe-pdf-btn" data-id="${i.id}">📄 PDF</button>
+            <button class="btn btn--secondary btn--sm informe-email-btn" data-id="${i.id}">📧 Enviar</button>
             <button class="btn btn--danger btn--sm" data-delete="${i.id}">Eliminar</button>
           </div>
         </div>
@@ -361,6 +366,7 @@ function renderTabHistorial(el) {
     const editBtn   = e.target.closest('.informe-edit-btn');
     const wordBtn   = e.target.closest('.informe-word-btn');
     const pdfBtn    = e.target.closest('.informe-pdf-btn');
+    const emailBtn  = e.target.closest('.informe-email-btn');
     const deleteBtn = e.target.closest('[data-delete]');
 
     if (verBtn) {
@@ -396,6 +402,11 @@ function renderTabHistorial(el) {
       finally { pdfBtn.disabled = false; }
     }
 
+    if (emailBtn) {
+      const informe = _informes.find(i => i.id === emailBtn.dataset.id);
+      if (informe) openEnviarCorreoModal(informe);
+    }
+
     if (deleteBtn) {
       const id      = deleteBtn.dataset.delete;
       const informe = _informes.find(i => i.id === id);
@@ -413,6 +424,51 @@ function renderTabHistorial(el) {
         },
       });
     }
+  });
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function openEnviarCorreoModal(informe) {
+  openModal({
+    title: 'Enviar informe por correo',
+    body: `
+      <div class="form-group">
+        <label class="form-label">Correo destino</label>
+        <input class="form-input" id="correoDestino" type="email" placeholder="ejemplo@correo.com" value="${esc(_defaultEmail)}">
+      </div>
+      <p class="cuest-hint">
+        Se adjunta el PDF de <strong>${esc(informe.materiaNombre)}</strong>
+        (${esc(formatRango(informe.semanaInicio, informe.semanaFin))}).
+      </p>
+    `,
+    confirmLabel: 'Enviar',
+    confirmVariant: 'primary',
+    onConfirm: async () => {
+      const email = document.getElementById('correoDestino')?.value.trim();
+      if (!email || !EMAIL_RE.test(email)) {
+        showToast('Ingresá un correo válido.', 'error');
+        return;
+      }
+      try {
+        const { base64, filename } = await getInformeSemanalPdfBase64(informe);
+        await sendInformeSemanalEmail({
+          to: email,
+          subject: `Informe Semanal — ${informe.materiaNombre} (${formatRango(informe.semanaInicio, informe.semanaFin)})`,
+          pdfBase64: base64,
+          filename,
+        });
+        if (email !== _defaultEmail) {
+          _defaultEmail = email;
+          setInformeEmailDefault(email).catch(() => {});
+        }
+        closeModal();
+        showToast(`Informe enviado a ${email}.`, 'success');
+      } catch (err) {
+        console.error('[AcadVet] Error enviando informe por correo:', err);
+        showToast(err?.message || 'No se pudo enviar el correo. Revisá tu conexión.', 'error');
+      }
+    },
   });
 }
 

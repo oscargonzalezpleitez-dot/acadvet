@@ -7,6 +7,10 @@
       "lab_location": {
         ".read": true,
         ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
+      },
+      "informe_email_default": {
+        ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
+        ".write": "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')"
       }
     },
 
