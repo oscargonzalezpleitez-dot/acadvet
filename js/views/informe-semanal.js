@@ -55,26 +55,45 @@ const LOGRO_APRENDIZAJE_OPCIONES = [
 ];
 const LOGRO_LS_KEY = 'acadvet_ultimo_logro_aprendizaje';
 
+// Variaciones para el criterio 3 (Cumplimiento de la Tarea): mismo mecanismo,
+// siempre en 100% (asumiendo que sí hubo tarea esa semana) con una redacción
+// distinta a la del informe anterior. Cuando no hubo tarea en el aula, el
+// botón "Sin tarea esta semana" reemplaza este valor por el texto fijo.
+const TAREA_CUMPLIMIENTO_OPCIONES = [
+  { valor: '100%', explicacion: 'Todos los estudiantes realizaron la tarea asignada de forma completa.' },
+  { valor: '100%', explicacion: 'La totalidad del grupo cumplió satisfactoriamente con la tarea asignada.' },
+  { valor: '100%', explicacion: 'Todos los estudiantes entregaron la tarea completa y dentro del plazo establecido.' },
+  { valor: '100%', explicacion: 'El grupo mostró un cumplimiento total en la realización de la tarea asignada.' },
+  { valor: '100%', explicacion: 'La totalidad de los estudiantes completó la tarea de manera satisfactoria.' },
+  { valor: '100%', explicacion: 'Todos los estudiantes cumplieron a cabalidad con la tarea encomendada esta semana.' },
+  { valor: '100%', explicacion: 'Se registró un cumplimiento completo de la tarea por parte de todo el grupo.' },
+  { valor: '100%', explicacion: 'El 100% del grupo realizó la tarea asignada de forma completa y correcta.' },
+];
+const TAREA_LS_KEY = 'acadvet_ultima_tarea_cumplimiento';
+const TAREA_SIN_TAREA = { valor: 'N/A', explicacion: 'No se hicieron tareas evaluadas esta semana.' };
+
 /** Elige una opción del pool distinta a la usada en el informe anterior. */
-function siguienteLogroAprendizaje() {
+function elegirDistintoAlAnterior(pool, lsKey, campo = 'valor') {
   let anterior = null;
-  try { anterior = localStorage.getItem(LOGRO_LS_KEY); } catch (_) {}
-  const disponibles = LOGRO_APRENDIZAJE_OPCIONES.filter(o => o.valor !== anterior);
-  const pool = disponibles.length ? disponibles : LOGRO_APRENDIZAJE_OPCIONES;
-  const elegido = pool[Math.floor(Math.random() * pool.length)];
-  try { localStorage.setItem(LOGRO_LS_KEY, elegido.valor); } catch (_) {}
+  try { anterior = localStorage.getItem(lsKey); } catch (_) {}
+  const disponibles = pool.filter(o => o[campo] !== anterior);
+  const usable = disponibles.length ? disponibles : pool;
+  const elegido = usable[Math.floor(Math.random() * usable.length)];
+  try { localStorage.setItem(lsKey, elegido[campo]); } catch (_) {}
   return elegido;
 }
 
-/** Plantilla de criterios en blanco para un informe nuevo, con el criterio 2
- *  ya precargado con una redacción positiva distinta a la del último informe. */
+/** Plantilla de criterios en blanco para un informe nuevo, con los criterios
+ *  2 y 3 ya precargados con una redacción positiva distinta a la del último
+ *  informe. */
 function criteriosNuevo() {
-  const logro = siguienteLogroAprendizaje();
-  return CRITERIOS_FIJOS.map((c, i) => ({
-    ...c,
-    valor:       i === 1 ? logro.valor       : '',
-    explicacion: i === 1 ? logro.explicacion : '',
-  }));
+  const logro = elegirDistintoAlAnterior(LOGRO_APRENDIZAJE_OPCIONES, LOGRO_LS_KEY);
+  const tarea = elegirDistintoAlAnterior(TAREA_CUMPLIMIENTO_OPCIONES, TAREA_LS_KEY, 'explicacion');
+  return CRITERIOS_FIJOS.map((c, i) => {
+    if (i === 1) return { ...c, valor: logro.valor, explicacion: logro.explicacion };
+    if (i === 2) return { ...c, valor: tarea.valor, explicacion: tarea.explicacion };
+    return { ...c, valor: '', explicacion: '' };
+  });
 }
 
 let _container    = null;
@@ -235,6 +254,7 @@ function renderCriteriosList() {
       <div class="cuest-q-card-header">
         <span class="cuest-q-num">${c.numero}</span>
         <span style="font-size:.88rem;font-weight:600;color:var(--color-text)">${esc(c.criterio)}</span>
+        ${i === 2 ? `<button type="button" class="btn btn--secondary btn--sm" id="btnSinTarea" style="margin-left:auto">Sin tarea esta semana</button>` : ''}
       </div>
       <div class="cuest-row-2" style="margin-top:var(--space-3)">
         <div class="form-group">
@@ -248,6 +268,14 @@ function renderCriteriosList() {
       </div>
     </div>
   `).join('');
+
+  document.getElementById('btnSinTarea')?.addEventListener('click', () => {
+    syncCriteriosFromDOM();
+    _criterios[2].valor       = TAREA_SIN_TAREA.valor;
+    _criterios[2].explicacion = TAREA_SIN_TAREA.explicacion;
+    document.getElementById('c-2-valor').value       = TAREA_SIN_TAREA.valor;
+    document.getElementById('c-2-explicacion').value = TAREA_SIN_TAREA.explicacion;
+  });
 }
 
 function syncCriteriosFromDOM() {
