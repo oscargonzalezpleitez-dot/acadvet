@@ -88,6 +88,20 @@ const EVALUACIONES_LS_KEY = 'acadvet_ultima_evaluacion_cumplimiento';
 const EVALUACIONES_SIN_DATOS = { valor: 'N/A', explicacion: 'No se realizaron controles de lectura ni evaluaciones esta semana.' };
 const NOTA_APROBATORIA_PCT = 60; // mismo umbral que usa el panel de Cuestionarios
 
+// Variaciones para el criterio 5 (Tipo de orientación): siempre "Académica",
+// con una redacción distinta a la del informe anterior.
+const ORIENTACION_OPCIONES = [
+  { valor: 'Académica', explicacion: 'Se brindó orientación académica sobre los contenidos y actividades de la semana.' },
+  { valor: 'Académica', explicacion: 'La orientación de la semana se centró en reforzar los temas vistos en clase.' },
+  { valor: 'Académica', explicacion: 'Se acompañó a los estudiantes con orientación académica relacionada con el curso.' },
+  { valor: 'Académica', explicacion: 'Se atendieron consultas académicas de los estudiantes sobre el contenido de la semana.' },
+  { valor: 'Académica', explicacion: 'La orientación brindada fue de carácter académico, enfocada en el desarrollo del curso.' },
+  { valor: 'Académica', explicacion: 'Se dio seguimiento académico a los estudiantes sobre los temas abordados en la semana.' },
+  { valor: 'Académica', explicacion: 'Se orientó a los estudiantes en aspectos académicos relacionados con la materia.' },
+  { valor: 'Académica', explicacion: 'La orientación de la semana fue académica, centrada en el avance del curso.' },
+];
+const ORIENTACION_LS_KEY = 'acadvet_ultima_orientacion';
+
 /** Elige una opción del pool distinta a la usada en el informe anterior. */
 function elegirDistintoAlAnterior(pool, lsKey, campo = 'valor') {
   let anterior = null;
@@ -100,14 +114,16 @@ function elegirDistintoAlAnterior(pool, lsKey, campo = 'valor') {
 }
 
 /** Plantilla de criterios en blanco para un informe nuevo, con los criterios
- *  2 y 3 ya precargados con una redacción positiva distinta a la del último
- *  informe. */
+ *  2, 3 y 5 ya precargados con una redacción positiva distinta a la del
+ *  último informe. */
 function criteriosNuevo() {
-  const logro = elegirDistintoAlAnterior(LOGRO_APRENDIZAJE_OPCIONES, LOGRO_LS_KEY);
-  const tarea = elegirDistintoAlAnterior(TAREA_CUMPLIMIENTO_OPCIONES, TAREA_LS_KEY, 'explicacion');
+  const logro       = elegirDistintoAlAnterior(LOGRO_APRENDIZAJE_OPCIONES, LOGRO_LS_KEY);
+  const tarea       = elegirDistintoAlAnterior(TAREA_CUMPLIMIENTO_OPCIONES, TAREA_LS_KEY, 'explicacion');
+  const orientacion = elegirDistintoAlAnterior(ORIENTACION_OPCIONES, ORIENTACION_LS_KEY, 'explicacion');
   return CRITERIOS_FIJOS.map((c, i) => {
     if (i === 1) return { ...c, valor: logro.valor, explicacion: logro.explicacion };
     if (i === 2) return { ...c, valor: tarea.valor, explicacion: tarea.explicacion };
+    if (i === 4) return { ...c, valor: orientacion.valor, explicacion: orientacion.explicacion };
     return { ...c, valor: '', explicacion: '' };
   });
 }
