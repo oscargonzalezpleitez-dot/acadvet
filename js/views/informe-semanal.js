@@ -102,6 +102,23 @@ const ORIENTACION_OPCIONES = [
 ];
 const ORIENTACION_LS_KEY = 'acadvet_ultima_orientacion';
 
+// Variaciones para el criterio 6 (Observaciones): comentario general del
+// desarrollo de la semana, con una redacción distinta a la del informe
+// anterior. No lleva "valor" (número/porcentaje), solo explicación.
+const OBSERVACIONES_OPCIONES = [
+  { explicacion: 'Las aulas se encontraron limpias y en buen estado durante toda la semana.' },
+  { explicacion: 'Las clases se desarrollaron con normalidad y de acuerdo a la jornalización establecida.' },
+  { explicacion: 'Se contó con los recursos necesarios para el desarrollo normal de las clases.' },
+  { explicacion: 'El desarrollo de la jornada académica transcurrió sin contratiempos durante la semana.' },
+  { explicacion: 'Los estudiantes mostraron buena disposición y participación durante las clases.' },
+  { explicacion: 'Las instalaciones y el mobiliario se encontraron en condiciones adecuadas para las clases.' },
+  { explicacion: 'La semana académica se desarrolló con normalidad, cumpliendo la jornalización prevista.' },
+  { explicacion: 'No se registraron incidencias durante el desarrollo de las clases de la semana.' },
+  { explicacion: 'El ambiente de trabajo en el aula fue adecuado durante toda la semana.' },
+  { explicacion: 'Se cumplió satisfactoriamente con la jornalización académica planificada para la semana.' },
+];
+const OBSERVACIONES_LS_KEY = 'acadvet_ultima_observacion';
+
 /** Elige una opción del pool distinta a la usada en el informe anterior. */
 function elegirDistintoAlAnterior(pool, lsKey, campo = 'valor') {
   let anterior = null;
@@ -114,16 +131,18 @@ function elegirDistintoAlAnterior(pool, lsKey, campo = 'valor') {
 }
 
 /** Plantilla de criterios en blanco para un informe nuevo, con los criterios
- *  2, 3 y 5 ya precargados con una redacción positiva distinta a la del
+ *  2, 3, 5 y 6 ya precargados con una redacción positiva distinta a la del
  *  último informe. */
 function criteriosNuevo() {
-  const logro       = elegirDistintoAlAnterior(LOGRO_APRENDIZAJE_OPCIONES, LOGRO_LS_KEY);
-  const tarea       = elegirDistintoAlAnterior(TAREA_CUMPLIMIENTO_OPCIONES, TAREA_LS_KEY, 'explicacion');
-  const orientacion = elegirDistintoAlAnterior(ORIENTACION_OPCIONES, ORIENTACION_LS_KEY, 'explicacion');
+  const logro        = elegirDistintoAlAnterior(LOGRO_APRENDIZAJE_OPCIONES, LOGRO_LS_KEY);
+  const tarea        = elegirDistintoAlAnterior(TAREA_CUMPLIMIENTO_OPCIONES, TAREA_LS_KEY, 'explicacion');
+  const orientacion  = elegirDistintoAlAnterior(ORIENTACION_OPCIONES, ORIENTACION_LS_KEY, 'explicacion');
+  const observacion  = elegirDistintoAlAnterior(OBSERVACIONES_OPCIONES, OBSERVACIONES_LS_KEY, 'explicacion');
   return CRITERIOS_FIJOS.map((c, i) => {
     if (i === 1) return { ...c, valor: logro.valor, explicacion: logro.explicacion };
     if (i === 2) return { ...c, valor: tarea.valor, explicacion: tarea.explicacion };
     if (i === 4) return { ...c, valor: orientacion.valor, explicacion: orientacion.explicacion };
+    if (i === 5) return { ...c, valor: '', explicacion: observacion.explicacion };
     return { ...c, valor: '', explicacion: '' };
   });
 }
