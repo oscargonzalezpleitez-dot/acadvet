@@ -885,6 +885,10 @@ export async function getCuestionariosResultadosByCarnet(carnet) {
     .sort((a, b) => (b.submitTime || 0) - (a.submitTime || 0));
 }
 
+export async function updateResultado(id, data) {
+  await update(ref(db, `cuestionarios_resultados/${id}`), data);
+}
+
 export async function deleteResultado(id) {
   // Leer el resultado para obtener quizId y carnet antes de borrarlo
   const snap = await get(ref(db, `cuestionarios_resultados/${id}`));

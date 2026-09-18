@@ -819,7 +819,10 @@ function paintResultados(el) {
                     </td>
                     <td><span class="carnet-chip">${esc(r.alumno?.carnet || '—')}</span></td>
                     <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(r.cuestionarioNombre || '—')}</td>
-                    <td><strong>${r.puntos ?? '—'}/${r.puntosTotal ?? '—'}</strong></td>
+                    <td>
+                      <strong>${r.puntos ?? '—'}/${r.puntosTotal ?? '—'}</strong>
+                      ${r.notaModificada ? `<span class="cuest-status-badge cuest-status--warn" style="margin-left:6px" title="${esc(r.notaModificadaMotivo || '')}">Nota modificada</span>` : ''}
+                    </td>
                     <td><span class="${cls}" style="font-weight:700">${pct}%</span></td>
                     <td style="text-align:center">${r.blurs ?? 0}</td>
                     <td style="white-space:nowrap;font-size:.8rem;color:var(--color-text-muted)">${fecha}</td>
@@ -950,6 +953,7 @@ function openResultadoModal(r) {
             <p style="color:var(--color-text-muted);font-size:.85rem">Email: ${esc(r.alumno?.email || '—')}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Fecha: ${fecha}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Salidas del examen: ${r.blurs ?? 0}</p>
+            ${r.notaModificada ? `<p style="margin-top:4px"><span class="cuest-status-badge cuest-status--warn">Nota modificada</span> <span style="color:var(--color-text-muted);font-size:.8rem">${esc(r.notaModificadaMotivo || '')}</span></p>` : ''}
           </div>
           <div class="cuest-modal-score" style="color:${pctColor}">
             <div class="cuest-modal-pct">${pct}%</div>

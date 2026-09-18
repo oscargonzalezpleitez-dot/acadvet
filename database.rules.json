@@ -183,7 +183,7 @@
       ".read":  "auth != null && (auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv')",
       ".write": "auth != null",
       "$resultId": {
-        ".validate": "newData.hasChildren(['cuestionarioId', 'alumno']) && !data.exists()"
+        ".validate": "(auth.token.email == 'docente@acadvet-usam.edu.sv' || auth.token.email == 'eps@acadvet-usam.edu.sv') || (newData.hasChildren(['cuestionarioId', 'alumno']) && !data.exists())"
       }
     },
 
