@@ -8,9 +8,13 @@
 
 import { getGruposSorteosByMateria } from './db.js';
 import { openModal, closeModal, showToast } from './ui.js';
+import { exportExposicionesExcel, exportExposicionesPDF } from './exposiciones-export.js';
 
 // Fecha del sorteo que se preselecciona al abrir el segmento, si existe.
 const FECHA_PREFERIDA = '2026-07-23';
+
+// Sorteo actualmente mostrado en el modal (para exportar Excel/PDF).
+let _sorteoActual = null;
 
 // ---------------------------------------------------------------------------
 // Entrada pública
@@ -85,6 +89,13 @@ function bodyHTML(sorteos, selected) {
       <p class="text-xs text-muted" style="margin:-2px 0 var(--space-3)">
         No encontré un sorteo del 23 de julio en esta materia — mostrando ${fechaLabel(selected.fecha)}.
       </p>` : ''}
+    <div class="grp-results-toolbar">
+      <span class="grp-results-hint">Descargá las calificaciones de todos los grupos de este sorteo en un solo archivo.</span>
+      <div class="grp-results-actions">
+        <button class="btn btn--secondary btn--sm" id="expoExportExcel">📊 Excel</button>
+        <button class="btn btn--secondary btn--sm" id="expoExportPDF">📄 PDF</button>
+      </div>
+    </div>
     <div class="grp-results-grid" id="expoGruposGrid"></div>
   `;
 }
@@ -95,9 +106,29 @@ function wire(sorteos, inicial) {
     const s = sorteos.find(x => x.id === e.target.value);
     if (s) paintGrupos(s);
   });
+  document.getElementById('expoExportExcel')?.addEventListener('click', e => runExport(e.currentTarget, exportExposicionesExcel, 'Excel'));
+  document.getElementById('expoExportPDF')?.addEventListener('click', e => runExport(e.currentTarget, exportExposicionesPDF, 'PDF'));
+}
+
+async function runExport(btn, fn, label) {
+  if (!_sorteoActual || !btn) return;
+  const orig = btn.innerHTML;
+  btn.disabled = true;
+  btn.textContent = 'Generando…';
+  try {
+    await fn(_sorteoActual);
+    showToast(`${label} de exposiciones generado`);
+  } catch (err) {
+    console.error(`[AcadVet] Error generando ${label} de exposiciones:`, err);
+    showToast(`Error al generar el ${label}. Verificá tu conexión.`, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = orig;
+  }
 }
 
 function paintGrupos(sorteo) {
+  _sorteoActual = sorteo;
   const grid = document.getElementById('expoGruposGrid');
   if (!grid) return;
   const nombres = sorteo.alumnos ?? {};
