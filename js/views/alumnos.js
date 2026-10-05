@@ -15,6 +15,7 @@ import { openQRSession } from '../qr-session.js';
 import { openGruposSorteo } from '../grupos-trabajo.js';
 import { openCalificarExposiciones } from '../exposiciones-grupos.js';
 import { openCargarExamenCorto } from '../examen-corto-masivo.js';
+import { MATERIA_GRUPO3_BACTERIO_ID, calcAsistPctGrupo3 } from '../asistencia-grupo3.js';
 
 const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
 
@@ -661,6 +662,9 @@ function calcAlumnoStats(insc) {
   // otro checkType de ese mismo día no se haya registrado o esté ausente.
   // Se calcula por separado para cada área (1/2/3).
   const asistPctArea = areaNum => {
+    if (_materiaId === MATERIA_GRUPO3_BACTERIO_ID) {
+      return calcAsistPctGrupo3(asists.filter(a => Number(a.area ?? 1) === areaNum));
+    }
     const porFecha = new Map();
     asists.filter(a => Number(a.area ?? 1) === areaNum).forEach(a => {
       const f = a.fecha ?? `sin-fecha-${a.id}`;

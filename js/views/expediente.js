@@ -16,6 +16,7 @@ import {
 } from '../db.js';
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
+import { MATERIA_GRUPO3_BACTERIO_ID, calcAsistPctGrupo3 } from '../asistencia-grupo3.js';
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
@@ -1586,9 +1587,10 @@ function calcAsistSummary(asists) {
   });
 
   const total = porFecha.size;
-  const pct = total > 0
+  let pct = total > 0
     ? Math.round(((presentes + justificados) / total) * 100)
     : 0;
+  if (_materiaId === MATERIA_GRUPO3_BACTERIO_ID) pct = calcAsistPctGrupo3(asists) ?? 0;
   return { total, presentes, justificados, ausentes, pct };
 }
 

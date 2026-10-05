@@ -20,6 +20,7 @@ import {
 import { app, auth } from './firebase-config.js';
 import { activarPushParaAlumno, canUsePush, isIOS, isStandalone } from './push.js';
 import { marcarAlumnoConectado, marcarAlumnoDesconectado } from './db.js';
+import { MATERIA_GRUPO3_BACTERIO_ID, calcAsistPctGrupo3 } from './asistencia-grupo3.js';
 
 const db = getDatabase(app);
 const CACHE_KEY = 'acadvet_mi_perfil';
@@ -431,7 +432,10 @@ function snapToArray(s) {
 // Agrupa por fecha: un día cuenta como una sola clase aunque tenga registro
 // de inicio y de fin por separado. Si al menos uno de los dos quedó
 // presente/justificado, el día completo cuenta como asistido.
-function calcAsistPct(asists, areaNum) {
+function calcAsistPct(asists, areaNum, materiaId) {
+  if (materiaId === MATERIA_GRUPO3_BACTERIO_ID) {
+    return calcAsistPctGrupo3(asists.filter(a => Number(a.area ?? 1) === areaNum));
+  }
   const porFecha = new Map();
   asists.filter(a => Number(a.area ?? 1) === areaNum).forEach(a => {
     const f = a.fecha ?? `sin-fecha-${a.id}`;
@@ -471,9 +475,9 @@ function calcStats(m) {
   }
 
   return {
-    asistPct1: calcAsistPct(m.asists, 1),
-    asistPct2: calcAsistPct(m.asists, 2),
-    asistPct3: calcAsistPct(m.asists, 3),
+    asistPct1: calcAsistPct(m.asists, 1, m.materiaId),
+    asistPct2: calcAsistPct(m.asists, 2, m.materiaId),
+    asistPct3: calcAsistPct(m.asists, 3, m.materiaId),
     notaFinal: notaFinal !== null ? notaFinal.toFixed(2) : null,
     estado, estadoLabel,
   };
