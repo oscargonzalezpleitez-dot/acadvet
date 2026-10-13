@@ -11,10 +11,10 @@ const rtdb    = getDatabase(app);
 const storage = getStorage(app);
 
 export const GALLERY_CATEGORIES = [
-  { id: 'bacteriologia', label: 'Bacteriología',  color: '#6C63FF' },
-  { id: 'micologia',     label: 'Micología',       color: '#00B894' },
-  { id: 'lab_clinico',   label: 'Lab Clínico',     color: '#00D2D3' },
-  { id: 'histologia',    label: 'Histología',      color: '#FF6B6B' },
+  { id: 'bacteriologia', label: 'Bacteriología',  color: '#5A6B8C' },
+  { id: 'micologia',     label: 'Micología',       color: '#4C8060' },
+  { id: 'lab_clinico',   label: 'Lab Clínico',     color: '#3E7A8C' },
+  { id: 'histologia',    label: 'Histología',      color: '#AE5A4E' },
 ];
 
 // Sube imagen a Storage y guarda metadata en RTDB

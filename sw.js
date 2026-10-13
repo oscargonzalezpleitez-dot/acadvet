@@ -53,7 +53,7 @@ self.addEventListener('notificationclick', (event) => {
   );
 });
 
-const CACHE_VERSION = 'acadvet-shell-v1';
+const CACHE_VERSION = 'acadvet-shell-v2-identity';
 
 const APP_SHELL = [
   './index.html',
@@ -62,6 +62,7 @@ const APP_SHELL = [
   './css/main.css',
   './css/components.css',
   './css/views.css',
+  './css/identity.css?v=20261012a',
   './js/app.js',
   './js/auth.js',
   './js/router.js',

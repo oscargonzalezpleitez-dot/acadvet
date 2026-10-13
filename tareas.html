@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-acadvet-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Entrega de Tareas — AcadVet USAM</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -33,7 +33,7 @@
       --border:    rgba(108, 99, 255, 0.2);
       --text:      #F0F2FF;
       --muted:     #8888AA;
-      --font-d:    'Poppins', sans-serif;
+      --font-d:    var(--font-body);
       --font-b:    'Inter', sans-serif;
     }
 
@@ -324,8 +324,9 @@
       margin-top: 20px;
     }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
-<body>
+<body data-acadvet-page="tareas">
 
   <div class="blob blob--purple" aria-hidden="true"></div>
   <div class="blob blob--cyan"   aria-hidden="true"></div>

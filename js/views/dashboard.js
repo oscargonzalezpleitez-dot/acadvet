@@ -95,7 +95,7 @@ export function renderDashboard(container, data = null) {
       <div class="section-header" style="margin-top:var(--space-6)">
         <h3 class="section-title">Módulos</h3>
       </div>
-      <div class="materias-grid" style="margin-bottom:var(--space-6)">
+      <div class="materias-grid dashboard-modules" style="margin-bottom:var(--space-6)">
         <a href="admin-mobile.html" style="text-decoration:none">
           <div class="materia-card" style="cursor:pointer">
             <div class="materia-card__accent" style="background:linear-gradient(135deg,#00D2D3 0%,#6C63FF 100%)"></div>

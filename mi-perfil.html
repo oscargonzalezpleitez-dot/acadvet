@@ -7,7 +7,7 @@
   <title>Mi Perfil — AcadVet USAM</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -24,7 +24,7 @@
       --danger: #FF6B6B; --warning: #FDCB6E; --bg: #F2F6FB; --surface: #FFFFFF;
       --text: #0A1628; --text-2: #2D4A6B; --muted: #6B8BAD;
       --border: rgba(0,86,166,0.15); --r-md: 12px; --r-lg: 20px; --r-full: 9999px;
-      --font: 'Poppins', sans-serif;
+      --font: var(--font-body);
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: var(--font); background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 48px; }
@@ -135,8 +135,9 @@
 
     .hidden { display: none !important; }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
-<body>
+<body data-acadvet-page="mi-perfil">
 
   <div class="loading-overlay" id="loadingOverlay">
     <div class="spinner"></div>

@@ -29,8 +29,8 @@ let _sortKey   = 'nombre'; // 'nombre' | 'promedio'
 
 // Paleta de colores para avatares (consistente por alumno via hash)
 const AVATAR_PALETTE = [
-  '#6C63FF', '#00B4B5', '#FF6B6B',
-  '#00B894', '#FDCB6E', '#74B9FF',
+  '#5A6B8C', '#3E7A8C', '#9C4A42',
+  '#4C8060', '#B8763A', '#4A7A9C',
 ];
 
 // ---------------------------------------------------------------------------
@@ -117,7 +117,7 @@ function paint() {
             Importar QR
           </button>
           <button class="btn btn--sm" id="btnSesionQR" title="Iniciar sesión QR de asistencia"
-            style="background:linear-gradient(135deg,var(--color-accent),#009899);color:#fff;border:none;box-shadow:0 3px 12px rgba(0,210,211,0.35)">
+            style="background:var(--color-accent);color:#fff;border:none;box-shadow:none">
             <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/>
               <rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="3" height="3"/>

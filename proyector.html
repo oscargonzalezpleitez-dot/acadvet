@@ -1,12 +1,12 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="es" data-acadvet-theme="dark">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Proyector QR — AcadVet USAM</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -22,7 +22,7 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'Poppins', sans-serif;
+      font-family: var(--font-body);
       background: #0B0D1A;
       color: #F0F2FF;
       min-height: 100vh;
@@ -174,9 +174,10 @@
     /* SVG ring circ */
     .proy-ring { transform: rotate(-90deg); }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
 
-<body>
+<body data-acadvet-page="proyector">
   <header class="proy-header">
     <div class="proy-logo">
       <div class="proy-logo-icon">🐾</div>

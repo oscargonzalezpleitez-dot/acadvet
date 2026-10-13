@@ -513,7 +513,7 @@ function showSuccess(nombre, carnet, estado) {
       ${isTardio ? `
       <div style="display:flex;justify-content:space-between">
         <span class="text-muted text-sm">Estado</span>
-        <span class="font-bold text-sm" style="color:#FDCB6E">⏱ Tardío</span>
+        <span class="font-bold text-sm" style="color:#94601d">⏱ Tardío</span>
       </div>` : ''}
     </div>`;
 

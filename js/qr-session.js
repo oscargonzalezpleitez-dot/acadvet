@@ -229,7 +229,7 @@ function buildOverlay(materia) {
         </div>
         <div id="qrTardioWrap" style="display:${c.markLate ? 'flex' : 'none'};flex-direction:column;align-items:center">
           <div class="qr-tardio-count" id="qrTardioCount">0</div>
-          <div class="qr-counter-label" style="font-size:.8rem;color:#FDCB6E">tardíos</div>
+          <div class="qr-counter-label" style="font-size:.8rem;color:#94601d">tardíos</div>
         </div>
       </div>
       <div class="qr-attendee-list" id="qrAttendeeList">

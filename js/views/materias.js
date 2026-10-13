@@ -11,10 +11,10 @@ import { openModal, closeModal, showToast } from '../ui.js';
 
 // Colores asignados por posición en la lista de activas
 const COLORS = [
-  { dot: '#6C63FF', badge: 'badge--primary' },
-  { dot: '#00B4B5', badge: 'badge--accent' },
-  { dot: '#FF6B6B', badge: 'badge--danger' },
-  { dot: '#00B894', badge: 'badge--success' },
+  { dot: '#5A6B8C', badge: 'badge--primary' },
+  { dot: '#3E7A8C', badge: 'badge--accent' },
+  { dot: '#9C4A42', badge: 'badge--danger' },
+  { dot: '#4C8060', badge: 'badge--success' },
 ];
 
 // Cache local — se recarga en cada operación

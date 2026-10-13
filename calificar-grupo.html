@@ -6,7 +6,7 @@
   <title>Calificar Exposición — AcadVet USAM</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -20,13 +20,13 @@
 
   <style>
     :root {
-      --primary:#6C63FF; --primary-light:#A29BFE; --accent:#00D2D3;
+      --primary:#233e50; --primary-light:#78919b; --accent:#925532;
       --success:#00B894; --danger:#FF6B6B; --warning:#FDCB6E;
-      --bg:#F0F2FF; --surface:#FFFFFF; --surface-2:#ECEEFF;
-      --text:#1A1A2E; --text-2:#4A4A6A; --text-muted:#8888AA;
-      --border:rgba(108,99,255,0.15);
+      --bg:#f5f2ec; --surface:#FFFFFF; --surface-2:#eeeae2;
+      --text:#24343d; --text-2:#4e5c62; --text-muted:#67716f;
+      --border:rgba(35,62,80,0.15);
       --radius-sm:6px; --radius-md:12px; --radius-lg:20px; --radius-full:9999px;
-      --font-d:'Poppins',sans-serif; --font-b:'Inter',sans-serif;
+      --font-d:var(--font-body); --font-b:'Inter',sans-serif;
     }
     *,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: var(--font-b); background: var(--bg); color: var(--text); min-height: 100vh; }
@@ -70,8 +70,8 @@
     .member-row:hover { border-color: var(--primary-light); }
     .member-row.active {
       border-color: var(--primary);
-      background: rgba(108,99,255,.10);
-      box-shadow: 0 0 0 2px rgba(108,99,255,.12);
+      background: rgba(35,62,80,.10);
+      box-shadow: 0 0 0 2px rgba(35,62,80,.12);
     }
     .member-avatar {
       width: 32px; height: 32px; border-radius: 50%;
@@ -129,7 +129,7 @@
 
     .rubric-total {
       display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-      background: rgba(108,99,255,.08); border-radius: var(--radius-md);
+      background: rgba(35,62,80,.08); border-radius: var(--radius-md);
       padding: 12px 16px; font-size: .86rem; color: var(--text-2); margin-bottom: 10px;
     }
     .rubric-total strong { color: var(--primary); font-size: 1rem; }
@@ -150,15 +150,16 @@
       min-height: 60vh; flex-direction: column; gap: 10px; color: var(--text-muted);
     }
     .spinner {
-      width: 32px; height: 32px; border: 3px solid rgba(108,99,255,0.2);
+      width: 32px; height: 32px; border: 3px solid rgba(35,62,80,0.2);
       border-top-color: var(--primary); border-radius: 50%; animation: spin .8s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
     .hidden { display: none !important; }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
 
-<body>
+<body data-acadvet-page="calificar-grupo">
   <header class="header">
     <div>
       <div class="header-title" id="hMateria">Cargando…</div>

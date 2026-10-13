@@ -6,7 +6,7 @@
   <title>Tabla de Referencia — AcadVet</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -18,25 +18,25 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary:       #6C63FF;
-      --primary-light: #A29BFE;
-      --accent:        #00D2D3;
+      --primary:       #233e50;
+      --primary-light: #78919b;
+      --accent:        #925532;
       --success:       #00B894;
       --danger:        #FF6B6B;
       --warning:       #FDCB6E;
       --low:           #74B9FF;
-      --bg:            #F0F2FF;
+      --bg:            #f5f2ec;
       --surface:       #FFFFFF;
-      --surface-2:     #ECEEFF;
-      --text:          #1A1A2E;
-      --text-2:        #4A4A6A;
-      --text-muted:    #8888AA;
-      --border:        rgba(108,99,255,0.15);
+      --surface-2:     #eeeae2;
+      --text:          #24343d;
+      --text-2:        #4e5c62;
+      --text-muted:    #67716f;
+      --border:        rgba(35,62,80,0.15);
       --radius-sm:     6px;
       --radius-md:     12px;
       --radius-lg:     20px;
       --radius-full:   9999px;
-      --font-d:        'Poppins', sans-serif;
+      --font-d:        var(--font-body);
       --font-b:        'Inter', sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -112,7 +112,7 @@
     .ref-table th:first-child { min-width: 180px; }
     .ref-table td { padding: 10px 12px; border-bottom: 1px solid var(--border); vertical-align: middle; }
     .ref-table tr:last-child td { border-bottom: none; }
-    .ref-table tr:hover td { background: rgba(108,99,255,0.03); }
+    .ref-table tr:hover td { background: rgba(35,62,80,0.03); }
 
     .param-name { font-weight: 600; color: var(--text); }
     .param-unit { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
@@ -153,8 +153,9 @@
       .controls { padding: 10px 12px; }
     }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
-<body>
+<body data-acadvet-page="reference-tables">
 
   <header class="app-header">
     <div class="logo">📊</div>

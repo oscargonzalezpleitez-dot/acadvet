@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Calificar Parciales (Burbujas) — AcadVet</title>
 
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
 
@@ -15,12 +15,12 @@
 
   <style>
     :root {
-      --primary: #6C63FF; --primary-light: #A29BFE; --accent: #00D2D3;
+      --primary: #233e50; --primary-light: #78919b; --accent: #925532;
       --success: #00B894; --danger: #FF6B6B; --warning: #FDCB6E;
-      --bg: #F0F2FF; --surface: #FFFFFF; --surface-2: #ECEEFF;
-      --text: #1A1A2E; --text-2: #4A4A6A; --text-muted: #8888AA;
-      --border: rgba(108,99,255,0.15); --r-sm: 6px; --r-md: 12px; --r-lg: 20px; --r-full: 9999px;
-      --fd: 'Poppins', sans-serif; --fb: 'Inter', sans-serif;
+      --bg: #f5f2ec; --surface: #FFFFFF; --surface-2: #eeeae2;
+      --text: #24343d; --text-2: #4e5c62; --text-muted: #67716f;
+      --border: rgba(35,62,80,0.15); --r-sm: 6px; --r-md: 12px; --r-lg: 20px; --r-full: 9999px;
+      --fd: var(--font-body); --fb: 'Inter', sans-serif;
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body { font-family: var(--fb); background: var(--bg); color: var(--text); min-height: 100vh; padding-bottom: 40px; }
@@ -157,8 +157,9 @@
       table.results { font-size: 0.72rem; }
     }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
-<body>
+<body data-acadvet-page="parciales-omr">
 
   <header class="app-header">
     <div>

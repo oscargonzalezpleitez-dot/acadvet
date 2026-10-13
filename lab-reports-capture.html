@@ -7,7 +7,7 @@
   <title>Lab Reports — AcadVet</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -21,23 +21,23 @@
 
   <style>
     :root {
-      --primary:       #6C63FF;
-      --primary-light: #A29BFE;
-      --accent:        #00D2D3;
+      --primary:       #233e50;
+      --primary-light: #78919b;
+      --accent:        #925532;
       --success:       #00B894;
       --danger:        #FF6B6B;
       --warning:       #FDCB6E;
-      --bg:            #F0F2FF;
+      --bg:            #f5f2ec;
       --surface:       #FFFFFF;
-      --surface-2:     #ECEEFF;
-      --text:          #1A1A2E;
-      --text-2:        #4A4A6A;
-      --text-muted:    #8888AA;
-      --border:        rgba(108,99,255,0.15);
+      --surface-2:     #eeeae2;
+      --text:          #24343d;
+      --text-2:        #4e5c62;
+      --text-muted:    #67716f;
+      --border:        rgba(35,62,80,0.15);
       --radius-md:     12px;
       --radius-lg:     20px;
       --radius-full:   9999px;
-      --font-display:  'Poppins', sans-serif;
+      --font-display:  var(--font-body);
       --font-body:     'Inter', sans-serif;
     }
 
@@ -148,8 +148,8 @@
       margin-top: 8px;
       border-radius: var(--radius-full);
       border: 3px solid var(--accent);
-      background: #a8e63d;
-      color: #1A1A2E;
+      background: var(--accent);
+      color: #fff;
       font-family: var(--font-display);
       font-size: 1.05rem;
       font-weight: 700;
@@ -368,9 +368,10 @@
 
     .hidden { display: none !important; }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
 
-<body>
+<body data-acadvet-page="lab-reports-capture">
 
   <!-- ── Header ── -->
   <header class="app-header">

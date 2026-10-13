@@ -7,7 +7,7 @@
   <title>Parciales con IA — AcadVet</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -21,24 +21,24 @@
 
   <style>
     :root {
-      --primary:       #6C63FF;
-      --primary-light: #A29BFE;
-      --accent:        #00D2D3;
+      --primary:       #233e50;
+      --primary-light: #78919b;
+      --accent:        #925532;
       --success:       #00B894;
       --danger:        #FF6B6B;
       --warning:       #FDCB6E;
-      --bg:            #F0F2FF;
+      --bg:            #f5f2ec;
       --surface:       #FFFFFF;
-      --surface-2:     #ECEEFF;
-      --text:          #1A1A2E;
-      --text-2:        #4A4A6A;
-      --text-muted:    #8888AA;
-      --border:        rgba(108,99,255,0.15);
+      --surface-2:     #eeeae2;
+      --text:          #24343d;
+      --text-2:        #4e5c62;
+      --text-muted:    #67716f;
+      --border:        rgba(35,62,80,0.15);
       --radius-sm:     6px;
       --radius-md:     12px;
       --radius-lg:     20px;
       --radius-full:   9999px;
-      --font-display:  'Poppins', sans-serif;
+      --font-display:  var(--font-body);
       --font-body:     'Inter', sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -119,7 +119,7 @@
     }
     .estado-badge.sin-foto  { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
     .estado-badge.pendiente { background: rgba(253,203,110,0.25); color: #B8790A; }
-    .estado-badge.listo     { background: rgba(108,99,255,0.15); color: var(--primary); }
+    .estado-badge.listo     { background: rgba(35,62,80,0.15); color: var(--primary); }
     .estado-badge.error     { background: rgba(255,107,107,0.15); color: var(--danger); }
     .estado-badge.aprobado  { background: rgba(0,184,148,0.15); color: var(--success); }
 
@@ -174,7 +174,7 @@
 
     .loading-overlay { position: fixed; inset: 0; background: rgba(255,255,255,0.9); z-index: 300; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; }
     .loading-overlay.hidden { display: none; }
-    .spinner { width: 40px; height: 40px; border: 4px solid rgba(108,99,255,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
+    .spinner { width: 40px; height: 40px; border: 4px solid rgba(35,62,80,0.2); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
     .hidden { display: none !important; }
@@ -185,8 +185,9 @@
       .field { min-width: 100%; }
     }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
-<body>
+<body data-acadvet-page="parciales-ia">
 
   <header class="app-header">
     <div>

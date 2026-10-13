@@ -1,0 +1,170 @@
+/* AcadVet — Cuaderno académico. Capa visual compartida; los estilos de impresión se conservan. */
+@media screen {
+:root {
+  --color-primary:#233e50; --color-primary-dark:#142c3b; --color-primary-light:#53778c;
+  --color-primary-dim:rgba(35,62,80,.09); --color-accent:#925532; --color-accent-light:#e2c7ac;
+  --color-bg:#f5f2ec; --color-surface:#fffefa; --color-surface-2:#eeeae2; --color-surface-3:#e2ded5;
+  --color-text-primary:#24343d; --color-text-secondary:#4e5c62; --color-text-muted:#67716f;
+  --color-success:#276749; --color-success-dim:#e4eee7; --color-warning:#94601d; --color-warning-dim:#f8ecd6;
+  --color-danger:#b13e36; --color-danger-dim:#f8e8e5; --color-info:#365f79; --color-info-dim:#e6eef2;
+  --color-border:#dedbd2; --color-border-strong:#babbb2;
+  --font-display:Georgia,'Times New Roman',serif; --font-body:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+  --radius-sm:4px; --radius-md:7px; --radius-lg:10px; --radius-xl:12px; --radius-2xl:14px;
+  --shadow-xs:0 1px 2px rgba(35,52,61,.04); --shadow-sm:0 3px 12px rgba(35,52,61,.045);
+  --shadow-md:0 8px 24px rgba(35,52,61,.07); --shadow-lg:0 16px 44px rgba(35,52,61,.12); --shadow-xl:0 24px 60px rgba(35,52,61,.16);
+  /* Compatibilidad con las variables de los módulos independientes. */
+  --primary:var(--color-primary); --primary-light:var(--color-primary-light); --accent:var(--color-accent);
+  --bg:var(--color-bg); --surface:var(--color-surface); --surface-2:var(--color-surface-2); --surface2:var(--color-surface-2); --surface-3:var(--color-surface-3);
+  --text:var(--color-text-primary); --text-2:var(--color-text-secondary); --text-muted:var(--color-text-muted); --muted:var(--color-text-muted);
+  --border:var(--color-border); --success:var(--color-success); --danger:var(--color-danger); --warning:var(--color-warning);
+  --font-d:var(--font-display); --font-b:var(--font-body); --fd:var(--font-display); --fb:var(--font-body); --font:var(--font-body);
+  --r-sm:4px; --r-md:7px; --r-lg:10px;
+}
+body { font-family:var(--font-body); background:var(--bg); color:var(--text); }
+h1,h2,h3,.view-title,.section-title { font-family:var(--font-display); letter-spacing:-.025em; }
+button,input,select,textarea { font-family:var(--font-body); }
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible { outline:3px solid #b27848; outline-offset:3px; }
+.btn { border-radius:6px; min-height:40px; letter-spacing:.01em; font-family:var(--font-body); }
+.btn--primary,.btn--accent { background:var(--color-primary); box-shadow:none; }
+.btn--primary:hover:not(:disabled),.btn--accent:hover:not(:disabled) { background:var(--color-primary-dark); box-shadow:var(--shadow-sm); transform:none; }
+.btn--danger { background:var(--color-danger); box-shadow:none; }
+.btn--sm { min-height:34px; }
+.form-input,.search-input { background:var(--color-surface); border:1px solid var(--color-border-strong); border-radius:6px; }
+.badge { border-radius:4px; font-family:var(--font-body); }
+.badge--warning,.badge--riesgo { color:var(--color-warning); }
+.badge--accent { background:#f2e7dc; color:var(--color-accent); }
+.gradient-text { background:none; -webkit-text-fill-color:currentColor; color:var(--color-primary); }
+/* Navegación como índice del cuaderno. */
+.sidebar { width:260px; background:#203746; border-right:1px solid #152e3c; height:100dvh; }
+.sidebar-header { padding:27px 22px 24px; border-bottom:1px solid #ffffff20; }
+.sidebar-logo { width:44px; height:44px; border-radius:6px; box-shadow:none; }
+.sidebar-brand-name { font-family:var(--font-display); font-size:27px; font-weight:400; letter-spacing:-.04em; }
+.sidebar-brand-tag { color:#d4b391; font-size:10px; letter-spacing:.23em; margin-top:5px; }
+.sidebar-nav { padding:12px 14px 20px; gap:3px; scrollbar-width:thin; scrollbar-color:#6a7a82 transparent; }
+.nav-section-label { color:#b1bcc2; letter-spacing:.17em; font-size:10px; padding-top:22px; }
+.nav-item { border-radius:4px; padding:9px 10px; font-size:12px; color:#d7dfe2; border-left:2px solid transparent; }
+.nav-icon-wrap { background:transparent; width:25px; height:25px; }
+.nav-item.active { background:#ffffff0e; border-left-color:#d8aa7a; color:#fff; box-shadow:none; }
+.nav-item.active .nav-icon-wrap,.nav-item:hover .nav-icon-wrap { background:transparent; color:#e1bd95; }
+.nav-item:hover { background:#ffffff0b; }
+.sidebar-footer { background:#1b303e; border-top:1px solid #ffffff20; padding:18px 22px; }
+.user-avatar { background:#d8bb97; color:#203746; border-radius:5px; font-family:var(--font-body); }
+.user-role { color:#b4c1c8; }
+.btn-logout { color:#ebc5bd; border-color:#ba8c8140; background:transparent; border-radius:4px; min-height:36px; }
+.topbar { background:#fffefa; height:70px; backdrop-filter:none; border-bottom:1px solid var(--color-border); }
+.topbar-title { font-family:var(--font-body); font-size:12px; letter-spacing:.11em; text-transform:uppercase; font-weight:600; }
+.main-wrapper { background:var(--color-bg); min-width:0; }
+.main-content { padding:36px 40px 56px; }
+.dashboard-view { max-width:1440px; margin:0 auto; }
+.view-header { padding:10px 0 28px; border-bottom:1px solid var(--color-border-strong); margin-bottom:28px; align-items:center; }
+.view-title { font-weight:400; font-size:clamp(28px,3vw,42px); line-height:1.2; }
+.view-subtitle { margin-top:9px; color:var(--color-text-secondary); }
+.section-header { padding-bottom:12px; border-bottom:1px solid var(--color-border); }
+.section-title { font-size:22px; font-weight:400; }
+.stats-row { grid-template-columns:repeat(3,minmax(0,1fr)); gap:0; border:1px solid var(--color-border); background:var(--color-surface); border-radius:8px; overflow:hidden; }
+.stat-card { background:transparent; box-shadow:none; border:0; border-right:1px solid var(--color-border); border-radius:0; padding:24px; }
+.stat-card:last-child { border-right:0; }
+.stat-number { font-family:var(--font-display); font-size:38px; font-weight:400; color:var(--color-primary); letter-spacing:-.04em; }
+.stat-label { color:var(--color-text-secondary); font-size:12px; }
+.stat-icon { width:40px; height:40px; border-radius:50%; background:var(--color-surface-2); font-size:20px; }
+.stat-card:hover { transform:none; box-shadow:none; }
+.materias-grid { gap:18px; }
+.materia-card { border-radius:8px; background:var(--color-surface); border:1px solid var(--color-border); box-shadow:none; }
+.materia-card:hover { transform:translateY(-2px); box-shadow:var(--shadow-md); border-color:var(--color-border-strong); }
+.materia-card__accent { height:3px; background:var(--color-primary) !important; }
+.materia-card__name { font-family:var(--font-display); font-size:23px; font-weight:400; line-height:1.3; }
+.materia-card__footer { background:transparent; border-top:1px solid var(--color-border); }
+.dashboard-view .materia-card__footer .btn { background:transparent !important; color:var(--color-primary); box-shadow:none; padding-left:0; justify-content:flex-start; }
+.dashboard-view .materia-card__footer .btn:hover { color:var(--color-accent); }
+.dashboard-modules { counter-reset:module; grid-template-columns:repeat(2,minmax(0,1fr)); }
+.dashboard-modules > a { counter-increment:module; }
+.dashboard-modules .materia-card { position:relative; height:100%; }
+.dashboard-modules .materia-card__body { padding:22px 24px 14px; }
+.dashboard-modules .materia-card__header { padding-right:36px; }
+.dashboard-modules .materia-card::after { content:counter(module,decimal-leading-zero); position:absolute; right:22px; top:18px; font-family:var(--font-display); font-size:25px; color:#abb3b2; }
+.dashboard-modules .materia-card__accent { display:none; }
+.dashboard-modules .materia-card__footer { margin:0 24px; padding:9px 0 13px; }
+.dashboard-modules .badge { background:transparent; color:var(--color-accent); padding:0; text-transform:uppercase; font-size:9px; letter-spacing:.13em; }
+.table-wrapper,.materia-row,.exp-stat-card,.modal { box-shadow:none; border-radius:8px; }
+.data-table th { background:#eeece5; color:#53615f; font-size:10px; letter-spacing:.09em; }
+.data-table td { border-bottom-color:#e7e4dc; }
+.tabs-nav { border-bottom-width:1px; }
+.tab-btn { font-family:var(--font-body); }
+/* Portada: conserva el formulario, selector de rol y todos sus identificadores. */
+.login-page { background:#ebe7dd; overflow:auto; min-height:100dvh; }
+.bg-blob { display:none; }
+body[data-acadvet-page="index"] { background-image:linear-gradient(#253e5010 1px,transparent 1px),linear-gradient(90deg,#253e5010 1px,transparent 1px); background-size:40px 40px; }
+body[data-acadvet-page="index"] .login-card { display:grid; grid-template-columns:1fr 1fr; max-width:860px; padding:0; gap:0; align-items:stretch; border:1px solid #d1ccbf; overflow:hidden; border-radius:10px; background:#fffefa; box-shadow:0 18px 60px #233e5014; backdrop-filter:none; }
+body[data-acadvet-page="index"] .login-brand { background:#203746; color:#fffefa; padding:56px 38px; align-items:flex-start; justify-content:center; text-align:left; gap:32px; border-top:5px solid #c49a6b; }
+body[data-acadvet-page="index"] .login-logo { width:78px; height:78px; border-radius:6px; box-shadow:none; border:0; }
+body[data-acadvet-page="index"] .login-title { color:#fffefa; font-size:48px; font-weight:400; line-height:1.08; }
+body[data-acadvet-page="index"] .login-title .title-highlight { background:none; -webkit-text-fill-color:currentColor; color:#e0c2a1; }
+body[data-acadvet-page="index"] .login-subtitle { color:#c2cdd1; margin-top:20px; line-height:1.7; }
+body[data-acadvet-page="index"] .login-form { padding:56px 38px 32px; justify-content:center; gap:25px; }
+body[data-acadvet-page="index"] .login-footer { grid-column:1 / -1; margin:0; padding:16px 24px; border-top:1px solid var(--color-border); text-align:right; background:#f4f1e9; }
+.login-role-tabs { border-radius:6px; background:#eeece5; }
+.login-role-tab { font-family:var(--font-body); border-radius:4px; min-height:40px; }
+.login-role-tab.active,.login-role-tab[data-role="eps"].active { background:var(--color-primary); }
+.pin-dots { border-radius:6px; background:#f5f2eb; padding:18px 24px; gap:12px; }
+.pin-dot { width:16px; height:16px; border-color:#8e9ca1; }
+.pin-dot.filled { background:var(--color-primary); box-shadow:none; transform:none; }
+.login-card { background:var(--color-surface); backdrop-filter:none; border:1px solid var(--color-border); box-shadow:var(--shadow-md); }
+.inscripcion-page { background:var(--color-bg); }
+/* Restos de paleta anterior en páginas independientes: #5A52E0 (violeta) y rgba azules viejos. */
+body[data-acadvet-page="cuestionario"] .btn--primary,
+body[data-acadvet-page="lab-report"] .btn--primary,
+body[data-acadvet-page="tareas"] .btn--primary { background:var(--color-primary); }
+body[data-acadvet-page="mi-perfil"] .mat-stat--wide { background:var(--color-primary-dim); }
+/* Módulos independientes y portal del estudiante. */
+body[data-acadvet-page="student"] .header,body[data-acadvet-page="mi-perfil"] .header { background:#203746; color:#fffefa; }
+body[data-acadvet-page="student"] .header { padding:36px 24px; border-bottom:4px solid #c49a6b; text-align:left; }
+body[data-acadvet-page="student"] .header-inner { max-width:760px; margin:0 auto; padding-left:100px; min-height:86px; }
+body[data-acadvet-page="student"] .header-logo { position:absolute; left:0; top:0; border-radius:6px; box-shadow:none; }
+body[data-acadvet-page="student"] .header-name { font-family:var(--font-display); font-size:32px; font-weight:400; }
+body[data-acadvet-page="student"] .content { max-width:800px; padding:28px 24px; }
+body[data-acadvet-page="student"] .grid { gap:16px; }
+body[data-acadvet-page="student"] .card { border-radius:7px; box-shadow:none; }
+body[data-acadvet-page="student"] .card-accent { background:var(--color-accent) !important; height:3px; }
+body[data-acadvet-page="student"] .card-title { font-family:var(--font-display); font-size:20px; font-weight:400; }
+body[data-acadvet-page="student"] .card-desc { font-size:12px; line-height:1.6; }
+body[data-acadvet-page="student"] .card-body { padding:20px; }
+body[data-acadvet-page="student"] .card-cta { border-radius:4px; color:var(--color-primary); }
+body[data-acadvet-page="student"] .section-label { color:var(--color-accent); margin-top:28px; letter-spacing:.14em; }
+body[data-acadvet-page="qr"] .card { border-radius:10px; border:1px solid var(--color-border); box-shadow:var(--shadow-md); }
+body[data-acadvet-page]:not([data-acadvet-page="app"]):not([data-acadvet-page="index"]) .header-title { font-family:var(--font-display); font-weight:400; }
+body[data-acadvet-page="mi-perfil"] .header-title,body[data-acadvet-page="mi-perfil"] .header-sub { color:#fffefa; }
+/* Proyección y formularios que ya usan superficies oscuras. */
+:root[data-acadvet-theme="dark"] {
+  --color-bg:#172a35; --color-surface:#203746; --color-surface-2:#294452; --color-surface-3:#365363;
+  --color-text-primary:#f5f2e9; --color-text-secondary:#d2dadc; --color-text-muted:#bac6ca;
+  --color-border:#49606a; --color-border-strong:#70858c; --color-primary:#d9bc99; --color-primary-light:#e6cfb5;
+  --color-primary-dark:#bda07b; --color-accent:#e0b389; --color-success:#89c3a3; --color-danger:#efa99d; --color-warning:#edcd92;
+}
+:root[data-acadvet-theme="dark"] body { background:var(--color-bg); color:var(--color-text-primary); }
+:root[data-acadvet-theme="dark"] button { font-family:var(--font-body); }
+:root[data-acadvet-theme="dark"] input,:root[data-acadvet-theme="dark"] textarea,:root[data-acadvet-theme="dark"] select { color:var(--text); }
+:root[data-acadvet-theme="dark"] .btn--primary { color:#172a35; }
+@media (min-width:1500px) { .main-content { padding-left:64px; padding-right:64px; } }
+@media (max-width:1000px) { .main-content { padding:28px 24px; } .dashboard-modules { grid-template-columns:1fr; } }
+@media (max-width:768px) {
+ .main-content { padding:24px 18px 40px; } .topbar { padding:0 18px; height:60px; }
+ .stats-row { grid-template-columns:repeat(3,minmax(0,1fr)); } .stat-card { padding:16px 12px; flex-direction:column; align-items:flex-start; gap:10px; }
+ .stat-number { font-size:30px; } .stat-label { font-size:11px; } .stat-icon { width:30px; height:30px; font-size:16px; }
+ .view-header { align-items:flex-start; } .view-header > .btn { align-self:flex-start; }
+ body[data-acadvet-page="index"] .login-card { max-width:440px; grid-template-columns:1fr; }
+ body[data-acadvet-page="index"] .login-brand { padding:26px 28px; flex-direction:row; align-items:center; gap:18px; }
+ body[data-acadvet-page="index"] .login-logo { width:62px; height:62px; }
+ body[data-acadvet-page="index"] .login-title { font-size:32px; }
+ body[data-acadvet-page="index"] .login-subtitle { font-size:11px; margin-top:8px; }
+ body[data-acadvet-page="index"] .login-form { padding:30px 28px 24px; gap:20px; }
+ body[data-acadvet-page="index"] .login-footer { text-align:center; font-size:11px; }
+}
+@media (max-width:380px) {
+ .stat-card { padding:14px 9px; } .stat-label { font-size:10px; } .stat-number { font-size:27px; }
+ .dashboard-modules .materia-card__body { padding:20px 18px 12px; }
+ body[data-acadvet-page="student"] .content { padding:20px 14px; }
+ body[data-acadvet-page="student"] .card-body { padding:14px; }
+ body[data-acadvet-page="index"] .login-brand { padding:24px 18px; }
+}
+@media (prefers-reduced-motion:reduce) { *,*::before,*::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; transition-duration:.01ms !important; scroll-behavior:auto !important; } }
+}

@@ -415,10 +415,10 @@ export function searchParameters(query, category) {
 
 export function getCategoryColor(category) {
   const map = {
-    Hemograma:   '#FF6B6B',
-    Bioquímica:  '#4ECDC4',
-    Urianálisis: '#FFD93D',
-    Citología:   '#A8E6CF',
+    Hemograma:   '#9C4A42',
+    Bioquímica:  '#3E7A72',
+    Urianálisis: '#B8943A',
+    Citología:   '#6B8F73',
   };
-  return map[category] ?? '#A29BFE';
+  return map[category] ?? '#6B6B8C';
 }

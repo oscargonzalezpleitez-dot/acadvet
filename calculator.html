@@ -6,7 +6,7 @@
   <title>Calculadora de Laboratorio — AcadVet</title>
 
   <!-- PWA -->
-  <meta name="theme-color" content="#0056A6">
+  <meta name="theme-color" content="#233e50">
   <link rel="icon" type="image/png" sizes="32x32" href="assets/icons/favicon-32.png">
   <link rel="icon" type="image/png" sizes="16x16" href="assets/icons/favicon-16.png">
   <link rel="apple-touch-icon" href="assets/icons/apple-touch-icon.png">
@@ -18,24 +18,24 @@
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary:       #6C63FF;
-      --primary-light: #A29BFE;
-      --accent:        #00D2D3;
+      --primary:       #233e50;
+      --primary-light: #78919b;
+      --accent:        #925532;
       --success:       #00B894;
       --danger:        #FF6B6B;
       --warning:       #FDCB6E;
-      --bg:            #F0F2FF;
+      --bg:            #f5f2ec;
       --surface:       #FFFFFF;
-      --surface-2:     #ECEEFF;
-      --text:          #1A1A2E;
-      --text-2:        #4A4A6A;
-      --text-muted:    #8888AA;
-      --border:        rgba(108,99,255,0.15);
+      --surface-2:     #eeeae2;
+      --text:          #24343d;
+      --text-2:        #4e5c62;
+      --text-muted:    #67716f;
+      --border:        rgba(35,62,80,0.15);
       --radius-sm:     6px;
       --radius-md:     12px;
       --radius-lg:     20px;
       --radius-full:   9999px;
-      --font-d:        'Poppins', sans-serif;
+      --font-d:        var(--font-body);
       --font-b:        'Inter', sans-serif;
     }
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -90,7 +90,7 @@
       -webkit-appearance: none;
     }
     .form-group input:focus, .form-group select:focus { outline: none; border-color: var(--primary); }
-    .unknown-field input { border-color: var(--accent); background: rgba(0,210,211,0.05); }
+    .unknown-field input { border-color: var(--accent); background: rgba(146,85,50,0.05); }
     .unknown-field input:focus { border-color: var(--accent); }
 
     .input-with-unit { display: grid; grid-template-columns: 1fr auto; gap: 8px; }
@@ -165,8 +165,9 @@
       .form-row-3 { grid-template-columns: 1fr 1fr; }
     }
   </style>
+  <link rel="stylesheet" href="css/identity.css?v=20261012a">
 </head>
-<body>
+<body data-acadvet-page="calculator">
 
   <header class="app-header">
     <div class="logo">🧪</div>

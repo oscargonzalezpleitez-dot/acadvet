@@ -8,11 +8,11 @@ import { app } from './firebase-config.js';
 const rtdb = getDatabase(app);
 
 export const REMINDER_COLORS = {
-  purple: '#6C63FF',
-  teal:   '#00D2D3',
-  green:  '#00B894',
-  orange: '#FDCB6E',
-  red:    '#FF6B6B',
+  purple: '#6B5668',
+  teal:   '#3E6E6A',
+  green:  '#3F7A52',
+  orange: '#B8763A',
+  red:    '#A8463D',
 };
 
 export async function createReminder({ title, message, date, subject, color = 'purple', materiaId = null }) {

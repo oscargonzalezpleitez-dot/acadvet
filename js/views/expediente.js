@@ -1641,13 +1641,13 @@ function escHtml(str) {
 }
 
 const AVATAR_PALETTE = [
-  '#6C63FF','#00B4B5','#FF6B6B','#00B894','#FDCB6E','#74B9FF',
+  '#5A6B8C','#3E7A8C','#9C4A42','#4C8060','#B8763A','#4A7A9C',
 ];
 
 const ESTADO_CONFIG = {
-  presente:    { label: 'Presente',    dot: '#00B894', badgeCls: 'badge--success'  },
-  ausente:     { label: 'Ausente',     dot: '#FF6B6B', badgeCls: 'badge--danger'   },
-  justificado: { label: 'Justificado', dot: '#FDCB6E', badgeCls: 'badge--warning'  },
+  presente:    { label: 'Presente',    dot: '#276749', badgeCls: 'badge--success'  },
+  ausente:     { label: 'Ausente',     dot: '#b13e36', badgeCls: 'badge--danger'   },
+  justificado: { label: 'Justificado', dot: '#94601d', badgeCls: 'badge--warning'  },
 };
 
 // ---------------------------------------------------------------------------
