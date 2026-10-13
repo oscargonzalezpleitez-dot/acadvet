@@ -451,12 +451,21 @@ function calcAsistPct(asists, areaNum, materiaId) {
 
 function calcStats(m) {
   const numNotas = arr => arr.map(x => x.nota).filter(n => typeof n === 'number');
-  const q1 = numNotas(m.quizzes.filter(q => Number(q.area) === 1));
-  const q2 = numNotas(m.quizzes.filter(q => Number(q.area) === 2));
-  const q3 = [...numNotas(m.quizzes.filter(q => Number(q.area) === 3)), ...numNotas(m.expos)];
-
   const avg = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
-  const promQ1 = avg(q1), promQ2 = avg(q2), promQ3 = avg(q3);
+
+  const q1 = numNotas(m.quizzes.filter(q => Number(q.area) === 1));
+  const examsQ2 = numNotas(m.quizzes.filter(q => Number(q.area) === 2));
+  const q3 = numNotas(m.quizzes.filter(q => Number(q.area) === 3));
+
+  // Área 2 = exámenes cortos de área 2 (5/15 del área) + nota final de exposición (10/15 del área).
+  const expoFinal    = m.expos.find(x => x.tema === 'Nota final de exposición');
+  const expoNota     = typeof expoFinal?.nota === 'number' ? expoFinal.nota : null;
+  const promExamsQ2  = avg(examsQ2);
+  const promQ2 = (promExamsQ2 !== null && expoNota !== null)
+    ? promExamsQ2 * (5 / 15) + expoNota * (10 / 15)
+    : null;
+
+  const promQ1 = avg(q1), promQ3 = avg(q3);
 
   const p1 = typeof m.parc.parcial_1 === 'number' ? m.parc.parcial_1 / 10 : null;
   const p2 = typeof m.parc.parcial_2 === 'number' ? m.parc.parcial_2 / 10 : null;

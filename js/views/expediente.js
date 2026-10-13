@@ -1401,15 +1401,19 @@ function calcStats() {
   // Quiz promedios por área
   const numNotas = arr => arr.map(x => x.nota).filter(n => typeof n === 'number');
   const q1notas  = numNotas(allQuizzes.filter(q => Number(q.area) === 1));
-  const q2notas  = numNotas(allQuizzes.filter(q => Number(q.area) === 2));
-  const q3notas  = [
-    ...numNotas(allQuizzes.filter(q => Number(q.area) === 3)),
-    ...numNotas(expos),   // exposición cuenta como quiz de Área 3
-  ];
+  const q2examsNotas = numNotas(allQuizzes.filter(q => Number(q.area) === 2));
+  const q3notas  = numNotas(allQuizzes.filter(q => Number(q.area) === 3));
 
   const promQ1 = q1notas.length ? q1notas.reduce((a, b) => a + b, 0) / q1notas.length : null;
-  const promQ2 = q2notas.length ? q2notas.reduce((a, b) => a + b, 0) / q2notas.length : null;
   const promQ3 = q3notas.length ? q3notas.reduce((a, b) => a + b, 0) / q3notas.length : null;
+
+  // Área 2 = exámenes cortos de área 2 (5/15 del área) + nota final de exposición (10/15 del área).
+  const expoFinal   = expos.find(x => x.tema === 'Nota final de exposición');
+  const expoNota    = typeof expoFinal?.nota === 'number' ? expoFinal.nota : null;
+  const promExamsQ2 = q2examsNotas.length ? q2examsNotas.reduce((a, b) => a + b, 0) / q2examsNotas.length : null;
+  const promQ2 = (promExamsQ2 !== null && expoNota !== null)
+    ? promExamsQ2 * (5 / 15) + expoNota * (10 / 15)
+    : null;
 
   // Parciales (normalizados a escala /10)
   const p1 = (parc.parcial_1 !== null && parc.parcial_1 !== undefined) ? parc.parcial_1 / 10 : null;
@@ -1444,7 +1448,7 @@ function calcStats() {
   }
 
   // Promedios para el panel (display)
-  const allQnotas = [...q1notas, ...q2notas, ...q3notas];
+  const allQnotas = [...q1notas, ...q2examsNotas, ...q3notas, ...(expoNota !== null ? [expoNota] : [])];
   const promQuizDisplay = allQnotas.length
     ? (allQnotas.reduce((a, b) => a + b, 0) / allQnotas.length).toFixed(1)
     : '—';
