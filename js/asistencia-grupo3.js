@@ -1,8 +1,9 @@
 // =============================================================================
 // AcadVet USAM — Regla de asistencia del Grupo 3 de Bacteriología y Micología
 // Solo aplica a esa materia (Ciclo II 2026). Un día cuenta como asistido si el
-// alumno tiene inicio Y fin presentes/justificados. El 31/ago (sin inicio) cuenta
-// con su registro único. El denominador son las 12 clases fijas de abajo.
+// alumno tiene AL MENOS UN registro presente/justificado ese día (inicio, fin
+// o único), aunque el otro checkType no se haya registrado. El denominador son
+// las 12 clases fijas de abajo.
 // =============================================================================
 
 export const MATERIA_GRUPO3_BACTERIO_ID = '-OvBIKpy9g6swRnwNm7g';
@@ -18,11 +19,8 @@ const esPresenteOJustificado = a => a.estado === 'presente' || a.estado === 'jus
 // Retorna el porcentaje (0-100) o null si no hay registros.
 export function calcAsistPctGrupo3(asists) {
   if (!asists.length) return null;
-  const diasValidos = FECHAS_CLASE_GRUPO3.filter(fecha => {
-    const regs = asists.filter(a => a.fecha === fecha);
-    if (fecha === '2026-08-31') return regs.some(a => a.checkType === 'unico' && esPresenteOJustificado(a));
-    return regs.some(a => a.checkType === 'inicio' && esPresenteOJustificado(a))
-        && regs.some(a => a.checkType === 'fin' && esPresenteOJustificado(a));
-  }).length;
+  const diasValidos = FECHAS_CLASE_GRUPO3.filter(fecha =>
+    asists.some(a => a.fecha === fecha && esPresenteOJustificado(a))
+  ).length;
   return Math.round((diasValidos / FECHAS_CLASE_GRUPO3.length) * 100);
 }
