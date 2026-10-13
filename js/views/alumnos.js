@@ -680,16 +680,21 @@ function calcAlumnoStats(insc) {
   const asistPct2 = asistPctArea(2);
   const asistPct3 = asistPctArea(3);
 
-  // Quizzes por área + exposiciones en área 3
+  // Quizzes por área. Área 2 combina exámenes cortos (5/15 del bloque) con la
+  // nota final de exposición (10/15 del bloque); Área 3 queda solo con sus
+  // propios exámenes cortos.
   const nums = arr => arr.map(x => x.nota).filter(n => typeof n === 'number');
   const avg  = arr => arr.length ? arr.reduce((a, b) => a + b, 0) / arr.length : null;
 
   const promQ1 = avg(nums(allQuizzes.filter(q => Number(q.area) === 1)));
-  const promQ2 = avg(nums(allQuizzes.filter(q => Number(q.area) === 2)));
-  const promQ3 = avg([
-    ...nums(allQuizzes.filter(q => Number(q.area) === 3)),
-    ...nums(expos),
-  ]);
+  const promQ3 = avg(nums(allQuizzes.filter(q => Number(q.area) === 3)));
+
+  const expoFinal   = expos.find(x => x.tema === 'Nota final de exposición');
+  const expoNota    = typeof expoFinal?.nota === 'number' ? expoFinal.nota : null;
+  const promExamsQ2 = avg(nums(allQuizzes.filter(q => Number(q.area) === 2)));
+  const promQ2 = (promExamsQ2 !== null && expoNota !== null)
+    ? promExamsQ2 * (5 / 15) + expoNota * (10 / 15)
+    : null;
 
   // Parciales /100 → /10
   const p1 = parc.parcial_1 != null ? parc.parcial_1 / 10 : null;
@@ -724,6 +729,8 @@ function calcAlumnoStats(insc) {
     promQuizNum:    avg(allQnotas),
     promParciales:  parcVals.length ? (avg(parcVals) * 10).toFixed(1) : '—',
     promParcNum:    parcVals.length ? avg(parcVals) * 10 : null,
+    area2Total:     promQ2,
+    area2TotalStr:  promQ2 !== null ? promQ2.toFixed(2) : '—',
     notaFinal,
     notaFinalStr:   notaFinal !== null ? notaFinal.toFixed(2) : '—',
     estadoLabel,
@@ -739,6 +746,7 @@ function _emptyStats() {
     asistPct3: '—', asistNum3: null,
     promQuiz: '—', promQuizNum: null,
     promParciales: '—', promParcNum: null,
+    area2Total: null, area2TotalStr: '—',
     notaFinal: null, notaFinalStr: '—',
     estadoLabel: 'Sin datos', estadoArgb: 'FF8888AA', estadoBadgeCls: 'badge--outline',
   };
@@ -813,7 +821,7 @@ async function exportGrupoExcel(btn) {
       pageSetup: { paperSize: 9, orientation: 'landscape', fitToPage: true, fitToWidth: 1 },
     });
 
-    const COLS = 9;
+    const COLS = 10;
     ws.columns = [
       { width: 38 }, // A Nombre
       { width: 16 }, // B Carné
@@ -822,8 +830,9 @@ async function exportGrupoExcel(btn) {
       { width: 13 }, // E Asist. Área 3
       { width: 15 }, // F Prom. Quizzes
       { width: 16 }, // G Prom. Parciales
-      { width: 13 }, // H Nota Final
-      { width: 13 }, // I Estado
+      { width: 16 }, // H Área 2 Total
+      { width: 13 }, // I Nota Final
+      { width: 13 }, // J Estado
     ];
 
     const C = {
@@ -863,7 +872,7 @@ async function exportGrupoExcel(btn) {
 
     // ── Column headers ────────────────────────────────────────────────────────
     ws.getRow(r).height = 18;
-    ['Nombre', 'Carné', 'Asist. Área 1', 'Asist. Área 2', 'Asist. Área 3', 'Prom. Quizzes', 'Prom. Parciales', 'Nota Final', 'Estado']
+    ['Nombre', 'Carné', 'Asist. Área 1', 'Asist. Área 2', 'Asist. Área 3', 'Prom. Quizzes', 'Prom. Parciales', 'Área 2 Total', 'Nota Final', 'Estado']
       .forEach((h, i) => {
         const c = ws.getCell(r, i + 1);
         c.value = h;  c.font = fnt(true, 9.5, C.white);  c.fill = fgFill(C.primary);
@@ -874,7 +883,7 @@ async function exportGrupoExcel(btn) {
     // ── Data rows ─────────────────────────────────────────────────────────────
     const sorted = [..._alumnos].sort((a, b) => (a.nombre ?? '').localeCompare(b.nombre ?? '', 'es'));
 
-    const acc = { asist1: [], asist2: [], asist3: [], quiz: [], parc: [], nota: [] };
+    const acc = { asist1: [], asist2: [], asist3: [], quiz: [], parc: [], area2: [], nota: [] };
 
     sorted.forEach((alumno, idx) => {
       const insc  = alumno.inscripciones?.[_materiaId];
@@ -890,15 +899,16 @@ async function exportGrupoExcel(btn) {
         [stats.asistPct3,      1, C.text,           null ],
         [stats.promQuiz,       1, C.text,           null ],
         [stats.promParciales,  1, C.text,           null ],
+        [stats.area2TotalStr,  1, C.text,           '0.00'],
         [stats.notaFinalStr,   1, C.text,           '0.00'],
         [stats.estadoLabel,    1, stats.estadoArgb, null ],
       ].forEach(([val, colGroup, argb, numFmt], i) => {
         const c = ws.getCell(r, i + 1);
         c.value = val;
-        c.font  = fnt(i === 8, 9, argb);
+        c.font  = fnt(i === 9, 9, argb);
         c.fill  = fgFill(bg);
         c.alignment = aln(i < 2 ? 'left' : 'center', i < 2 ? 1 : 0);
-        if (numFmt && stats.notaFinal !== null) c.numFmt = numFmt;
+        if (numFmt && val !== '—') c.numFmt = numFmt;
       });
       r++;
 
@@ -908,6 +918,7 @@ async function exportGrupoExcel(btn) {
       if (stats.asistNum3  !== null) acc.asist3.push(stats.asistNum3);
       if (stats.promQuizNum !== null) acc.quiz.push(stats.promQuizNum);
       if (stats.promParcNum !== null) acc.parc.push(stats.promParcNum);
+      if (stats.area2Total  !== null) acc.area2.push(stats.area2Total);
       if (stats.notaFinal   !== null) acc.nota.push(stats.notaFinal);
     });
 
@@ -926,6 +937,7 @@ async function exportGrupoExcel(btn) {
       [fmtAvg(acc.asist3, 1, '%'),                  false],
       [fmtAvg(acc.quiz),                            false],
       [fmtAvg(acc.parc),                            false],
+      [fmtAvg(acc.area2, 2),                        false],
       [fmtAvg(acc.nota, 2),                         false],
       ['',                                           false],
     ].forEach(([val], i) => {
