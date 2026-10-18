@@ -21,6 +21,7 @@ import { app, auth } from './firebase-config.js';
 import { activarPushParaAlumno, canUsePush, isIOS, isStandalone } from './push.js';
 import { marcarAlumnoConectado, marcarAlumnoDesconectado } from './db.js';
 import { MATERIA_GRUPO3_BACTERIO_ID, calcAsistPctGrupo3 } from './asistencia-grupo3.js';
+import { MATERIA_GRUPO2_BACTERIO_ID, calcAsistPctGrupo2Area2 } from './asistencia-grupo2.js';
 
 const db = getDatabase(app);
 const CACHE_KEY = 'acadvet_mi_perfil';
@@ -435,6 +436,9 @@ function snapToArray(s) {
 function calcAsistPct(asists, areaNum, materiaId) {
   if (materiaId === MATERIA_GRUPO3_BACTERIO_ID) {
     return calcAsistPctGrupo3(asists.filter(a => Number(a.area ?? 1) === areaNum));
+  }
+  if (materiaId === MATERIA_GRUPO2_BACTERIO_ID && areaNum === 2) {
+    return calcAsistPctGrupo2Area2(asists.filter(a => Number(a.area ?? 1) === areaNum));
   }
   const porFecha = new Map();
   asists.filter(a => Number(a.area ?? 1) === areaNum).forEach(a => {

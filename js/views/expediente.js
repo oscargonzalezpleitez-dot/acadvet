@@ -17,6 +17,7 @@ import {
 import { openModal, closeModal, showToast } from '../ui.js';
 import { navigate } from '../router.js';
 import { MATERIA_GRUPO3_BACTERIO_ID, calcAsistPctGrupo3 } from '../asistencia-grupo3.js';
+import { MATERIA_GRUPO2_BACTERIO_ID, calcAsistPctGrupo2Area2 } from '../asistencia-grupo2.js';
 
 // ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
@@ -343,7 +344,7 @@ function paintAsistencias(el) {
 // quizAreaHTML, para que Asistencias y Ex. Cortos se lean igual).
 function asistAreaHTML(areaNum, asists) {
   const labels  = ['', 'Área 1', 'Área 2', 'Área 3'];
-  const summary = calcAsistSummary(asists);
+  const summary = calcAsistSummary(asists, areaNum);
 
   // Agrupar por fecha para mostrar estado combinado inicio/fin
   const byDate = {};
@@ -1394,9 +1395,9 @@ function calcStats() {
   const expos      = snapToArray(_insc.exposiciones);
 
   // % Asistencia (justificado = presente) — separado por área
-  const asistSummary1 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 1));
-  const asistSummary2 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 2));
-  const asistSummary3 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 3));
+  const asistSummary1 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 1), 1);
+  const asistSummary2 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 2), 2);
+  const asistSummary3 = calcAsistSummary(asists.filter(a => Number(a.area ?? 1) === 3), 3);
 
   // Quiz promedios por área
   const numNotas = arr => arr.map(x => x.nota).filter(n => typeof n === 'number');
@@ -1575,7 +1576,7 @@ function editNotaDiag() {
 // Agrupa por fecha: un día cuenta como una sola clase, aunque tenga registro
 // de inicio y de fin por separado. Si al menos uno de los dos quedó
 // presente/justificado, el día completo cuenta como asistido.
-function calcAsistSummary(asists) {
+function calcAsistSummary(asists, areaNum) {
   const porFecha = new Map();
   asists.forEach(a => {
     const f = a.fecha ?? `sin-fecha-${a.id}`;
@@ -1595,6 +1596,7 @@ function calcAsistSummary(asists) {
     ? Math.round(((presentes + justificados) / total) * 100)
     : 0;
   if (_materiaId === MATERIA_GRUPO3_BACTERIO_ID) pct = calcAsistPctGrupo3(asists) ?? 0;
+  if (_materiaId === MATERIA_GRUPO2_BACTERIO_ID && areaNum === 2) pct = calcAsistPctGrupo2Area2(asists) ?? 0;
   return { total, presentes, justificados, ausentes, pct };
 }
 
@@ -1762,9 +1764,9 @@ async function exportPDF(btn) {
 
     const asists    = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
     const asistArea = n => asists.filter(a => Number(a.area ?? 1) === n);
-    const asistSum1 = calcAsistSummary(asistArea(1));
-    const asistSum2 = calcAsistSummary(asistArea(2));
-    const asistSum3 = calcAsistSummary(asistArea(3));
+    const asistSum1 = calcAsistSummary(asistArea(1), 1);
+    const asistSum2 = calcAsistSummary(asistArea(2), 2);
+    const asistSum3 = calcAsistSummary(asistArea(3), 3);
 
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8.5);
@@ -2105,9 +2107,9 @@ async function exportWord(btn) {
     // Asistencias
     const asists    = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
     const asistArea = n => asists.filter(a => Number(a.area ?? 1) === n);
-    const asistSum1 = calcAsistSummary(asistArea(1));
-    const asistSum2 = calcAsistSummary(asistArea(2));
-    const asistSum3 = calcAsistSummary(asistArea(3));
+    const asistSum1 = calcAsistSummary(asistArea(1), 1);
+    const asistSum2 = calcAsistSummary(asistArea(2), 2);
+    const asistSum3 = calcAsistSummary(asistArea(3), 3);
 
     ch.push(mkSection('ASISTENCIAS'));
     ch.push(new Paragraph({
@@ -2369,9 +2371,9 @@ async function exportExcel(btn) {
     // ── Asistencias ──────────────────────────────────────────────────────────
     const asists    = snapToArray(_insc.asistencias).sort(sortByFechaDesc);
     const asistArea = n => asists.filter(a => Number(a.area ?? 1) === n);
-    const asistSum1 = calcAsistSummary(asistArea(1));
-    const asistSum2 = calcAsistSummary(asistArea(2));
-    const asistSum3 = calcAsistSummary(asistArea(3));
+    const asistSum1 = calcAsistSummary(asistArea(1), 1);
+    const asistSum2 = calcAsistSummary(asistArea(2), 2);
+    const asistSum3 = calcAsistSummary(asistArea(3), 3);
 
     sec(r++, 'ASISTENCIAS');
     mergedCell(r++,

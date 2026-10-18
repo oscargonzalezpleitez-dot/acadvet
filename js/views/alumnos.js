@@ -16,6 +16,7 @@ import { openGruposSorteo } from '../grupos-trabajo.js';
 import { openCalificarExposiciones } from '../exposiciones-grupos.js';
 import { openCargarExamenCorto } from '../examen-corto-masivo.js';
 import { MATERIA_GRUPO3_BACTERIO_ID, calcAsistPctGrupo3 } from '../asistencia-grupo3.js';
+import { MATERIA_GRUPO2_BACTERIO_ID, calcAsistPctGrupo2Area2 } from '../asistencia-grupo2.js';
 
 const isEPS = () => sessionStorage.getItem('acadvet_auth') === 'eps';
 
@@ -664,6 +665,9 @@ function calcAlumnoStats(insc) {
   const asistPctArea = areaNum => {
     if (_materiaId === MATERIA_GRUPO3_BACTERIO_ID) {
       return calcAsistPctGrupo3(asists.filter(a => Number(a.area ?? 1) === areaNum));
+    }
+    if (_materiaId === MATERIA_GRUPO2_BACTERIO_ID && areaNum === 2) {
+      return calcAsistPctGrupo2Area2(asists.filter(a => Number(a.area ?? 1) === areaNum));
     }
     const porFecha = new Map();
     asists.filter(a => Number(a.area ?? 1) === areaNum).forEach(a => {
