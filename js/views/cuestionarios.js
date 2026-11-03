@@ -954,6 +954,19 @@ function openResultadoModal(r) {
             <p style="color:var(--color-text-muted);font-size:.85rem">Fecha: ${fecha}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Salidas del examen: ${r.blurs ?? 0}</p>
             ${r.notaModificada ? `<p style="margin-top:4px"><span class="cuest-status-badge cuest-status--warn">Nota modificada</span> <span style="color:var(--color-text-muted);font-size:.8rem">${esc(r.notaModificadaMotivo || '')}</span></p>` : ''}
+            ${Array.isArray(r.blurSnapshots) && r.blurSnapshots.length ? `
+              <div style="margin-top:8px">
+                <p style="font-size:.78rem;color:var(--color-text-muted);margin-bottom:4px">
+                  📸 Capturas automáticas al salir de la pantalla (${r.blurSnapshots.length}):
+                </p>
+                <div style="display:flex;gap:6px;flex-wrap:wrap">
+                  ${r.blurSnapshots.map(s => `
+                    <a href="${esc(s.img || s)}" target="_blank" title="${s.ts ? new Date(s.ts).toLocaleString('es-SV') : ''}">
+                      <img src="${esc(s.img || s)}" alt="Captura de salida"
+                        style="width:64px;height:48px;object-fit:cover;border-radius:6px;border:1px solid var(--color-border)">
+                    </a>`).join('')}
+                </div>
+              </div>` : ''}
           </div>
           <div class="cuest-modal-score" style="color:${pctColor}">
             <div class="cuest-modal-pct">${pct}%</div>
