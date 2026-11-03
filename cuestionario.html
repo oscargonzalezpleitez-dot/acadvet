@@ -617,7 +617,7 @@
     import { app, auth }  from './js/firebase-config.js';
     import { signInAnonymously }
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
-    import { getDatabase, ref, get, push, set }
+    import { getDatabase, ref, get, push, set, remove }
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
     import { checkYaRespondio, saveCuestionarioResultado }
       from './js/db.js';
@@ -630,6 +630,10 @@
     const MAX_FOTO_BYTES = 150 * 1024;
     // Número máximo de salidas antes de entrega automática
     const MAX_BLURS = 5;
+    // Debe coincidir con el "60000" usado en database.rules.json para
+    // cuestionarios_sesiones — tiempo sin heartbeat tras el cual se libera el candado.
+    const SESSION_LOCK_TTL_MS = 60_000;
+    const SESSION_HEARTBEAT_MS = 20_000;
 
     // -------------------------------------------------------------------------
     // Estado global
@@ -642,6 +646,8 @@
     let questionOrder = [];    // orden (aleatorio) de índices originales de preguntas para este alumno
     let optionOrders  = {};    // {idxOriginal: [idxOriginalDeOpcion...]} orden aleatorio de opciones por pregunta
     let currentPos    = 0;     // posición actual (0-based) dentro de questionOrder
+    let deviceSessionId        = '';   // id aleatorio de este dispositivo/pestaña para el candado de sesión
+    let sessionHeartbeatInterval = null;
     let blurCount    = 0;
     let timerSec     = 0;
     let timerInterval= null;
@@ -860,6 +866,17 @@
           return;
         }
 
+        // Candado de sesión: evita que el mismo carnet resuelva el cuestionario
+        // desde dos dispositivos a la vez.
+        btnIniciar.textContent = 'Verificando dispositivo…';
+        const lockOk = await claimSessionLock(quizId, carnet);
+        if (!lockOk) {
+          showErr('errCarnet', 'Este cuestionario ya está siendo resuelto desde otro dispositivo con este carnet. Si no fuiste vos, esperá un minuto e intentá de nuevo, o contactá al docente.');
+          btnIniciar.disabled = false;
+          btnIniciar.textContent = 'Iniciar cuestionario';
+          return;
+        }
+
         // Ahora sí: cargar las preguntas del cuestionario
         btnIniciar.textContent = 'Cargando preguntas…';
         quiz = await loadQuizPreguntas(quizId);
@@ -906,6 +923,12 @@
       timerSec = (quiz.tiempo || 30) * 60;
       startTimer();
       setupAntiCheat();
+
+      // Heartbeat del candado de sesión: mantiene el lock vivo mientras este
+      // dispositivo sigue siendo el que está resolviendo el examen.
+      sessionHeartbeatInterval = setInterval(() => {
+        if (!submitted) refreshSessionLock();
+      }, SESSION_HEARTBEAT_MS);
 
       // Backup periódico de respuestas (cada 30 s) para recuperación ante cierre accidental
       setInterval(() => {
@@ -1190,6 +1213,7 @@
       if (submitted) return;
       submitted = true;
       clearInterval(timerInterval);
+      clearInterval(sessionHeartbeatInterval);
       removeAntiCheat();
       fsOverlay.classList.add('hidden');
 
@@ -1245,6 +1269,7 @@
         await saveCuestionarioResultado(quizId, studentData.carnet, resultado);
         // Limpiar backup local tras guardado exitoso
         if (_backupKey) localStorage.removeItem(_backupKey);
+        releaseSessionLock();
       } catch (err) {
         console.error('[Cuestionario] Error guardando resultado:', err);
         submitted = false; // Permitir reintento
@@ -1338,6 +1363,55 @@
       }
 
       container.innerHTML = html;
+    }
+
+    // -------------------------------------------------------------------------
+    // Candado de sesión — evita que el mismo carnet resuelva el cuestionario
+    // desde dos dispositivos a la vez (uno responde, otro consulta respuestas).
+    // La exclusión real la aplica database.rules.json en el servidor; aquí solo
+    // generamos el id del dispositivo e interpretamos el PERMISSION_DENIED.
+    // -------------------------------------------------------------------------
+    function sanitizeKey(s) {
+      return String(s ?? '').toLowerCase().trim().replace(/[.#$\[\]\/\s]/g, '_');
+    }
+
+    function getDeviceSessionId(quizId, carnet) {
+      const storageKey = `acadvet_quiz_session_${quizId}_${String(carnet).replace(/\W/g, '_')}`;
+      let id = localStorage.getItem(storageKey);
+      if (!id) {
+        id = (crypto?.randomUUID) ? crypto.randomUUID() : `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+        localStorage.setItem(storageKey, id);
+      }
+      return id;
+    }
+
+    // Intenta reclamar el candado. Devuelve true si lo logró, false si otro
+    // dispositivo ya lo tiene activo (y no ha expirado).
+    async function claimSessionLock(quizId, carnet) {
+      deviceSessionId = getDeviceSessionId(quizId, carnet);
+      const lockRef = ref(db, `cuestionarios_sesiones/${quizId}/${sanitizeKey(carnet)}`);
+      try {
+        await set(lockRef, { sessionId: deviceSessionId, lastSeen: Date.now() });
+        return true;
+      } catch (err) {
+        if (err.code === 'PERMISSION_DENIED') return false;
+        throw err;
+      }
+    }
+
+    // Heartbeat periódico mientras el examen está activo, para que el candado
+    // no expire mientras este dispositivo sigue siendo el legítimo.
+    async function refreshSessionLock() {
+      try {
+        const lockRef = ref(db, `cuestionarios_sesiones/${quizId}/${sanitizeKey(studentData.carnet)}`);
+        await set(lockRef, { sessionId: deviceSessionId, lastSeen: Date.now() });
+      } catch (_) { /* best-effort: si falla, el candado simplemente expira solo */ }
+    }
+
+    async function releaseSessionLock() {
+      try {
+        await remove(ref(db, `cuestionarios_sesiones/${quizId}/${sanitizeKey(studentData.carnet)}`));
+      } catch (_) { /* best-effort */ }
     }
 
     // -------------------------------------------------------------------------

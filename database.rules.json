@@ -179,6 +179,16 @@
       }
     },
 
+    "cuestionarios_sesiones": {
+      ".read": "auth != null",
+      "$quizId": {
+        "$carnetKey": {
+          ".write":    "auth != null && (!newData.exists() || !data.exists() || newData.child('sessionId').val() === data.child('sessionId').val() || now > data.child('lastSeen').val() + 60000)",
+          ".validate": "!newData.exists() || (newData.hasChildren(['sessionId', 'lastSeen']) && newData.child('sessionId').isString() && newData.child('lastSeen').isNumber())"
+        }
+      }
+    },
+
     "cuestionarios_resultados": {
       ".read":  "auth != null && (root.child('admins').child(auth.uid).val() === true)",
       "$resultId": {
