@@ -13,6 +13,8 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
+  sendEmailVerification,
+  signInAnonymously,
   onAuthStateChanged,
   signOut,
   deleteUser,
@@ -100,6 +102,14 @@ function setLoading(msg) {
   loadingOverlay.classList.remove('hidden');
 }
 
+// alumno_lookup ya no es de lectura pública (antes cualquiera podía listar
+// todos los carnés y nombres sin autenticarse); como el alumno todavía no
+// tiene sesión de correo/contraseña en este punto, necesita al menos una
+// sesión anónima para poder leerlo.
+async function ensureLookupAuth() {
+  if (!auth.currentUser) { try { await signInAnonymously(auth); } catch (_) {} }
+}
+
 function sanitizeKey(s) {
   return String(s ?? '').toLowerCase().trim().replace(/[.#$\[\]\/\s]/g, '_');
 }
@@ -132,6 +142,7 @@ formSignup.addEventListener('submit', async (e) => {
 
   setLoading('Buscando tu carné…');
   try {
+    await ensureLookupAuth();
     const lookupSnap = await get(ref(db, `alumno_lookup/${sanitizeKey(carnet)}`));
     if (!lookupSnap.exists()) {
       throw new Error('CARNET_NO_ENCONTRADO');
@@ -157,39 +168,29 @@ btnConfirmNo.addEventListener('click', () => {
 
 btnConfirmYes.addEventListener('click', async () => {
   if (!_pendingSignup) return;
-  const { alumnoId, carnet, email, pass } = _pendingSignup;
+  const { carnet, email, pass } = _pendingSignup;
 
   setLoading('Creando tu cuenta…');
   try {
     await createUserWithEmailAndPassword(auth, email, pass);
 
-    // Vincula el correo al expediente solo si el docente no puso uno todavía
-    // (write-once: si ya hay un correo distinto, esta escritura es rechazada
-    // y no pasa nada — puede significar que ya coincidía, o que es distinto;
-    // no podemos leer el valor guardado para saber cuál caso es).
-    try {
-      await set(ref(db, `alumnos/${alumnoId}/email`), email);
-    } catch (_) { /* seguimos a verificar abajo si de verdad quedó vinculada */ }
-
-    // Confirmar que el correo con el que se creó la cuenta realmente da
-    // acceso al expediente. Si el docente había registrado un correo
-    // DISTINTO, esta lectura falla — sin este chequeo, la cuenta queda
-    // creada pero inservible y el alumno se entera recién más tarde con
-    // un error genérico ("no pudimos cargar tu expediente").
-    const probe = await get(ref(db, `alumnos/${alumnoId}/nombre`)).catch(() => null);
-    if (!probe?.exists()) {
-      await deleteUser(auth.currentUser).catch(() => {});
-      _pendingSignup = null;
-      signupConfirm.classList.add('hidden');
-      formSignup.classList.remove('hidden');
-      showError('El correo que ingresaste no coincide con el que tu docente tiene registrado para tu carné. Consultale a tu docente cuál correo usar (o pedile que lo actualice) y volvé a intentar.');
-      return;
-    }
+    // No vinculamos el correo al expediente todavía. Como la cuenta se crea
+    // sola con cualquier correo (sin verificarlo), alguien podría teclear el
+    // correo real de OTRO alumno (uno que su docente aún no haya registrado)
+    // y quedarse con el acceso a sus notas. Por eso las reglas de Firebase
+    // ahora exigen auth.token.email_verified == true para esa escritura:
+    // primero mandamos el enlace de verificación y recién cuando el alumno
+    // vuelva a iniciar sesión (ya verificado) intentamos el vínculo — ver
+    // el handler de formLogin más abajo.
+    await sendEmailVerification(auth.currentUser);
+    await signOut(auth);
 
     _pendingSignup = null;
     signupConfirm.classList.add('hidden');
-    saveCache(alumnoId, carnet);
-    await loadProfile(alumnoId);
+    formSignup.classList.remove('hidden');
+    formSignup.reset();
+    switchTab('login');
+    showSuccess(`Te enviamos un enlace de verificación a ${email}. Abrilo desde tu correo (revisá spam si no aparece) y después iniciá sesión acá con ese correo y tu contraseña.`);
   } catch (err) {
     signupConfirm.classList.add('hidden');
     formSignup.classList.remove('hidden');
@@ -214,11 +215,42 @@ formLogin.addEventListener('submit', async (e) => {
 
   setLoading('Verificando…');
   try {
+    await ensureLookupAuth();
     const lookupSnap = await get(ref(db, `alumno_lookup/${sanitizeKey(carnet)}`));
     if (!lookupSnap.exists()) throw new Error('CARNET_NO_ENCONTRADO');
     const { alumnoId } = lookupSnap.val();
 
     await signInWithEmailAndPassword(auth, email, pass);
+
+    // emailVerified puede venir desactualizado si el usuario acaba de abrir
+    // el enlace de verificación en otra pestaña: refrescamos el token antes
+    // de decidir.
+    await auth.currentUser.reload();
+    if (!auth.currentUser.emailVerified) {
+      offerResendVerification(email);
+      await signOut(auth);
+      setLoading(null);
+      return;
+    }
+
+    // Primer login después de verificar: intenta vincular el correo al
+    // expediente (write-once — si el docente ya puso uno distinto, esta
+    // escritura es rechazada y lo detectamos con el "probe" de abajo). En
+    // logins posteriores esta escritura simplemente vuelve a fallar sin
+    // efecto porque el correo ya está vinculado.
+    try {
+      await set(ref(db, `alumnos/${alumnoId}/email`), email);
+    } catch (_) { /* ya vinculado o no corresponde: seguimos al probe */ }
+
+    const probe = await get(ref(db, `alumnos/${alumnoId}/nombre`)).catch(() => null);
+    if (!probe?.exists()) {
+      // Cuenta inservible (el correo no vinculó): la borramos para que el
+      // alumno pueda volver a intentarlo con el correo correcto.
+      await deleteUser(auth.currentUser).catch(() => signOut(auth));
+      showError('El correo que ingresaste no coincide con el que tu docente tiene registrado para tu carné. Consultale a tu docente cuál correo usar (o pedile que lo actualice) y volvé a intentar.');
+      return;
+    }
+
     saveCache(alumnoId, carnet);
     await loadProfile(alumnoId);
   } catch (err) {
@@ -227,6 +259,31 @@ formLogin.addEventListener('submit', async (e) => {
     setLoading(null);
   }
 });
+
+/** Muestra el error de correo no verificado con un botón para reenviar el enlace. */
+function offerResendVerification(email) {
+  showError('Primero tenés que verificar tu correo. Revisá tu bandeja (y spam) y abrí el enlace que te enviamos.');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'btn btn--ghost btn--sm';
+  btn.style.marginTop = '8px';
+  btn.textContent = 'Reenviar correo de verificación';
+  btn.addEventListener('click', async () => {
+    btn.disabled = true;
+    btn.textContent = 'Enviando…';
+    try {
+      const pass = document.getElementById('liPass').value;
+      await signInWithEmailAndPassword(auth, email, pass);
+      await sendEmailVerification(auth.currentUser);
+      await signOut(auth);
+      showSuccess('Te reenviamos el enlace. Revisá tu correo (y spam).');
+    } catch (_) {
+      showError('No se pudo reenviar. Intentá iniciar sesión de nuevo en un momento.');
+    }
+  }, { once: true });
+  authError.appendChild(document.createElement('br'));
+  authError.appendChild(btn);
+}
 
 function handleAuthError(err) {
   const code = err?.code ?? err?.message;

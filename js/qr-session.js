@@ -401,11 +401,22 @@ function genToken() {
 
 async function rotateToken() {
   if (!_s) return;
+  const oldToken = _s.token;
   const newToken = genToken();
   _s.token = newToken;
   _s.rotatedAt = Date.now();
 
-  await updateQRSession(_s.id, { token: newToken, rotatedAt: _s.rotatedAt }).catch(() => {});
+  // Guardamos el token anterior con una gracia de 30s: un alumno que ya tenía
+  // el token viejo en pantalla (p. ej. a mitad del flujo de selfie) puede
+  // terminar de enviarlo aunque rote justo en ese momento. Las reglas de
+  // Firebase validan contra el token actual O el anterior dentro de la
+  // gracia — nunca aceptan un token sin relación con la sesión.
+  await updateQRSession(_s.id, {
+    token: newToken,
+    rotatedAt: _s.rotatedAt,
+    prevToken: oldToken,
+    prevTokenExpiresAt: _s.rotatedAt + 30_000,
+  }).catch(() => {});
 
   const el = document.getElementById('qrToken');
   if (el) el.textContent = newToken;

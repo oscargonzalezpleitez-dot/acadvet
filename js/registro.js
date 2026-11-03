@@ -387,6 +387,11 @@ async function submitRegistro() {
     ts:        now,
     estado,
     checkType,
+    // El token se guarda junto con el registro para que las reglas de Firebase
+    // puedan revalidarlo contra el token vigente de la sesión (defensa del
+    // lado servidor: sin esto, cualquiera con auth anónima podía escribir un
+    // registro de asistencia sin conocer el token, llamando directo al SDK).
+    token:     token,
     selfie:    _selfieB64      ?? null,
     deviceId:  _deviceId       ?? null,
     lat:       _gpsCoords?.lat ?? null,
