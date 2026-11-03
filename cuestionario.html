@@ -583,10 +583,14 @@
         <div class="quiz-progress-fill" id="progressFill" style="width:0%"></div>
       </div>
       <div class="quiz-progress-text" id="progressText">0 de 0 respondidas</div>
+      <div class="quiz-progress-text" id="questionPosText" style="text-align:left;margin-top:-6px"></div>
 
       <div id="questionsContainer"></div>
 
-      <button class="btn btn--primary" id="btnSubmit" style="margin-top:8px">
+      <button class="btn btn--primary" id="btnNext" style="margin-top:8px">
+        Siguiente pregunta →
+      </button>
+      <button class="btn btn--primary hidden" id="btnSubmit" style="margin-top:8px">
         Entregar cuestionario
       </button>
     </div>
@@ -635,6 +639,9 @@
     let studentData  = {};
     let photoDataUrl = '';
     let userAnswers  = {};     // {idx: respuesta}
+    let questionOrder = [];    // orden (aleatorio) de índices originales de preguntas para este alumno
+    let optionOrders  = {};    // {idxOriginal: [idxOriginalDeOpcion...]} orden aleatorio de opciones por pregunta
+    let currentPos    = 0;     // posición actual (0-based) dentro de questionOrder
     let blurCount    = 0;
     let timerSec     = 0;
     let timerInterval= null;
@@ -859,6 +866,17 @@
         document.getElementById('regQuizPregs').textContent =
           `${quiz.preguntas.length} pregunta${quiz.preguntas.length !== 1 ? 's' : ''}`;
 
+        // Orden aleatorio de preguntas y de opciones — distinto por cada alumno,
+        // para que no sirva compartir "la pregunta 3 es B" entre compañeros.
+        questionOrder = shuffleArray(quiz.preguntas.map((_, i) => i));
+        optionOrders  = {};
+        quiz.preguntas.forEach((q, i) => {
+          if (q.tipo === 'multiple' || q.tipo === 'imagen') {
+            const opts = Array.isArray(q.opciones) ? q.opciones : Object.values(q.opciones || {});
+            optionOrders[i] = shuffleArray(opts.map((_, j) => j));
+          }
+        });
+
       } catch (err) {
         console.error('[Cuestionario] Error al iniciar:', err);
         showErr('errCarnet', 'Error de conexión. Verificá tu internet e intentá de nuevo.');
@@ -878,6 +896,7 @@
     function startQuiz() {
       userAnswers = {};
       blurCount   = 0;
+      currentPos  = 0;
       submitted   = false;
 
       document.getElementById('qQuizNombre').textContent = quiz.nombre || 'Cuestionario';
@@ -898,6 +917,7 @@
       // Advertir antes de cerrar/recargar la pestaña durante el examen
       window.addEventListener('beforeunload', onBeforeUnload);
 
+      document.getElementById('btnNext').addEventListener('click', () => goToNextQuestion());
       document.getElementById('btnSubmit').addEventListener('click', () => confirmSubmit());
     }
 
@@ -910,8 +930,11 @@
 
     function renderStudentQuiz() {
       const container = document.getElementById('questionsContainer');
-      container.innerHTML = quiz.preguntas.map((q, i) => buildStudentQuestion(q, i)).join('');
+      container.innerHTML = questionOrder
+        .map((origIdx, pos) => buildStudentQuestion(quiz.preguntas[origIdx], origIdx, pos))
+        .join('');
       updateProgress();
+      showQuestionAt(0);
 
       container.addEventListener('click', e => {
         // Opción múltiple
@@ -945,7 +968,7 @@
       });
     }
 
-    function buildStudentQuestion(q, i) {
+    function buildStudentQuestion(q, origIdx, pos) {
       const LABELS = { multiple:'Opción múltiple', truefalse:'V/F', short:'Respuesta corta', fill:'Completar', imagen:'Con imagen' };
       const pts = `${q.puntos || 1} pt${(q.puntos||1) !== 1 ? 's' : ''}`;
 
@@ -953,38 +976,40 @@
 
       if (q.tipo === 'multiple') {
         const LETRAS = ['A','B','C','D','E','F'];
-        const opts = Array.isArray(q.opciones) ? q.opciones : Object.values(q.opciones || {});
+        const opts  = Array.isArray(q.opciones) ? q.opciones : Object.values(q.opciones || {});
+        const order = optionOrders[origIdx] || opts.map((_, j) => j);
         bodyHtml = `<div class="q-options">
-          ${opts.map((o, j) => `
-            <div class="q-option" data-qi="${i}" data-val="${j}">
+          ${order.map((origJ, j) => `
+            <div class="q-option" data-qi="${origIdx}" data-val="${origJ}">
               <span class="q-option-letter">${LETRAS[j]}</span>
-              <span>${escHtml(o)}</span>
+              <span>${escHtml(opts[origJ])}</span>
             </div>`).join('')}
         </div>`;
       }
 
       if (q.tipo === 'truefalse') {
         bodyHtml = `<div class="q-tf">
-          <button class="q-tf-btn" data-qi="${i}" data-val="verdadero">✓ Verdadero</button>
-          <button class="q-tf-btn" data-qi="${i}" data-val="falso">✗ Falso</button>
+          <button class="q-tf-btn" data-qi="${origIdx}" data-val="verdadero">✓ Verdadero</button>
+          <button class="q-tf-btn" data-qi="${origIdx}" data-val="falso">✗ Falso</button>
         </div>`;
       }
 
       if (q.tipo === 'short') {
-        bodyHtml = `<input class="q-short-input" data-qi="${i}" type="text"
+        bodyHtml = `<input class="q-short-input" data-qi="${origIdx}" type="text"
           placeholder="Escribe tu respuesta aquí…">`;
       }
 
       if (q.tipo === 'imagen') {
         const LETRAS = ['A','B','C','D','E','F'];
         const opts   = Array.isArray(q.opciones) ? q.opciones : Object.values(q.opciones || {});
+        const order  = optionOrders[origIdx] || opts.map((_, j) => j);
         bodyHtml = `
           ${q.imagen ? `<img src="${escHtml(q.imagen)}" class="q-img" alt="Imagen de la pregunta">` : ''}
           <div class="q-options">
-            ${opts.map((o, j) => `
-              <div class="q-option" data-qi="${i}" data-val="${j}">
+            ${order.map((origJ, j) => `
+              <div class="q-option" data-qi="${origIdx}" data-val="${origJ}">
                 <span class="q-option-letter">${LETRAS[j]}</span>
-                <span>${escHtml(o)}</span>
+                <span>${escHtml(opts[origJ])}</span>
               </div>`).join('')}
           </div>`;
       }
@@ -992,33 +1017,55 @@
       if (q.tipo === 'fill') {
         const parts = (q.texto || '').split('___');
         if (parts.length >= 2) {
-          const textoHtml = `${escHtml(parts[0])}<input class="q-short-input" data-qi="${i}"
+          const textoHtml = `${escHtml(parts[0])}<input class="q-short-input" data-qi="${origIdx}"
             type="text" placeholder="…" style="width:auto;min-width:100px;display:inline-block;margin:0 4px">${escHtml(parts.slice(1).join('___'))}`;
           return `
-            <div class="q-card">
+            <div class="q-card" data-pos="${pos}">
               <div class="q-header">
-                <span class="q-num">P${i + 1}</span>
+                <span class="q-num">P${pos + 1}</span>
                 <span class="q-tipo-badge">${LABELS[q.tipo]||q.tipo}</span>
                 <span class="q-pts">${pts}</span>
               </div>
               <p class="q-texto" style="line-height:2">${textoHtml}</p>
             </div>`;
         }
-        bodyHtml = `<input class="q-short-input" data-qi="${i}" type="text" placeholder="Completá el espacio…">`;
+        bodyHtml = `<input class="q-short-input" data-qi="${origIdx}" type="text" placeholder="Completá el espacio…">`;
       }
 
       const texto = (q.tipo === 'fill' || q.tipo === 'imagen') ? (q.texto ? `<p class="q-texto">${escHtml(q.texto)}</p>` : '') : `<p class="q-texto">${escHtml(q.texto || '')}</p>`;
 
       return `
-        <div class="q-card">
+        <div class="q-card" data-pos="${pos}">
           <div class="q-header">
-            <span class="q-num">P${i + 1}</span>
+            <span class="q-num">P${pos + 1}</span>
             <span class="q-tipo-badge">${LABELS[q.tipo]||q.tipo}</span>
             <span class="q-pts">${pts}</span>
           </div>
           ${texto}
           ${bodyHtml}
         </div>`;
+    }
+
+    // -------------------------------------------------------------------------
+    // Navegación: una pregunta a la vez, sin posibilidad de retroceder
+    // -------------------------------------------------------------------------
+    function showQuestionAt(pos) {
+      currentPos = pos;
+      const total = quiz.preguntas.length;
+      document.querySelectorAll('#questionsContainer .q-card').forEach(card => {
+        card.classList.toggle('hidden', parseInt(card.dataset.pos, 10) !== pos);
+      });
+      const posText = document.getElementById('questionPosText');
+      if (posText) posText.textContent = `Pregunta ${pos + 1} de ${total}`;
+
+      const isLast = pos >= total - 1;
+      document.getElementById('btnNext').classList.toggle('hidden', isLast);
+      document.getElementById('btnSubmit').classList.toggle('hidden', !isLast);
+    }
+
+    function goToNextQuestion() {
+      const total = quiz.preguntas.length;
+      if (currentPos < total - 1) showQuestionAt(currentPos + 1);
     }
 
     function updateProgress() {
@@ -1090,6 +1137,7 @@
       }
     }
     function onContextMenu(e) { if (antiActive) e.preventDefault(); }
+    function onCopyPaste(e) { if (antiActive) e.preventDefault(); }
 
     function setupAntiCheat() {
       antiActive = true;
@@ -1097,6 +1145,9 @@
       window.addEventListener('blur', onWindowBlur);
       document.addEventListener('keydown', onKeyDown);
       document.addEventListener('contextmenu', onContextMenu);
+      document.addEventListener('copy', onCopyPaste);
+      document.addEventListener('cut', onCopyPaste);
+      document.addEventListener('paste', onCopyPaste);
     }
     function removeAntiCheat() {
       antiActive = false;
@@ -1104,6 +1155,9 @@
       window.removeEventListener('blur', onWindowBlur);
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('contextmenu', onContextMenu);
+      document.removeEventListener('copy', onCopyPaste);
+      document.removeEventListener('cut', onCopyPaste);
+      document.removeEventListener('paste', onCopyPaste);
       window.removeEventListener('beforeunload', onBeforeUnload);
     }
 
@@ -1284,6 +1338,18 @@
       }
 
       container.innerHTML = html;
+    }
+
+    // -------------------------------------------------------------------------
+    // Utilidad: mezclar array (Fisher-Yates) — para orden aleatorio por alumno
+    // -------------------------------------------------------------------------
+    function shuffleArray(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
     }
 
     // -------------------------------------------------------------------------
