@@ -120,7 +120,13 @@
         "asistentes": {
           "$asistenteId": {
             ".write":    "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
-            ".validate": "newData.hasChildren(['nombre', 'carnet', 'ts']) && ((root.child('admins').child(auth.uid).val() === true) || (root.child('qr_sessions').child($sessionId).child('active').val() === true && newData.child('ts').val() <= (now + 120000) && (newData.child('token').val() == root.child('qr_sessions').child($sessionId).child('token').val() || (root.child('qr_sessions').child($sessionId).child('prevToken').exists() && newData.child('token').val() == root.child('qr_sessions').child($sessionId).child('prevToken').val() && now <= root.child('qr_sessions').child($sessionId).child('prevTokenExpiresAt').val()))))"
+            ".validate": "newData.hasChildren(['nombre', 'carnet', 'ts']) && ((root.child('admins').child(auth.uid).val() === true) || (root.child('qr_sessions').child($sessionId).child('active').val() === true && newData.child('ts').val() <= (now + 120000) && (newData.child('token').val() == root.child('qr_sessions').child($sessionId).child('token').val() || (root.child('qr_sessions').child($sessionId).child('prevToken').exists() && newData.child('token').val() == root.child('qr_sessions').child($sessionId).child('prevToken').val() && now <= root.child('qr_sessions').child($sessionId).child('prevTokenExpiresAt').val())) && (root.child('qr_sessions').child($sessionId).child('config').child('requireUsamEmail').val() != true || (newData.hasChild('email') && newData.child('email').val().matches(/^[^@\\s]+@usam\\.edu\\.sv$/)))))"
+          }
+        },
+        "device_index": {
+          "$deviceId": {
+            ".write":    "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
+            ".validate": "newData.isBoolean() && newData.val() === true"
           }
         }
       }

@@ -4,7 +4,7 @@
 // Validaciones: token, duplicado carné, dispositivo, email @usam, GPS, tardíos
 // =============================================================================
 
-import { getDatabase, ref, get, push, set }
+import { getDatabase, ref, get, set, update }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { getAuth, signInAnonymously }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
@@ -25,7 +25,7 @@ const tokenUrl  = (params.get('tk') ?? '').toUpperCase();
 // ---------------------------------------------------------------------------
 let _session   = null;
 let _cfg       = {};
-let _formData  = {};         // { nombre, carnet, email, token }
+let _formData  = {};         // { nombre, carnet, email, token, asistKey }
 let _selfieB64 = null;       // base64 JPEG sin el prefijo "data:..."
 let _gpsCoords = null;       // { lat, lng }
 let _deviceId  = null;
@@ -244,30 +244,32 @@ async function handleStep1() {
         'Código incorrecto o expirado. Ingresá el código visible en la pantalla del aula.');
     }
 
-    // Verificaciones en la lista de asistentes
+    // Verificaciones de duplicado. La llave del registro es checkType+carné
+    // (ver asistKey abajo), así que esta lectura puntual —y sobre todo la
+    // regla de Firebase del lado servidor, que usa la misma llave— bastan
+    // para bloquear el duplicado aunque alguien escriba directo al SDK sin
+    // pasar por este formulario.
     const checkType = _cfg.checkType ?? 'unico';
-    const asistSnap = await get(ref(db, `qr_sessions/${sessionId}/asistentes`));
-    if (asistSnap.exists()) {
-      // Solo compara contra registros del mismo checkType: así el que ya marcó
-      // INICIO no queda bloqueado al querer marcar FIN (y viceversa).
-      const vals = Object.values(asistSnap.val())
-        .filter(a => (a.checkType ?? 'unico') === checkType);
+    const asistKey  = `${checkType}_${sanitizeKey(carnet)}`;
 
-      // Duplicado por carné
-      if (vals.some(a => (a.carnet ?? '').toLowerCase() === carnet.toLowerCase())) {
-        return globalErr('Este carné ya fue registrado en esta sesión.');
-      }
+    const existSnap = await get(ref(db, `qr_sessions/${sessionId}/asistentes/${asistKey}`));
+    if (existSnap.exists()) {
+      return globalErr('Este carné ya fue registrado en esta sesión.');
+    }
 
-      // Duplicado por dispositivo
-      if (_cfg.onceDevice && _deviceId) {
-        if (vals.some(a => a.deviceId === _deviceId)) {
-          return globalErr('Ya se registró un alumno desde este dispositivo en esta sesión.');
-        }
+    // Duplicado por dispositivo: mismo chequeo puntual contra device_index,
+    // reforzado por la regla de Firebase al momento de escribir.
+    if (_cfg.onceDevice && _deviceId) {
+      const devSnap = await get(ref(db, `qr_sessions/${sessionId}/device_index/${_deviceId}`));
+      if (devSnap.exists()) {
+        return globalErr('Ya se registró un alumno desde este dispositivo en esta sesión.');
       }
     }
 
-    // Guardar datos del formulario para el paso 2 o el envío directo
-    _formData = { nombre, carnet, email: email || null, token };
+    // Guardar datos del formulario para el paso 2 o el envío directo.
+    // El correo se normaliza a minúsculas para que coincida con el patrón
+    // (en minúsculas) que valida la regla de Firebase del lado servidor.
+    _formData = { nombre, carnet, email: email ? email.toLowerCase() : null, token, asistKey };
 
     if (_cfg.photoRequired) {
       show('stSelfie');
@@ -372,7 +374,7 @@ function backToForm() {
 // Envío final
 // ---------------------------------------------------------------------------
 async function submitRegistro() {
-  const { nombre, carnet, email } = _formData;
+  const { nombre, carnet, email, token, asistKey } = _formData;
   const estado    = computeEstado(email);
   const checkType = _cfg.checkType ?? 'unico';
   const now       = Date.now();
@@ -398,8 +400,16 @@ async function submitRegistro() {
     lng:       _gpsCoords?.lng ?? null,
   };
 
-  const asistRef = push(ref(db, `qr_sessions/${sessionId}/asistentes`));
-  await set(asistRef, payload);
+  // Escritura atómica multi-ruta: el registro (llave = checkType+carné) y el
+  // índice de dispositivo se escriben juntos o no se escribe ninguno. Las
+  // reglas de Firebase rechazan cada ruta si ya existe, así que un duplicado
+  // de carné o de dispositivo queda bloqueado por la base de datos aunque
+  // alguien llame al SDK directo sin pasar por las validaciones de este form.
+  const updates = { [`qr_sessions/${sessionId}/asistentes/${asistKey}`]: payload };
+  if (_cfg.onceDevice && _deviceId) {
+    updates[`qr_sessions/${sessionId}/device_index/${_deviceId}`] = true;
+  }
+  await update(ref(db), updates);
 
   showSuccess(nombre, carnet, estado);
 }
@@ -425,6 +435,14 @@ function haversine(lat1, lng1, lat2, lng2) {
   const Δλ = (lng2 - lng1) * Math.PI / 180;
   const a  = Math.sin(Δφ/2) ** 2 + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ---------------------------------------------------------------------------
+// Llave de Firebase a partir del carné — normalizada y sin caracteres
+// prohibidos en una ruta de Realtime Database ('.', '#', '$', '[', ']', '/').
+// ---------------------------------------------------------------------------
+function sanitizeKey(str) {
+  return String(str).trim().toLowerCase().replace(/[.#$\[\]/]/g, '_').slice(0, 200);
 }
 
 // ---------------------------------------------------------------------------
