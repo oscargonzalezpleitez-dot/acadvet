@@ -556,6 +556,14 @@ function renderAttendees(asistentes) {
       ? `<span class="qr-attendee-ct-chip qr-attendee-ct-chip--${ct}">${ct === 'inicio' ? '🟢 I' : '🔴 F'}</span>`
       : '';
 
+    // geoValid lo calcula la Cloud Function onQRAsistenteCreated (servidor),
+    // no el navegador del alumno: por eso puede tardar un instante en
+    // aparecer tras el registro. No bloquea nada, es solo advertencia para
+    // que el docente revise manualmente.
+    const geoHtml = a.geoValid === false
+      ? `<span class="qr-attendee-badge qr-attendee-badge--warn" title="Fuera del radio del aula">📍⚠ ${a.geoDistanceM != null ? a.geoDistanceM + 'm' : 'sin GPS'}</span>`
+      : '';
+
     return `
       <div class="qr-attendee-row">
         ${selfieHtml}
@@ -566,6 +574,7 @@ function renderAttendees(asistentes) {
         </div>
         <span class="qr-attendee-badge ${badgeClass}">${badgeText}</span>
         ${ctHtml}
+        ${geoHtml}
       </div>`;
   }).join('');
 }
