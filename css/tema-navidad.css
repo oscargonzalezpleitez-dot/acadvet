@@ -1,0 +1,128 @@
+/* =============================================================================
+   AcadVet USAM — Tema navideño del formulario de registro QR (registro.html)
+   Todo queda bajo body[data-acadvet-page="registro"] para no afectar ninguna
+   otra pantalla de la app (login, dashboard, etc.).
+   ============================================================================= */
+
+body[data-acadvet-page="registro"] {
+  --color-primary:        #C8102E;
+  --color-primary-light:  #E8495F;
+  --color-primary-dark:   #7A0C1F;
+  --color-primary-dim:    rgba(200, 16, 46, 0.12);
+
+  --color-accent:         #0F6B3A;
+  --color-accent-light:   #3FAE6E;
+  --color-accent-alt:     #E8495F;
+
+  --color-success:        #1B8A4A;
+  --color-success-dim:    rgba(27, 138, 74, 0.12);
+
+  --shadow-xl: 0 16px 64px rgba(122, 12, 31, 0.25);
+}
+
+/* Fondo: verde pino nevando hacia blanco */
+body[data-acadvet-page="registro"].login-page {
+  background: linear-gradient(160deg, #0b3d24 0%, #0f5c34 30%, #1c7a46 55%, #eef7f1 100%);
+}
+
+body[data-acadvet-page="registro"] .bg-blob--purple { background: var(--color-primary-light); }
+body[data-acadvet-page="registro"] .bg-blob--cyan    { background: #0f5c34; }
+body[data-acadvet-page="registro"] .bg-blob--coral   { background: #ffffff; opacity: 0.35; }
+
+/* Tarjeta: listón navideño arriba */
+body[data-acadvet-page="registro"] .login-card {
+  position: relative;
+  border-color: rgba(200, 16, 46, 0.2);
+  overflow: hidden;
+}
+body[data-acadvet-page="registro"] .login-card::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 8px;
+  background: repeating-linear-gradient(135deg,
+    #C8102E 0 14px, #ffffff 14px 28px, #0F6B3A 28px 42px, #ffffff 42px 56px);
+}
+
+/* Logo con gorrito navideño */
+body[data-acadvet-page="registro"] .login-logo {
+  position: relative;
+  box-shadow: 0 10px 32px rgba(200, 16, 46, 0.3);
+  border-color: rgba(200, 16, 46, 0.18);
+}
+body[data-acadvet-page="registro"] .login-logo::after {
+  content: "🎅";
+  position: absolute;
+  top: -14px;
+  right: -10px;
+  font-size: 1.8rem;
+  transform: rotate(18deg);
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.25));
+}
+
+body[data-acadvet-page="registro"] .login-title .title-highlight {
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Botón principal: sombra a tono */
+body[data-acadvet-page="registro"] .btn--primary {
+  box-shadow: 0 3px 12px rgba(200, 16, 46, 0.35);
+}
+body[data-acadvet-page="registro"] .btn--primary:hover:not(:disabled) {
+  box-shadow: 0 6px 20px rgba(200, 16, 46, 0.45);
+}
+body[data-acadvet-page="registro"] .btn--primary:active:not(:disabled) {
+  box-shadow: 0 2px 8px rgba(200, 16, 46, 0.3);
+}
+
+/* -----------------------------------------------------------------------
+   Muñeco de nieve — esquina inferior izquierda, detrás de la tarjeta
+   (z-index menor que .login-card) para que nunca tape las casillas.
+   ----------------------------------------------------------------------- */
+.navidad-snowman {
+  position: fixed;
+  left: clamp(-24px, -2vw, 0px);
+  bottom: 0;
+  width: clamp(110px, 26vw, 220px);
+  z-index: 0;
+  pointer-events: none;
+  filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.25));
+  animation: navidad-float 6s ease-in-out infinite;
+}
+@keyframes navidad-float {
+  0%, 100% { transform: translateY(0) rotate(-1deg); }
+  50%      { transform: translateY(-10px) rotate(1deg); }
+}
+
+/* -----------------------------------------------------------------------
+   Nieve cayendo — por encima de todo, sin bloquear clics
+   ----------------------------------------------------------------------- */
+.navidad-snow {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 5;
+}
+.navidad-flake {
+  position: absolute;
+  top: -10vh;
+  color: #ffffff;
+  text-shadow: 0 0 6px rgba(255, 255, 255, 0.8);
+  user-select: none;
+  animation-name: navidad-caer;
+  animation-timing-function: linear;
+  animation-iteration-count: infinite;
+  will-change: transform;
+}
+@keyframes navidad-caer {
+  0%   { transform: translateY(-10vh) translateX(0) rotate(0deg); }
+  100% { transform: translateY(110vh) translateX(var(--drift, 20px)) rotate(360deg); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .navidad-snowman,
+  .navidad-flake { animation: none; }
+}
