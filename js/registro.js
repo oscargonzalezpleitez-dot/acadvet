@@ -344,9 +344,10 @@ function stopCamera() {
 }
 
 function capturePhoto() {
-  const video   = document.getElementById('selfieVideo');
-  const canvas  = document.getElementById('selfieCanvas');
-  const preview = document.getElementById('selfiePreview');
+  const video       = document.getElementById('selfieVideo');
+  const canvas      = document.getElementById('selfieCanvas');
+  const preview     = document.getElementById('selfiePreview');
+  const previewWrap = document.getElementById('selfiePreviewWrap');
   if (!video || !canvas) return;
 
   canvas.width  = 320;
@@ -356,7 +357,8 @@ function capturePhoto() {
   const dataUrl  = canvas.toDataURL('image/jpeg', 0.6);
   _selfieB64     = dataUrl.split(',')[1]; // sin el prefijo "data:image/jpeg;base64,"
 
-  if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
+  if (preview)     preview.src = dataUrl;
+  if (previewWrap) previewWrap.style.display = 'block';
   video.style.display = 'none';
 
   document.getElementById('btnCapture').style.display   = 'none';
@@ -366,10 +368,10 @@ function capturePhoto() {
 
 function retakePhoto() {
   _selfieB64 = null;
-  const video   = document.getElementById('selfieVideo');
-  const preview = document.getElementById('selfiePreview');
-  if (video)   video.style.display   = '';
-  if (preview) preview.style.display = 'none';
+  const video       = document.getElementById('selfieVideo');
+  const previewWrap = document.getElementById('selfiePreviewWrap');
+  if (video)       video.style.display       = '';
+  if (previewWrap) previewWrap.style.display = 'none';
 
   document.getElementById('btnCapture').style.display  = '';
   document.getElementById('btnRetake').style.display   = 'none';
@@ -540,8 +542,18 @@ function showSuccess(nombre, carnet, estado) {
   const hora     = new Date().toLocaleTimeString('es-SV', { hour: '2-digit', minute: '2-digit' });
   const isTardio = estado === 'tardio';
 
-  const icon = document.getElementById('successIcon');
-  if (icon) icon.textContent = isTardio ? '⏰' : '✅';
+  const icon       = document.getElementById('successIcon');
+  const photoWrap  = document.getElementById('successPhotoWrap');
+  const photoImg   = document.getElementById('successPhoto');
+  if (_selfieB64 && photoWrap && photoImg) {
+    photoImg.src = 'data:image/jpeg;base64,' + _selfieB64;
+    photoWrap.classList.remove('hidden');
+    icon?.classList.add('hidden');
+  } else {
+    photoWrap?.classList.add('hidden');
+    icon?.classList.remove('hidden');
+    if (icon) icon.textContent = isTardio ? '⏰' : '✅';
+  }
 
   document.getElementById('successDetail').textContent = isTardio
     ? 'Tu asistencia fue registrada como tardío. Si estás inscrito en la materia, se aplicará automáticamente a tu expediente.'

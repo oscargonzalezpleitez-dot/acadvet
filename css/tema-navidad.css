@@ -78,6 +78,46 @@ body[data-acadvet-page="registro"] .btn--primary:active:not(:disabled) {
 }
 
 /* -----------------------------------------------------------------------
+   Gorrito navideño sobre la foto del alumno (paso 2 y pantalla de éxito)
+   ----------------------------------------------------------------------- */
+.navidad-photo-wrap {
+  position: relative;
+}
+.navidad-hat-overlay {
+  position: absolute;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.35));
+}
+
+/* Paso 2: foto 4:3 recién tomada con la cámara */
+.navidad-hat-overlay--selfie {
+  width: 46%;
+  top: -14%;
+  left: 52%;
+  transform: translateX(-50%) rotate(-10deg);
+}
+
+/* Pantalla de éxito: foto circular en vez del ícono de check */
+.navidad-photo-wrap--success {
+  width: 140px;
+  height: 140px;
+}
+#successPhoto {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+  border: 4px solid #ffffff;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+.navidad-hat-overlay--success {
+  width: 74%;
+  top: -20%;
+  left: 58%;
+  transform: translateX(-50%) rotate(-12deg);
+}
+
+/* -----------------------------------------------------------------------
    Muñeco de nieve — esquina inferior izquierda, detrás de la tarjeta
    (z-index menor que .login-card) para que nunca tape las casillas.
    ----------------------------------------------------------------------- */
