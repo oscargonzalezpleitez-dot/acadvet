@@ -377,6 +377,7 @@ function capturePhoto() {
 
   if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
   video.style.display = 'none';
+  document.getElementById('selfieHat')?.classList.remove('hidden');
 
   document.getElementById('btnCapture').style.display   = 'none';
   document.getElementById('btnRetake').style.display    = '';
@@ -389,6 +390,7 @@ function retakePhoto() {
   const preview = document.getElementById('selfiePreview');
   if (video)   video.style.display   = '';
   if (preview) preview.style.display = 'none';
+  document.getElementById('selfieHat')?.classList.add('hidden');
 
   document.getElementById('btnCapture').style.display  = '';
   document.getElementById('btnRetake').style.display   = 'none';
