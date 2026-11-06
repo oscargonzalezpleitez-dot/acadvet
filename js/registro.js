@@ -344,21 +344,38 @@ function stopCamera() {
 }
 
 function capturePhoto() {
-  const video       = document.getElementById('selfieVideo');
-  const canvas      = document.getElementById('selfieCanvas');
-  const preview     = document.getElementById('selfiePreview');
-  const previewWrap = document.getElementById('selfiePreviewWrap');
+  const video   = document.getElementById('selfieVideo');
+  const canvas  = document.getElementById('selfieCanvas');
+  const preview = document.getElementById('selfiePreview');
   if (!video || !canvas) return;
 
-  canvas.width  = 320;
-  canvas.height = 240;
-  canvas.getContext('2d').drawImage(video, 0, 0, 320, 240);
+  const targetW = 320, targetH = 240;
+  canvas.width  = targetW;
+  canvas.height = targetH;
+
+  // Recorte tipo "object-fit: cover": la cámara casi nunca entrega el video
+  // en 4:3 exacto, así que dibujar el frame completo estirado a 320x240
+  // (drawImage sin recorte) alargaba o achataba la cara. Acá se recorta el
+  // centro del frame real a la proporción 4:3 antes de escalarlo, igual que
+  // ya se ve en pantalla con object-fit:cover en el <video>.
+  const vw = video.videoWidth  || targetW;
+  const vh = video.videoHeight || targetH;
+  const srcRatio = vw / vh;
+  const dstRatio = targetW / targetH;
+  let sx = 0, sy = 0, sw = vw, sh = vh;
+  if (srcRatio > dstRatio) {
+    sw = vh * dstRatio;
+    sx = (vw - sw) / 2;
+  } else {
+    sh = vw / dstRatio;
+    sy = (vh - sh) / 2;
+  }
+  canvas.getContext('2d').drawImage(video, sx, sy, sw, sh, 0, 0, targetW, targetH);
 
   const dataUrl  = canvas.toDataURL('image/jpeg', 0.6);
   _selfieB64     = dataUrl.split(',')[1]; // sin el prefijo "data:image/jpeg;base64,"
 
-  if (preview)     preview.src = dataUrl;
-  if (previewWrap) previewWrap.style.display = 'block';
+  if (preview) { preview.src = dataUrl; preview.style.display = 'block'; }
   video.style.display = 'none';
 
   document.getElementById('btnCapture').style.display   = 'none';
@@ -368,10 +385,10 @@ function capturePhoto() {
 
 function retakePhoto() {
   _selfieB64 = null;
-  const video       = document.getElementById('selfieVideo');
-  const previewWrap = document.getElementById('selfiePreviewWrap');
-  if (video)       video.style.display       = '';
-  if (previewWrap) previewWrap.style.display = 'none';
+  const video   = document.getElementById('selfieVideo');
+  const preview = document.getElementById('selfiePreview');
+  if (video)   video.style.display   = '';
+  if (preview) preview.style.display = 'none';
 
   document.getElementById('btnCapture').style.display  = '';
   document.getElementById('btnRetake').style.display   = 'none';

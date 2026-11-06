@@ -143,19 +143,21 @@
       <div class="selfie-wrap">
         <p class="selfie-subtitle">Centrá tu rostro en el encuadre y tomá la foto.</p>
 
-        <!-- Cámara -->
-        <video id="selfieVideo" autoplay playsinline muted
-          style="width:100%;max-width:320px;border-radius:var(--radius-md);background:#000;aspect-ratio:4/3"></video>
+        <!-- Cámara + vista previa: comparten un mismo marco para que el
+             gorrito navideño sirva de guía de encuadre mientras el alumno
+             se posiciona, y siga calzando igual una vez tomada la foto. -->
+        <div class="navidad-photo-wrap" id="selfieCaptureWrap" style="width:100%;max-width:320px;margin:0 auto">
+          <video id="selfieVideo" autoplay playsinline muted
+            style="width:100%;display:block;border-radius:var(--radius-md);background:#000;aspect-ratio:4/3;object-fit:cover"></video>
+
+          <img id="selfiePreview" alt="Tu foto"
+            style="display:none;width:100%;border-radius:var(--radius-md);border:2px solid var(--color-primary)">
+
+          <img class="navidad-hat-overlay navidad-hat-overlay--selfie" src="assets/navidad/gorro-navideno.png?v=20261106c" alt="" aria-hidden="true">
+        </div>
 
         <!-- Canvas oculto para captura -->
         <canvas id="selfieCanvas" style="display:none"></canvas>
-
-        <!-- Preview de la foto tomada -->
-        <div id="selfiePreviewWrap" class="navidad-photo-wrap" style="display:none;width:100%;max-width:320px">
-          <img id="selfiePreview" alt="Tu foto"
-            style="display:block;width:100%;border-radius:var(--radius-md);border:2px solid var(--color-primary)">
-          <img class="navidad-hat-overlay navidad-hat-overlay--selfie" src="assets/navidad/gorro-navideno.png?v=20261106c" alt="" aria-hidden="true">
-        </div>
 
         <!-- Error de cámara -->
         <p id="selfieStatus" class="form-error hidden" role="alert"></p>
