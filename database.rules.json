@@ -128,6 +128,11 @@
             ".write":    "auth != null && (!data.exists() || root.child('admins').child(auth.uid).val() === true)",
             ".validate": "newData.isBoolean() && newData.val() === true"
           }
+        },
+        "geoOverrides": {
+          "$carnetKey": {
+            ".write": "auth != null && (root.child('admins').child(auth.uid).val() === true)"
+          }
         }
       }
     },

@@ -6,6 +6,7 @@ exports.onParcialRevisionWritten = require('./src/triggers/onParcialRevisionWrit
 exports.onLabReportSubmissionCreated = require('./src/triggers/onLabReportSubmissionCreated').onLabReportSubmissionCreated;
 exports.onQRAsistenteCreated = require('./src/triggers/onQRAsistenteCreated').onQRAsistenteCreated;
 exports.sendBroadcast     = require('./src/broadcast').sendBroadcast;
+exports.verifyAccessCode  = require('./src/accessCode').verifyAccessCode;
 
 // Pendiente de activar: requiere los secretos INFORME_EMAIL_USER e
 // INFORME_EMAIL_PASS (cuenta de Outlook del docente) configurados con

@@ -8,6 +8,8 @@ import { getDatabase, ref, get, set, update }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { getAuth, signInAnonymously }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
+import { getFunctions, httpsCallable }
+  from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-functions.js';
 import { app } from './firebase-config.js';
 
 const db   = getDatabase(app);
@@ -179,6 +181,12 @@ function wireForm() {
 
   document.getElementById('gpsRetryBtn')?.addEventListener('click', startGPS);
 
+  document.getElementById('accessCodeToggle')?.addEventListener('click', () => {
+    document.getElementById('accessCodeGroup')?.classList.remove('hidden');
+    document.getElementById('accessCodeToggle')?.classList.add('hidden');
+    document.getElementById('rAccessCode')?.focus();
+  });
+
   // Paso 2 — selfie
   document.getElementById('btnCapture')?.addEventListener('click',    capturePhoto);
   document.getElementById('btnRetake')?.addEventListener('click',     retakePhoto);
@@ -218,8 +226,28 @@ async function handleStep1() {
 
   if (!ok) return;
 
+  // Código de acceso del docente: si el alumno escribió uno, se valida en el
+  // servidor (nunca acá, el código no debe existir en el código fuente
+  // público) y, si es correcto, salta por completo la validación de GPS de
+  // abajo. Si es incorrecto, cae al bloqueo normal de GPS como si no hubiera
+  // escrito nada.
+  const accessCode = document.getElementById('rAccessCode')?.value.trim() ?? '';
+  let accessCodeValid = false;
+  if (_cfg.requireGeo && _cfg.aulaLat != null && accessCode) {
+    try {
+      const verifyAccessCode = httpsCallable(getFunctions(app), 'verifyAccessCode');
+      const res = await verifyAccessCode({ sessionId, carnet, code: accessCode });
+      accessCodeValid = res.data?.valid === true;
+    } catch (err) {
+      console.error('[AcadVet] Error validando código de acceso:', err);
+    }
+    if (!accessCodeValid) {
+      return globalErr('Código de acceso incorrecto. Verificalo con el docente.');
+    }
+  }
+
   // Validación de GPS (antes de ir al servidor)
-  if (_cfg.requireGeo && _cfg.aulaLat != null) {
+  if (_cfg.requireGeo && _cfg.aulaLat != null && !accessCodeValid) {
     if (!_gpsCoords) {
       return globalErr('Esperando ubicación GPS. Si no se resuelve, verificá los permisos de ubicación en tu navegador.');
     }

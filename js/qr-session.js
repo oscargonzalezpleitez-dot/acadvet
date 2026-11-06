@@ -560,9 +560,11 @@ function renderAttendees(asistentes) {
     // no el navegador del alumno: por eso puede tardar un instante en
     // aparecer tras el registro. No bloquea nada, es solo advertencia para
     // que el docente revise manualmente.
-    const geoHtml = a.geoValid === false
-      ? `<span class="qr-attendee-badge qr-attendee-badge--warn" title="Fuera del radio del aula">📍⚠ ${a.geoDistanceM != null ? a.geoDistanceM + 'm' : 'sin GPS'}</span>`
-      : '';
+    const geoHtml = a.geoOverride
+      ? `<span class="qr-attendee-badge qr-attendee-badge--ok" title="Registrado con código de acceso manual">🔑 Acceso manual</span>`
+      : a.geoValid === false
+        ? `<span class="qr-attendee-badge qr-attendee-badge--warn" title="Fuera del radio del aula">📍⚠ ${a.geoDistanceM != null ? a.geoDistanceM + 'm' : 'sin GPS'}</span>`
+        : '';
 
     return `
       <div class="qr-attendee-row">

@@ -104,6 +104,15 @@
             style="margin-top:var(--space-2);width:100%">
             🔄 Reintentar ubicación
           </button>
+
+          <button type="button" id="accessCodeToggle" class="text-muted text-sm"
+            style="background:none;border:none;padding:0;margin-top:var(--space-2);text-decoration:underline;cursor:pointer;display:block">
+            ¿Problemas para registrarte? Código de acceso del docente
+          </button>
+          <div id="accessCodeGroup" class="hidden" style="margin-top:var(--space-2)">
+            <input class="form-input" id="rAccessCode" type="text" inputmode="numeric"
+              placeholder="Código del docente" autocomplete="off" maxlength="12">
+          </div>
         </div>
 
         <p class="form-error hidden" id="rGlobalErr" role="alert" aria-live="assertive"></p>
