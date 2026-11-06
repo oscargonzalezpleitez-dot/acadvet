@@ -145,7 +145,7 @@ function onGPSPermissionDenied() {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   setGPSStatus(
     isIOS
-      ? '⚠️ Permiso denegado. En iPhone: Ajustes → Privacidad → Localización → Safari → Permitir.'
+      ? '⚠️ Permiso denegado para este sitio. Tocá el ícono "AA" junto a la URL (arriba) → Configuración del sitio web → Ubicación → Permitir, luego tocá Reintentar. Si no aparece esa opción: Ajustes → Safari → Avanzado → Datos de sitios web, buscá este sitio, eliminalo y volvé a cargar la página.'
       : '⚠️ Permiso denegado. Habilitá la ubicación en la configuración de tu navegador.',
     'error'
   );
