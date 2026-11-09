@@ -22,13 +22,13 @@ function setup(positions = []) {
           add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c),
           toggle: (c, add) => add ? classes.add(c) : classes.delete(c),
         },
-        focus() {}, querySelector() { return node(`${id}-text`); },
+        focus() {}, addEventListener() {}, querySelector() { return node(`${id}-text`); },
       });
     }
     return elements.get(id);
   };
   const context = vm.createContext({
-    console: { error() {} }, URLSearchParams,
+    console: { error() {}, warn() {} }, URLSearchParams,
     window: { location: { search: '?s=test&tk=ABC-123' } },
     document: { getElementById: node, querySelector: () => null },
     navigator: {
@@ -42,7 +42,9 @@ function setup(positions = []) {
         },
       },
     },
-    getDatabase: () => ({}), getAuth: () => ({}), app: {},
+    getDatabase: () => ({}), getAuth: () => ({ currentUser: { uid: 'test' } }), app: {},
+    signInAnonymously: async () => {},
+    onValue: (_ref, callback) => { callback({ val: () => 0 }); return () => {}; },
     ref: (_db, target) => target,
     get: async () => ({ val: () => context.session, exists: () => true }),
     update: async (_ref, payload) => writes.push(payload),
@@ -164,4 +166,73 @@ test('envía el token canónico anterior dentro de gracia y mantiene atómicos r
   assert.equal(h.writes[0]['qr_sessions/test/asistentes/unico_123'].token, 'ABC-123');
   assert.equal(h.writes[0]['qr_sessions/test/device_index/telefono'], true);
   assert.equal(h.node('stSuccess').classList.contains('hidden'), false);
+});
+
+test('la carga inicial no usa get() para /.info y abre el formulario aunque falle la sincronización', async () => {
+  const h = setup();
+  const reads = [];
+  h.context.session = { active: true, materiaNombre: 'Bacteriología', config: {} };
+  h.context.onValue = (target, _ok, fail) => {
+    assert.equal(target, '.info/serverTimeOffset');
+    fail({ code: 'PERMISSION_DENIED' });
+    return () => {};
+  };
+  h.context.get = async target => {
+    reads.push(target);
+    if (target.startsWith('.info')) throw new Error('get() no debe consultar metadatos');
+    return { val: () => h.context.session, exists: () => true };
+  };
+  await h.run('init()');
+  assert.deepEqual(reads, ['qr_sessions/test']);
+  assert.equal(h.node('stForm').classList.contains('hidden'), false);
+  assert.equal(h.node('stError').classList.contains('hidden'), true);
+});
+
+test('una excepción al iniciar el reloj tampoco bloquea el registro', async () => {
+  const h = setup();
+  h.context.session = { active: true, config: {} };
+  h.context.onValue = () => { throw new Error('metadata unavailable'); };
+  await h.run('init()');
+  assert.equal(h.node('stForm').classList.contains('hidden'), false);
+});
+
+test('el reloj se actualiza sin bloquear y no acumula suscripciones al reintentar', async () => {
+  const h = setup();
+  h.context.session = { active: true, config: {} };
+  let subscriptions = 0;
+  h.context.onValue = (_target, callback) => {
+    subscriptions++;
+    callback({ val: () => 4500 });
+    return () => {};
+  };
+  await h.run('init()');
+  await h.run('init()');
+  assert.equal(subscriptions, 1);
+  assert.equal(h.run('_serverTimeOffset'), 4500);
+});
+
+test('un rechazo de Firebase se identifica como permisos y permite reintentar la carga', async () => {
+  const h = setup();
+  h.context.get = async () => { throw Object.assign(new Error('Permission denied'), { code: 'PERMISSION_DENIED' }); };
+  await h.run('init()');
+  assert.equal(h.node('stError').classList.contains('hidden'), false);
+  assert.match(h.node('errMsg').textContent, /permisos/);
+  assert.match(h.node('errMsg').textContent, /session\/PERMISSION_DENIED/);
+  assert.doesNotMatch(h.node('errMsg').textContent, /Verificá tu internet/);
+  h.context.session = { active: true, config: {} };
+  h.context.get = async () => ({ val: () => h.context.session, exists: () => true });
+  await h.run('init()');
+  assert.equal(h.node('stForm').classList.contains('hidden'), false);
+  assert.equal(h.node('stError').classList.contains('hidden'), true);
+});
+
+test('un error de autenticación muestra su código y no intenta consultar la sesión', async () => {
+  const h = setup();
+  h.run('auth.currentUser = null');
+  h.context.signInAnonymously = async () => { throw Object.assign(new Error('disabled'), { code: 'auth/operation-not-allowed' }); };
+  h.context.get = async () => { assert.fail('No se debe leer sin autenticar'); };
+  await h.run('init()');
+  assert.match(h.node('errMsg').textContent, /autenticación anónima/);
+  assert.match(h.node('errMsg').textContent, /auth\/operation-not-allowed/);
+  assert.equal(h.node('errTitle').textContent, 'No se pudo abrir el registro');
 });

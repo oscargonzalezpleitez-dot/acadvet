@@ -4,7 +4,7 @@
 // Validaciones: token, duplicado carné, dispositivo, email @usam, GPS, tardíos
 // =============================================================================
 
-import { getDatabase, ref, get, set, update }
+import { getDatabase, ref, get, set, update, onValue }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { getAuth, signInAnonymously }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
@@ -36,26 +36,34 @@ let _lastSubmitTs = 0;       // timestamp del último envío (anti-spam)
 let _gpsRequest = null;
 let _stepBusy = false;
 let _serverTimeOffset = 0;
+let _stopServerClock = null;
+let _initializing = false;
 
 // ---------------------------------------------------------------------------
 // Init
 // ---------------------------------------------------------------------------
+document.getElementById('btnRetryInit')?.addEventListener('click', init);
 init();
 
 async function init() {
+  if (_initializing) return;
+  _initializing = true;
   show('stLoading');
-  if (!sessionId) return showError('URL inválida. Pedile al docente un nuevo QR.');
-
+  let stage = 'auth';
   try {
+    if (!sessionId) return showError('URL inválida. Pedile al docente un nuevo QR.');
     if (!auth.currentUser) await signInAnonymously(auth);
-    const offset = await get(ref(db, '.info/serverTimeOffset'));
-    _serverTimeOffset = Number(offset.val()) || 0;
+    // /.info se escucha como metadato local del SDK, no se consulta con get().
+    // Esta ayuda para el reloj nunca debe impedir el registro de asistencia.
+    watchServerClock();
+    stage = 'session';
     const snap = await get(ref(db, `qr_sessions/${sessionId}`));
     if (!snap.exists()) return showError('La sesión no existe.');
 
     _session = { id: sessionId, ...snap.val() };
     if (!_session.active) return showError('La sesión ya finalizó.');
     _cfg = _session.config ?? {};
+    stage = 'form';
 
     // Materia en el encabezado
     document.getElementById('fMateria').textContent =
@@ -109,8 +117,43 @@ async function init() {
     wireForm();
   } catch (err) {
     console.error('[AcadVet] Error cargando sesión QR:', err);
-    showError('Error de conexión. Verificá tu internet.');
+    showError(initializationErrorMessage(err, stage), 'No se pudo abrir el registro');
+  } finally {
+    _initializing = false;
   }
+}
+
+function watchServerClock() {
+  if (_stopServerClock) return;
+  try {
+    _stopServerClock = onValue(ref(db, '.info/serverTimeOffset'), snapshot => {
+      const offset = snapshot.val();
+      if (typeof offset === 'number' && Number.isFinite(offset)) _serverTimeOffset = offset;
+    }, err => console.warn('[AcadVet] Sin sincronización de hora:', err.code));
+  } catch (err) {
+    console.warn('[AcadVet] Sin sincronización de hora:', err.code);
+  }
+}
+
+function initializationErrorMessage(err, stage) {
+  const code = String(err.code ?? 'sin-codigo').slice(0, 80);
+  let message;
+  if (/permission.denied/i.test(code)) {
+    message = 'Firebase rechazó el acceso a la sesión. Avisale al docente para revisar los permisos del registro QR.';
+  } else if (code === 'auth/operation-not-allowed' || code === 'auth/admin-restricted-operation') {
+    message = 'Firebase no permite iniciar el acceso de alumnos. Avisale al docente para revisar la autenticación anónima.';
+  } else if (code === 'auth/web-storage-unsupported') {
+    message = 'El navegador bloqueó el almacenamiento de la sesión. Abrí el enlace directamente en Safari o Chrome y volvé a intentar.';
+  } else if (code === 'auth/too-many-requests') {
+    message = 'Firebase recibió demasiados intentos. Esperá un momento y tocá Reintentar.';
+  } else if (stage === 'auth') {
+    message = 'No se pudo iniciar el acceso al registro en Firebase. Tocá Reintentar. Si continúa, compartí este código con el docente.';
+  } else if (stage === 'session') {
+    message = 'No se pudo consultar la sesión en Firebase. Tocá Reintentar. Si continúa, compartí este código con el docente.';
+  } else {
+    message = 'No se pudo preparar el formulario. Tocá Reintentar y, si continúa, avisale al docente.';
+  }
+  return `${message} Referencia: ${stage}/${code}.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -615,7 +658,9 @@ function show(stateId) {
   });
 }
 
-function showError(msg) {
+function showError(msg, title = 'Sesión no disponible') {
+  const heading = document.getElementById('errTitle');
+  if (heading) heading.textContent = title;
   document.getElementById('errMsg').textContent = msg;
   show('stError');
 }
