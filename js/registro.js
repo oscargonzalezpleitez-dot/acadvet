@@ -656,6 +656,21 @@ function show(stateId) {
   ['stLoading', 'stError', 'stForm', 'stSelfie', 'stSuccess'].forEach(id => {
     document.getElementById(id)?.classList.toggle('hidden', id !== stateId);
   });
+  const steps = document.getElementById('registroSteps');
+  steps?.classList.toggle('hidden', !['stForm', 'stSelfie', 'stSuccess'].includes(stateId));
+  const ids = _cfg.photoRequired ? ['stepDatos', 'stepFoto', 'stepListo'] : ['stepDatos', 'stepListo'];
+  const current = stateId === 'stSuccess' ? ids.length - 1 : stateId === 'stSelfie' ? 1 : 0;
+  document.getElementById('stepFoto')?.classList.toggle('hidden', !_cfg.photoRequired);
+  ids.forEach((id, i) => {
+    const step = document.getElementById(id);
+    if (!step) return;
+    step.classList.toggle('is-active', i === current);
+    step.classList.toggle('is-complete', i < current);
+    if (i === current) step.setAttribute('aria-current', 'step');
+    else step.removeAttribute('aria-current');
+    const number = step.querySelector('.registro-step-number');
+    if (number) number.textContent = i < current ? '✓' : String(i + 1);
+  });
 }
 
 function showError(msg, title = 'Sesión no disponible') {
@@ -710,12 +725,12 @@ function showSuccess(nombre, carnet, estado) {
   } else {
     photoWrap?.classList.add('hidden');
     icon?.classList.remove('hidden');
-    if (icon) icon.textContent = isTardio ? '⏰' : '✅';
+    if (icon) icon.textContent = '✓';
   }
 
   document.getElementById('successDetail').textContent = isTardio
     ? 'Tu asistencia fue registrada como tardío. Si estás inscrito en la materia, se aplicará automáticamente a tu expediente.'
-    : 'Tu asistencia fue registrada. Si estás inscrito en la materia, se aplicará automáticamente a tu expediente.';
+    : 'Tu asistencia quedó registrada. Si estás inscrito en la materia, se aplicará automáticamente a tu expediente.';
 
   document.getElementById('successCard').innerHTML = `
     <div style="display:grid;gap:var(--space-2)">

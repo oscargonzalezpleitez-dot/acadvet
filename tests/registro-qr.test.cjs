@@ -22,7 +22,7 @@ function setup(positions = []) {
           add: c => classes.add(c), remove: c => classes.delete(c), contains: c => classes.has(c),
           toggle: (c, add) => add ? classes.add(c) : classes.delete(c),
         },
-        focus() {}, addEventListener() {}, querySelector() { return node(`${id}-text`); },
+        focus() {}, addEventListener() {}, setAttribute() {}, removeAttribute() {}, querySelector() { return node(`${id}-text`); },
       });
     }
     return elements.get(id);

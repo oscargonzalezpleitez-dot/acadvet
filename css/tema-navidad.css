@@ -5,6 +5,7 @@
    ============================================================================= */
 
 body[data-acadvet-page="registro"] {
+  --font-display: 'Poppins', sans-serif;
   --color-primary:        #C8102E;
   --color-primary-light:  #E8495F;
   --color-primary-dark:   #7A0C1F;
@@ -22,7 +23,12 @@ body[data-acadvet-page="registro"] {
 
 /* Fondo: verde pino nevando hacia blanco */
 body[data-acadvet-page="registro"].login-page {
-  background: linear-gradient(160deg, #0b3d24 0%, #0f5c34 30%, #1c7a46 55%, #eef7f1 100%);
+  background: radial-gradient(ellipse at 80% 15%, #2c795b66, transparent 50%),
+    linear-gradient(155deg, #092f23 0%, #13553c 55%, #56836a 100%);
+  min-height: 100svh;
+  padding: 28px 18px;
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 body[data-acadvet-page="registro"] .bg-blob--purple { background: var(--color-primary-light); }
@@ -32,14 +38,21 @@ body[data-acadvet-page="registro"] .bg-blob--coral   { background: #ffffff; opac
 /* Tarjeta: listón navideño arriba */
 body[data-acadvet-page="registro"] .login-card {
   position: relative;
-  border-color: rgba(200, 16, 46, 0.2);
+  border: 1px solid #e6d9bc;
+  border-radius: 24px;
+  background: #fffdf7;
+  padding: 30px 30px 22px;
+  max-width: 460px;
+  margin: auto;
+  gap: 20px;
+  box-shadow: 0 24px 70px #03281e40;
   overflow: hidden;
 }
 body[data-acadvet-page="registro"] .login-card::before {
   content: "";
   position: absolute;
   top: 0; left: 0; right: 0;
-  height: 8px;
+  height: 5px;
   background: repeating-linear-gradient(135deg,
     #C8102E 0 14px, #ffffff 14px 28px, #0F6B3A 28px 42px, #ffffff 42px 56px);
 }
@@ -47,11 +60,16 @@ body[data-acadvet-page="registro"] .login-card::before {
 /* Logo con gorrito navideño */
 body[data-acadvet-page="registro"] .login-logo {
   position: relative;
-  box-shadow: 0 10px 32px rgba(200, 16, 46, 0.3);
-  border-color: rgba(200, 16, 46, 0.18);
+  width: 48px;
+  height: 48px;
+  font-size: 23px;
+  border-radius: 14px;
+  background: #edf3ec;
+  box-shadow: none;
+  border: 1px solid #d8e6d7;
 }
 body[data-acadvet-page="registro"] .login-logo::after {
-  content: "🎅";
+  content: none;
   position: absolute;
   top: -14px;
   right: -10px;
@@ -144,7 +162,7 @@ body[data-acadvet-page="registro"] .btn--primary:active:not(:disabled) {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 5;
+  z-index: 0;
 }
 .navidad-flake {
   position: absolute;
@@ -163,6 +181,145 @@ body[data-acadvet-page="registro"] .btn--primary:active:not(:disabled) {
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .navidad-snowman,
-  .navidad-flake { animation: none; }
+  .navidad-snowman { animation: none; }
+  .navidad-flake { opacity: 0.4 !important; }
+}
+
+/* Encabezado, progreso y formulario: el contenido siempre queda sobre la nieve. */
+.registro-season {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  text-align: center;
+}
+.registro-institution {
+  color: #23523c;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: .13em;
+  text-transform: uppercase;
+}
+.registro-season-label { color: #756746; font-size: 11px; }
+.registro-holly { position: relative; color: #be233c; font-size: 19px; line-height: 20px; }
+.registro-holly::before, .registro-holly::after {
+  content: '';
+  position: absolute;
+  top: 5px;
+  width: 24px;
+  height: 10px;
+  background: #357153;
+  border-radius: 2px 100% 2px 100%;
+}
+.registro-holly::before { right: 24px; transform: rotate(15deg); }
+.registro-holly::after { left: 24px; transform: rotate(-15deg) scaleX(-1); }
+.registro-steps {
+  width: 100%;
+  display: flex;
+  list-style: none;
+  padding: 13px 0;
+  margin: 0;
+  border-top: 1px solid #e9e5d8;
+  border-bottom: 1px solid #e9e5d8;
+}
+.registro-steps li {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 600;
+  color: #71766b;
+}
+.registro-step-number {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #c5ccbf;
+  border-radius: 50%;
+  background: #fffdf7;
+  flex-shrink: 0;
+}
+.registro-steps .is-active { color: #a81b32; }
+.registro-steps .is-active .registro-step-number { color: #fffdf7; background: #b31f38; border-color: #b31f38; }
+.registro-steps .is-complete { color: #235c41; }
+.registro-steps .is-complete .registro-step-number { color: #235c41; background: #e7f0e5; border-color: #b1c9ad; }
+body[data-acadvet-page="registro"] .login-card > div { width: 100%; }
+body[data-acadvet-page="registro"] .registro-heading {
+  flex-direction: row;
+  align-items: flex-start;
+  text-align: left;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+body[data-acadvet-page="registro"] .login-title {
+  font-size: 21px;
+  font-weight: 700;
+  line-height: 1.25;
+  color: #173f2e;
+  letter-spacing: -.6px;
+}
+body[data-acadvet-page="registro"] .login-subtitle {
+  max-width: none;
+  margin-top: 6px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #626c60;
+  overflow-wrap: anywhere;
+}
+body[data-acadvet-page="registro"] .login-form { gap: 14px; }
+body[data-acadvet-page="registro"] .form-group { width: 100%; margin: 0; }
+body[data-acadvet-page="registro"] .form-label { font-size: 12px; margin-bottom: 6px; color: #344e3d; }
+body[data-acadvet-page="registro"] .form-input {
+  min-height: 46px;
+  font-size: 16px;
+  border-radius: 10px;
+  border-color: #c8d0c3;
+  background: #fffefb;
+}
+body[data-acadvet-page="registro"] .form-input:focus {
+  border-color: #357153;
+  box-shadow: 0 0 0 3px #35715318;
+}
+body[data-acadvet-page="registro"] .btn { min-height: 44px; border-radius: 10px; }
+body[data-acadvet-page="registro"] .btn--primary { background: #b31f38; box-shadow: 0 4px 12px #b31f3820; }
+body[data-acadvet-page="registro"] .btn--primary:hover:not(:disabled) { background: #941a30; }
+body[data-acadvet-page="registro"] .login-footer { margin-top: 18px; font-size: 11px; color: #6d7467; text-align: center; }
+body[data-acadvet-page="registro"] .gps-status-bar { background: #eef3e9; border-color: #d5e1cb; border-radius: 10px; }
+body[data-acadvet-page="registro"] .form-error { overflow-wrap: anywhere; }
+body[data-acadvet-page="registro"] #selfieCaptureWrap { margin-top: 16px !important; }
+body[data-acadvet-page="registro"] #successPhotoWrap { margin-top: 26px !important; margin-bottom: 20px !important; }
+.registro-success-icon {
+  width: 70px;
+  height: 70px;
+  margin: 0 auto 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #e8f1e5;
+  border: 1px solid #bdcfb4;
+  border-radius: 50%;
+  color: #276044;
+  font-size: 38px;
+}
+.registro-success-label { color: #276044; font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.registro-success-title { color: #173f2e; font-size: 24px; line-height: 1.3; margin: 10px 0; }
+body[data-acadvet-page="registro"] #successDetail { line-height: 1.6; font-size: 13px; }
+body[data-acadvet-page="registro"] #successCard { background: #edf2e8 !important; border: 1px solid #dbe4d1; border-radius: 14px !important; }
+body[data-acadvet-page="registro"] #successCard .font-bold { text-align: right; overflow-wrap: anywhere; min-width: 0; }
+body[data-acadvet-page="registro"] #successCard > div > div { gap: 16px; }
+.registro-success-footer { color: #31583e; font-size: 12px; line-height: 1.8; }
+.registro-success-footer span { color: #6d7467; font-size: 11px; }
+
+@media (max-width: 480px) {
+  body[data-acadvet-page="registro"].login-page { padding: 18px 14px; }
+  body[data-acadvet-page="registro"] .login-card { padding: 25px 20px 20px; border-radius: 20px; gap: 17px; }
+  body[data-acadvet-page="registro"] .login-title { font-size: 19px; }
+  body[data-acadvet-page="registro"] .login-logo { width: 42px; height: 42px; font-size: 20px; }
+  .registro-steps li { gap: 5px; font-size: 10px; }
+  .navidad-snowman { width: 76px; left: -9px; bottom: 5px; }
 }

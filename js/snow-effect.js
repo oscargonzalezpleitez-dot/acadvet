@@ -18,8 +18,8 @@
     var drift    = Math.round(Math.random() * 80 - 40) + 'px';
 
     flake.style.left = (Math.random() * 100) + 'vw';
-    flake.style.fontSize = (10 + Math.random() * 18) + 'px';
-    flake.style.opacity = (0.5 + Math.random() * 0.5).toFixed(2);
+    flake.style.fontSize = (8 + Math.random() * 12) + 'px';
+    flake.style.opacity = (0.35 + Math.random() * 0.45).toFixed(2);
     flake.style.animationDuration = duration + 's';
     flake.style.animationDelay = '-' + delay + 's';
     flake.style.setProperty('--drift', drift);

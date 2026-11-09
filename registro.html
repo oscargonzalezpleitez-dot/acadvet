@@ -23,7 +23,7 @@
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/views.css">
   <link rel="stylesheet" href="css/identity.css?v=20261012a">
-  <link rel="stylesheet" href="css/tema-navidad.css?v=20261106a">
+  <link rel="stylesheet" href="css/tema-navidad.css?v=20261109b">
 </head>
 
 <body class="login-page" data-acadvet-page="registro">
@@ -33,7 +33,18 @@
 
   <img class="navidad-snowman" src="assets/navidad/muneco-nieve.png?v=20261106c" alt="" aria-hidden="true">
 
-  <main class="login-card" role="main" style="max-width:440px">
+  <main class="login-card registro-card" role="main">
+    <header class="registro-season">
+      <span class="registro-institution">USAM · Medicina Veterinaria</span>
+      <span class="registro-holly" aria-hidden="true">✦</span>
+      <span class="registro-season-label">Juntos en esta temporada</span>
+    </header>
+
+    <ol id="registroSteps" class="registro-steps hidden" aria-label="Progreso del registro">
+      <li id="stepDatos"><span class="registro-step-number" aria-hidden="true">1</span><span>Tus datos</span></li>
+      <li id="stepFoto"><span class="registro-step-number" aria-hidden="true">2</span><span>Tu foto</span></li>
+      <li id="stepListo"><span class="registro-step-number" aria-hidden="true">3</span><span>Listo</span></li>
+    </ol>
 
     <!-- LOADING -->
     <div id="stLoading" style="text-align:center">
@@ -51,12 +62,10 @@
 
     <!-- FORMULARIO (Paso 1) -->
     <div id="stForm" class="hidden">
-      <div class="login-brand" style="margin-bottom:var(--space-5)">
+      <div class="login-brand registro-heading">
         <div class="login-logo" aria-hidden="true">🐾</div>
         <div>
-          <h1 class="login-title" style="font-size:1.5rem;line-height:1.2">
-            Registro de<br>Asistencia
-          </h1>
+          <h1 class="login-title">Registrá tu asistencia</h1>
           <p class="login-subtitle" id="fMateria">Cargando…</p>
           <span id="checkTypeBadge" class="hidden"></span>
         </div>
@@ -128,16 +137,16 @@
 
       </section>
 
-      <p class="login-footer">USAM · Facultad de Medicina Veterinaria</p>
+      <p class="login-footer">Un momento para registrar que estás aquí.</p>
     </div>
 
     <!-- SELFIE (Paso 2) -->
     <div id="stSelfie" class="hidden">
-      <div class="login-brand" style="margin-bottom:var(--space-4)">
+      <div class="login-brand registro-heading">
         <div class="login-logo" aria-hidden="true">📷</div>
         <div>
-          <h1 class="login-title" style="font-size:1.4rem;line-height:1.2">Toma tu foto</h1>
-          <p class="login-subtitle">Paso 2 de 2 — verificación de identidad</p>
+          <h1 class="login-title">Una foto y listo</h1>
+          <p class="login-subtitle">Confirmá tu identidad para completar el registro.</p>
         </div>
       </div>
 
@@ -183,31 +192,30 @@
         </button>
       </div>
 
-      <p class="login-footer">USAM · Facultad de Medicina Veterinaria</p>
+      <p class="login-footer">Tu gorrito aparecerá después de tomar la foto.</p>
     </div>
 
     <!-- ÉXITO -->
     <div id="stSuccess" class="hidden" style="text-align:center">
-      <div id="successIcon" style="font-size:4rem;margin-bottom:var(--space-4)">✅</div>
+      <div id="successIcon" class="registro-success-icon" aria-hidden="true">✓</div>
       <div id="successPhotoWrap" class="navidad-photo-wrap navidad-photo-wrap--success hidden" style="margin:0 auto var(--space-4)">
         <img id="successPhoto" alt="Tu foto">
         <img class="navidad-hat-overlay navidad-hat-overlay--success" src="assets/navidad/gorro-navideno.png?v=20261109a" alt="" aria-hidden="true">
       </div>
-      <h2 style="font-size:1.35rem;font-weight:700;margin-bottom:var(--space-2)">
-        ¡Asistencia registrada!
-      </h2>
+      <p class="registro-success-label"><span aria-hidden="true">✓</span> Registro confirmado</p>
+      <h2 class="registro-success-title">¡Listo, ya estás aquí!</h2>
       <p class="text-muted text-sm" id="successDetail" style="margin-bottom:var(--space-5)"></p>
       <div id="successCard" style="
         background:var(--color-surface-2);border-radius:var(--radius-md);
         padding:var(--space-4);text-align:left;margin-bottom:var(--space-5)">
       </div>
-      <p class="text-muted text-sm">Podés cerrar esta pestaña.</p>
+      <p class="registro-success-footer">Que tengas una excelente clase.<br><span>Ya podés cerrar esta pestaña.</span></p>
     </div>
 
   </main>
 
-  <script type="module" src="js/registro.js?v=20261109b"></script>
+  <script type="module" src="js/registro.js?v=20261109c"></script>
   <script src="js/register-sw.js"></script>
-  <script src="js/snow-effect.js?v=20261106a" defer></script>
+  <script src="js/snow-effect.js?v=20261109b" defer></script>
 </body>
 </html>
