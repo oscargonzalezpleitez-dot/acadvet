@@ -33,6 +33,9 @@ let _gpsCoords = null;       // { lat, lng }
 let _deviceId  = null;
 let _stream    = null;       // MediaStream de la cámara
 let _lastSubmitTs = 0;       // timestamp del último envío (anti-spam)
+let _gpsRequest = null;
+let _stepBusy = false;
+let _serverTimeOffset = 0;
 
 // ---------------------------------------------------------------------------
 // Init
@@ -45,6 +48,8 @@ async function init() {
 
   try {
     if (!auth.currentUser) await signInAnonymously(auth);
+    const offset = await get(ref(db, '.info/serverTimeOffset'));
+    _serverTimeOffset = Number(offset.val()) || 0;
     const snap = await get(ref(db, `qr_sessions/${sessionId}`));
     if (!snap.exists()) return showError('La sesión no existe.');
 
@@ -112,43 +117,73 @@ async function init() {
 // GPS
 // ---------------------------------------------------------------------------
 function startGPS() {
+  if (_gpsRequest) return _gpsRequest;
+  _gpsRequest = locateGPS().finally(() => { _gpsRequest = null; });
+  return _gpsRequest;
+}
+
+async function locateGPS() {
+  _gpsCoords = null;
   setGPSStatus('Obteniendo ubicación…', 'loading');
   document.getElementById('gpsIcon').textContent = '📡';
   document.getElementById('gpsRetryBtn')?.classList.add('hidden');
 
-  // Primer intento: baja precisión (WiFi/celular) — rápido, funciona bien en interiores.
-  // Si falla, se reintenta con alta precisión como fallback.
-  navigator.geolocation.getCurrentPosition(
-    onGPSSuccess,
-    err => {
+  if (!navigator.geolocation) {
+    onGPSFinalError();
+    return;
+  }
+
+  // Una respuesta exitosa puede ser aproximada o estar fuera del aula.
+  // También en ese caso pedimos una lectura nueva de alta precisión.
+  const options = [
+    { timeout: 10000, enableHighAccuracy: false, maximumAge: 0 },
+    { timeout: 20000, enableHighAccuracy: true, maximumAge: 0 },
+  ];
+  let best = null;
+  for (const opts of options) {
+    try {
+      const pos = await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, opts);
+      });
+      const { latitude: lat, longitude: lng, accuracy } = pos.coords;
+      if (!Number.isFinite(lat) || !Number.isFinite(lng)) continue;
+      const candidate = { lat, lng, accuracy: Number.isFinite(accuracy) ? accuracy : Infinity };
+      if (!best || candidate.accuracy < best.accuracy) best = candidate;
+      const dist = haversine(best.lat, best.lng, _cfg.aulaLat, _cfg.aulaLng);
+      if (dist <= (_cfg.geoRadius ?? 100) && best.accuracy <= (_cfg.geoRadius ?? 100)) break;
+    } catch (err) {
       if (err.code === 1) {
         onGPSPermissionDenied();
-      } else {
-        setGPSStatus('Ajustando señal GPS…', 'loading');
-        navigator.geolocation.getCurrentPosition(
-          onGPSSuccess,
-          onGPSFinalError,
-          { timeout: 20000, enableHighAccuracy: true }
-        );
+        return;
       }
-    },
-    { timeout: 10000, enableHighAccuracy: false, maximumAge: 60000 }
-  );
-}
+    }
+    setGPSStatus('Afinando la ubicación. Mantené esta página abierta…', 'loading');
+  }
 
-function onGPSSuccess(pos) {
-  _gpsCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
-  setGPSStatus('📍 Ubicación verificada', 'ok');
-  document.getElementById('gpsIcon').textContent = '📍';
-  document.getElementById('gpsRetryBtn')?.classList.add('hidden');
+  if (!best) {
+    onGPSFinalError();
+    return;
+  }
+  _gpsCoords = best;
+  const dist = haversine(best.lat, best.lng, _cfg.aulaLat, _cfg.aulaLng);
+  const radio = _cfg.geoRadius ?? 100;
+  if (dist > radio) {
+    setGPSStatus(`La ubicación indica ${Math.round(dist)} m del aula (radio: ${radio} m). Reintentá con ubicación precisa o pedí el código de acceso al docente.`, 'error');
+    document.getElementById('gpsIcon').textContent = '⚠️';
+  } else {
+    const precision = Number.isFinite(best.accuracy) ? ` (precisión aproximada: ${Math.round(best.accuracy)} m)` : '';
+    setGPSStatus(`📍 Ubicación dentro del radio${precision}`, 'ok');
+    document.getElementById('gpsIcon').textContent = '📍';
+  }
+  document.getElementById('gpsRetryBtn')?.classList.remove('hidden');
 }
 
 function onGPSPermissionDenied() {
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   setGPSStatus(
     isIOS
-      ? '⚠️ Permiso denegado para este sitio. Tocá el ícono "AA" junto a la URL (arriba) → Configuración del sitio web → Ubicación → Permitir, luego tocá Reintentar. Si no aparece esa opción: Ajustes → Safari → Avanzado → Datos de sitios web, buscá este sitio, eliminalo y volvé a cargar la página.'
-      : '⚠️ Permiso denegado. Habilitá la ubicación en la configuración de tu navegador.',
+      ? '⚠️ Safari no tiene permiso de ubicación. Permití la ubicación para este sitio en el menú de la barra de direcciones y verificá que Localización y Ubicación precisa estén activadas para Safari en Ajustes. Luego tocá Reintentar. Si sigue fallando, pedí el código de acceso al docente.'
+      : '⚠️ Permití la ubicación para este sitio y para tu navegador en los ajustes del teléfono. Activá la ubicación precisa si está disponible y tocá Reintentar. Si sigue fallando, pedí el código de acceso al docente.',
     'error'
   );
   document.getElementById('gpsIcon').textContent = '⚠️';
@@ -156,7 +191,7 @@ function onGPSPermissionDenied() {
 }
 
 function onGPSFinalError() {
-  setGPSStatus('⚠️ No se pudo obtener la ubicación. Verificá que la ubicación esté activa y tocá Reintentar.', 'error');
+  setGPSStatus('⚠️ No se pudo obtener la ubicación. Activá la ubicación del teléfono y los permisos del navegador; mantené esta página abierta y tocá Reintentar. Si sigue fallando, pedí el código de acceso al docente.', 'error');
   document.getElementById('gpsIcon').textContent = '⚠️';
   document.getElementById('gpsRetryBtn')?.classList.remove('hidden');
 }
@@ -176,7 +211,7 @@ function wireForm() {
 
   const rToken = document.getElementById('rToken');
   rToken?.addEventListener('input', () => {
-    rToken.value = rToken.value.toUpperCase().replace(/[^A-Z0-9-]/g, '');
+    rToken.value = rToken.value.toUpperCase().replace(/[‐‑‒–—−]/g, '-').replace(/[^A-Z0-9-]/g, '');
   });
 
   document.getElementById('gpsRetryBtn')?.addEventListener('click', startGPS);
@@ -198,6 +233,21 @@ function wireForm() {
 // Paso 1: validación del formulario
 // ---------------------------------------------------------------------------
 async function handleStep1() {
+  if (_stepBusy) return;
+  _stepBusy = true;
+  setLoading(true);
+  try {
+    await validateStep1();
+  } catch (err) {
+    console.error('[AcadVet] Error en registro QR:', err);
+    showRegistrationError(err);
+  } finally {
+    _stepBusy = false;
+    setLoading(false);
+  }
+}
+
+async function validateStep1() {
   const nombre = document.getElementById('rNombre')?.value.trim() ?? '';
   const carnet = document.getElementById('rCarnet')?.value.trim() ?? '';
   const email  = document.getElementById('rEmail')?.value.trim()  ?? '';
@@ -248,13 +298,14 @@ async function handleStep1() {
 
   // Validación de GPS (antes de ir al servidor)
   if (_cfg.requireGeo && _cfg.aulaLat != null && !accessCodeValid) {
+    if (_gpsRequest) await _gpsRequest;
     if (!_gpsCoords) {
-      return globalErr('Esperando ubicación GPS. Si no se resuelve, verificá los permisos de ubicación en tu navegador.');
+      return globalErr('No se obtuvo la ubicación. Tocá Reintentar ubicación y permití el acceso. Si sigue fallando, pedí el código de acceso al docente.');
     }
     const dist = haversine(_gpsCoords.lat, _gpsCoords.lng, _cfg.aulaLat, _cfg.aulaLng);
     const radio = _cfg.geoRadius ?? 100;
     if (dist > radio) {
-      return globalErr(`Estás a ${Math.round(dist)} m del aula (radio permitido: ${radio} m). Asegurate de estar dentro del aula.`);
+      return globalErr(`El teléfono indica ${Math.round(dist)} m del aula (radio: ${radio} m). Tocá Reintentar ubicación. Si estás en el aula y sigue fallando, pedí el código de acceso al docente.`);
     }
   }
 
@@ -266,11 +317,7 @@ async function handleStep1() {
     if (!snap.exists() || !snap.val().active) {
       return globalErr('La sesión ya no está activa. El docente la ha finalizado.');
     }
-    const currentToken = (snap.val().token ?? '').toUpperCase();
-    if (token !== currentToken) {
-      return fieldErr('rToken', 'rTokenErr',
-        'Código incorrecto o expirado. Ingresá el código visible en la pantalla del aula.');
-    }
+    const validToken = requireSessionToken(snap.val(), token);
 
     // Verificaciones de duplicado. La llave del registro es checkType+carné
     // (ver asistKey abajo), así que esta lectura puntual —y sobre todo la
@@ -297,17 +344,17 @@ async function handleStep1() {
     // Guardar datos del formulario para el paso 2 o el envío directo.
     // El correo se normaliza a minúsculas para que coincida con el patrón
     // (en minúsculas) que valida la regla de Firebase del lado servidor.
-    _formData = { nombre, carnet, email: email ? email.toLowerCase() : null, token, asistKey };
+    _formData = { nombre, carnet, email: email ? email.toLowerCase() : null, token: validToken, asistKey };
 
     if (_cfg.photoRequired) {
       show('stSelfie');
-      await startCamera();
+      if (!_selfieB64) await startCamera();
     } else {
       await submitRegistro();
     }
   } catch (err) {
     console.error('[AcadVet] Error en validación:', err);
-    globalErr('Error de conexión. Intentá de nuevo.');
+    showRegistrationError(err);
   } finally {
     setLoading(false);
   }
@@ -320,6 +367,7 @@ async function startCamera() {
   const video  = document.getElementById('selfieVideo');
   const status = document.getElementById('selfieStatus');
   if (!video) return;
+  retakePhoto();
   try {
     _stream = await navigator.mediaDevices.getUserMedia({
       video: { facingMode: 'user', width: { ideal: 320 }, height: { ideal: 240 } },
@@ -406,8 +454,9 @@ async function handleSendSelfie() {
   if (txt) txt.textContent = 'Enviando…';
   try {
     await submitRegistro();
-  } catch {
-    globalErr('Error al enviar. Intentá de nuevo.');
+  } catch (err) {
+    console.error('[AcadVet] Error enviando selfie:', err);
+    showRegistrationError(err);
     if (btn) btn.disabled = false;
     if (txt) txt.textContent = 'Enviar registro';
   }
@@ -423,10 +472,14 @@ function backToForm() {
 // Envío final
 // ---------------------------------------------------------------------------
 async function submitRegistro() {
-  const { nombre, carnet, email, token, asistKey } = _formData;
+  const { nombre, carnet, email, asistKey } = _formData;
+  // Los permisos y la selfie pueden tardar más que una rotación del QR.
+  // Revalidar evita confundir un código vencido con un error de conexión.
+  const snap = await get(ref(db, `qr_sessions/${sessionId}`));
+  const token = requireSessionToken(snap.val(), _formData.token);
   const estado    = computeEstado(email);
   const checkType = _cfg.checkType ?? 'unico';
-  const now       = Date.now();
+  const now       = Date.now() + _serverTimeOffset;
 
   // El emparejamiento con el alumno inscrito y la escritura al expediente
   // los hace el panel del docente (auth anónima no tiene acceso a `alumnos`).
@@ -461,6 +514,47 @@ async function submitRegistro() {
   await update(ref(db), updates);
 
   showSuccess(nombre, carnet, estado);
+}
+
+function normalizeToken(token) {
+  return String(token ?? '').toUpperCase().replace(/[\s\-‐‑‒–—−]/g, '');
+}
+
+function requireSessionToken(session, enteredToken) {
+  if (!session?.active) {
+    throw Object.assign(new Error('La sesión ya finalizó. Pedile al docente un nuevo QR.'), { code: 'qr/session-ended' });
+  }
+  const normalized = normalizeToken(enteredToken);
+  if (normalized && normalized === normalizeToken(session.token)) return session.token;
+  if (normalized && normalized === normalizeToken(session.prevToken) &&
+      Date.now() + _serverTimeOffset <= session.prevTokenExpiresAt) return session.prevToken;
+  throw Object.assign(new Error('El código es incorrecto o venció mientras completabas el registro. Ingresá el código que aparece ahora en la pantalla del aula y volvé a intentar.'), { code: 'qr/token-expired' });
+}
+
+function showRegistrationError(err) {
+  if (err.code === 'qr/token-expired' || err.code === 'qr/session-ended') {
+    stopCamera();
+    show('stForm');
+    if (err.code === 'qr/token-expired') {
+      fieldErr('rToken', 'rTokenErr', err.message);
+      document.getElementById('rToken')?.focus();
+    } else {
+      globalErr(err.message);
+    }
+    return;
+  }
+  const msg = /permission.denied/i.test(err.code ?? err.message ?? '')
+    ? 'No se pudo guardar el registro. El código pudo vencer o el carné/dispositivo ya fue registrado. Volvé al formulario y revisá el código de la pantalla del aula.'
+    : 'No se pudo enviar el registro. Verificá tu conexión e intentá de nuevo.';
+  if (!document.getElementById('stSelfie')?.classList.contains('hidden')) {
+    const status = document.getElementById('selfieStatus');
+    if (status) {
+      status.textContent = msg;
+      status.classList.remove('hidden');
+    }
+  } else {
+    globalErr(msg);
+  }
 }
 
 // ---------------------------------------------------------------------------
