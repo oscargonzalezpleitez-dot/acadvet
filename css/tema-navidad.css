@@ -162,7 +162,7 @@ body[data-acadvet-page="registro"] .btn--primary:active:not(:disabled) {
   inset: 0;
   pointer-events: none;
   overflow: hidden;
-  z-index: 0;
+  z-index: 5;
 }
 .navidad-flake {
   position: absolute;
@@ -185,7 +185,7 @@ body[data-acadvet-page="registro"] .btn--primary:active:not(:disabled) {
   .navidad-flake { opacity: 0.4 !important; }
 }
 
-/* Encabezado, progreso y formulario: el contenido siempre queda sobre la nieve. */
+/* Encabezado, progreso y formulario de registro. */
 .registro-season {
   display: flex;
   flex-direction: column;
