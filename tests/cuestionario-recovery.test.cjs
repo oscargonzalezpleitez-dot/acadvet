@@ -6,6 +6,7 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..');
 const recoverySource = fs.readFileSync(path.join(root, 'js/quiz-recovery.js'), 'utf8').replace(/export /g, '');
+const exitsSource = fs.readFileSync(path.join(root, 'js/quiz-exits.js'), 'utf8').replace(/export /g, '');
 const pageSource = fs.readFileSync(path.join(root, 'cuestionario.html'), 'utf8')
   .match(/<script type="module">([\s\S]*?)<\/script>/)[1]
   .replace(/^\s*import\s[\s\S]*?;/gm, '');
@@ -28,7 +29,7 @@ async function harness(overrides = {}) {
     console: { error() {}, warn() {} }, URLSearchParams, Date, Math, Object, JSON, String, Number, Set,
     localStorage: { getItem: k => store.get(k) ?? null, setItem: (k, v) => store.set(k, v), removeItem: k => store.delete(k) },
     navigator: { onLine: true, mediaDevices: { getUserMedia: async () => ({ getTracks: () => [] }) } },
-    document: { getElementById: node, querySelectorAll: () => [], addEventListener() {}, removeEventListener() {}, createElement: node },
+    document: { hidden: false, hasFocus: () => true, getElementById: node, querySelectorAll: () => [], addEventListener() {}, removeEventListener() {}, createElement: node },
     window: { addEventListener() {}, removeEventListener() {} },
     location: { search: '?q=quiz1' }, auth: {}, app: {},
     getDatabase() {}, ref: (_, p) => p, get: async () => ({ exists: () => false }),
@@ -42,9 +43,11 @@ async function harness(overrides = {}) {
   });
   const api = await vm.runInContext(`(async () => {
     ${recoverySource}
+    ${exitsSource}
     ${pageSource}
     return { remainingSeconds, readAttempt, writeAttempt, restoreAttempt, submitQuiz, sendPendingResult,
-      getState: () => ({ userAnswers, questionOrder, optionOrders, currentPos, deadline, pendingResult, submitted }),
+      onWindowBlur, onVisibilityChange, onWindowFocus,
+      getState: () => ({ userAnswers, questionOrder, optionOrders, currentPos, deadline, pendingResult, submitted, exitEvents, blurCount }),
       prepare: saved => { _backupKey = 'backup'; restoreAttempt(saved); },
     };
   })()`, context);
@@ -168,4 +171,47 @@ test('la capa de datos verifica un recibo después de perder la confirmación de
   const result = await vm.runInContext("saveCuestionarioResultado('quiz1', '170964', {attemptId: 'attempt1'})", context);
   assert.equal(result, 'attempt1');
   assert.equal(writes, 1);
+});
+
+test('blur y pestaña oculta cuentan una sola salida, y el regreso la cierra', async () => {
+  const { api, context, store } = await harness();
+  api.prepare(savedAttempt({ blurCount: 0 }));
+  api.onWindowBlur();
+  context.document.hidden = true;
+  api.onVisibilityChange();
+  assert.equal(api.getState().blurCount, 1);
+  assert.equal(api.getState().exitEvents.length, 1);
+  assert.equal(api.getState().exitEvents[0].sources.length, 2);
+  context.document.hidden = false;
+  api.onWindowFocus();
+  assert.equal(api.getState().exitEvents[0].endedBy, 'return');
+  assert.equal(JSON.parse(store.get('backup')).exitEvents[0].endedBy, 'return');
+  api.onWindowBlur();
+  assert.equal(api.getState().blurCount, 2);
+});
+
+test('una pestaña visible sin foco no finaliza la ausencia', async () => {
+  const { api, context } = await harness();
+  api.prepare(savedAttempt({ blurCount: 0 }));
+  api.onWindowBlur();
+  context.document.hasFocus = () => false;
+  api.onVisibilityChange();
+  assert.equal(api.getState().exitEvents[0].endedAt, null);
+  context.document.hasFocus = () => true;
+  api.onWindowFocus();
+  assert.equal(api.getState().exitEvents[0].endedBy, 'return');
+});
+
+test('quinta salida fuerza entrega una vez y conserva el detalle sin inventar un regreso', async () => {
+  const { api } = await harness({ saveCuestionarioResultado: async () => { throw new Error('Sin red'); } });
+  api.prepare(savedAttempt({ blurCount: 4 }));
+  api.onWindowBlur();
+  api.onWindowBlur();
+  await new Promise(resolve => setImmediate(resolve));
+  const state = api.getState();
+  assert.equal(state.blurCount, 5);
+  assert.equal(state.pendingResult.forzadoPorSalidas, true);
+  assert.equal(state.pendingResult.exitEvents[0].endedBy, 'delivery');
+  assert.equal(state.pendingResult.exitEvents[0].question, 2);
+  assert.equal(state.pendingResult.exitEvents[0].questionIndex, 0);
 });

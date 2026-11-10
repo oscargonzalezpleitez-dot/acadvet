@@ -566,6 +566,7 @@
 
         <button class="btn btn--primary" id="btnIniciar" style="margin-top:8px">Iniciar cuestionario →</button>
         <p style="font-size:.85rem">Si se interrumpió tu intento, ingresá el mismo carné en este navegador y presioná Iniciar para recuperarlo. Se conserva el vencimiento original.</p>
+        <p style="font-size:.85rem">Durante el cuestionario se registran las salidas de la ventana, su duración y la pregunta que estás viendo. Al alcanzar 5 salidas, la entrega es automática.</p>
       </div>
     </div>
 
@@ -635,6 +636,7 @@
     import { checkYaRespondio, saveCuestionarioResultado, getCuestionarioReceipt }
       from './js/db.js';
     import { remainingSeconds, readAttempt, writeAttempt } from './js/quiz-recovery.js';
+    import { beginExit, finishExit, exitSummary, formatExitDuration } from './js/quiz-exits.js';
 
     const db = getDatabase(app);
 
@@ -667,6 +669,7 @@
     let monitorStream = null;  // MediaStream de la cámara de monitoreo durante el examen
     let blurSnapshots = [];    // [{ts, img}] fotos tomadas automáticamente en cada salida de pantalla
     let blurCount    = 0;
+    let exitEvents = [];
     let timerSec     = 0;
     let timerInterval= null;
     let antiActive   = false;
@@ -684,7 +687,7 @@
       try { backupSaved = writeAttempt(localStorage, _backupKey, {
         version: 1, quizId, attemptId, deadline, quiz, studentData,
         userAnswers, questionOrder, optionOrders, currentPos,
-        blurCount, blurSnapshots, pendingResult, ts: Date.now(),
+        blurCount, blurSnapshots, exitEvents, pendingResult, ts: Date.now(),
       }); } catch (_) { backupSaved = false; }
       updateSaveStatus();
       return backupSaved;
@@ -698,6 +701,8 @@
     }
 
     function restoreAttempt(saved) {
+      exitEvents = Array.isArray(saved.exitEvents) ? saved.exitEvents : [];
+      finishExit(exitEvents, Math.min(Date.now(), saved.deadline), 'recovery');
       ({ attemptId, deadline, quiz, studentData, userAnswers,
         questionOrder, optionOrders, currentPos, blurCount, blurSnapshots, pendingResult } = saved);
       _answers = {}; // Las claves antiguas no se respaldan en el dispositivo.
@@ -1072,7 +1077,7 @@
     // -------------------------------------------------------------------------
     function startQuiz(restoring = false) {
       if (!restoring) {
-        userAnswers = {}; blurCount = 0; blurSnapshots = []; currentPos = 0;
+        userAnswers = {}; blurCount = 0; blurSnapshots = []; exitEvents = []; currentPos = 0;
       }
       submitted = false;
       if (pendingResult) {
@@ -1310,31 +1315,39 @@
     // Anti-copia
     // -------------------------------------------------------------------------
     function onVisibilityChange() {
+      if (!antiActive) return;
+      if (document.hidden) { registerExit('visibility'); return; }
+      onWindowFocus();
+    }
+
+    function registerExit(source) {
+      if (!antiActive || submitted) return;
+      if (remainingSeconds(deadline) <= 0) { submitQuiz(true); return; }
+      const isNew = beginExit(exitEvents, {
+        now: Date.now(), question: currentPos + 1,
+        questionIndex: questionOrder[currentPos], source,
+      });
+      if (isNew) {
+        blurCount++;
+        captureMonitorSnapshot();
+      }
+      persistAttempt();
+      if (blurCount >= MAX_BLURS) submitQuiz(false, true);
+      else showOverlay();
+    }
+
+    function onWindowFocus() {
+      if (!antiActive || document.hidden || !document.hasFocus()) return;
+      if (finishExit(exitEvents, Math.min(Date.now(), deadline))) {
+        persistAttempt();
+        if (!fsOverlay.classList.contains('hidden')) showOverlay();
+      }
       if (!document.hidden && antiActive && remainingSeconds(deadline) <= 0) {
         submitQuiz(true); return;
       }
-      if (document.hidden && antiActive) {
-        blurCount++;
-        captureMonitorSnapshot();
-        persistAttempt();
-        if (blurCount >= MAX_BLURS) {
-          submitQuiz(false, true); // entrega forzada por exceso de salidas
-        } else {
-          showOverlay();
-        }
-      }
     }
     function onWindowBlur() {
-      if (antiActive) {
-        blurCount++;
-        captureMonitorSnapshot();
-        persistAttempt();
-        if (blurCount >= MAX_BLURS) {
-          submitQuiz(false, true);
-        } else {
-          showOverlay();
-        }
-      }
+      registerExit('blur');
     }
     function onKeyDown(e) {
       if (!antiActive) return;
@@ -1352,6 +1365,7 @@
       antiActive = true;
       document.addEventListener('visibilitychange', onVisibilityChange);
       window.addEventListener('blur', onWindowBlur);
+      window.addEventListener('focus', onWindowFocus);
       document.addEventListener('keydown', onKeyDown);
       document.addEventListener('contextmenu', onContextMenu);
       document.addEventListener('copy', onCopyPaste);
@@ -1362,6 +1376,7 @@
       antiActive = false;
       document.removeEventListener('visibilitychange', onVisibilityChange);
       window.removeEventListener('blur', onWindowBlur);
+      window.removeEventListener('focus', onWindowFocus);
       document.removeEventListener('keydown', onKeyDown);
       document.removeEventListener('contextmenu', onContextMenu);
       document.removeEventListener('copy', onCopyPaste);
@@ -1373,7 +1388,7 @@
     function showOverlay() {
       const restantes = MAX_BLURS - blurCount;
       document.getElementById('fsCounter').textContent =
-        `Salidas registradas: ${blurCount} / ${MAX_BLURS}. Permisos restantes: ${restantes}.`;
+        `Salidas registradas: ${blurCount} / ${MAX_BLURS}. Restantes: ${restantes}. Tiempo fuera registrado: ${formatExitDuration(exitSummary({ exitEvents, blurs: blurCount, exitTrackingVersion: 1 }).totalMs)}.`;
       fsOverlay.classList.remove('hidden');
     }
 
@@ -1398,6 +1413,7 @@
     async function submitQuiz(timeout = false, forcedByBlurs = false) {
       if (submitted) return;
       submitted = true;
+      finishExit(exitEvents, Math.min(Date.now(), deadline), 'delivery');
       clearInterval(timerInterval);
       clearInterval(sessionHeartbeatInterval);
       removeAntiCheat();
@@ -1443,6 +1459,8 @@
         cuestionarioNombre: quiz.nombre || '',
         submitTime:         Date.now(),
         blurs:              blurCount,
+        exitTrackingVersion: 1,
+        exitEvents,
         blurSnapshots:      blurSnapshots,
         porEntregaTemporal: timeout || forcedByBlurs,
         forzadoPorSalidas:  forcedByBlurs,

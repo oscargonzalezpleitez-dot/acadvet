@@ -10,6 +10,7 @@ import {
   getCuestionarioCorrect, getCuestionariosCorrectMap,
 } from '../db.js';
 import { showToast, openModal, closeModal } from '../ui.js';
+import { exitSummary, formatExitDuration, matchesExitFilter } from '../quiz-exits.js';
 
 // ---------------------------------------------------------------------------
 // Estado del módulo
@@ -20,6 +21,7 @@ let _results      = [];
 let _tab          = 'crear';
 let _questions    = [];
 let _filterQuizId = '';
+let _exitFilter = { minimumCount: 0, minimumSeconds: 0, forcedOnly: false };
 let _editId       = null;   // null = creando nuevo, string = editando ese id
 
 // ---------------------------------------------------------------------------
@@ -47,6 +49,7 @@ export async function renderCuestionarios(container) {
   _tab          = 'crear';
   _results      = [];
   _filterQuizId = '';
+  _exitFilter = { minimumCount: 0, minimumSeconds: 0, forcedOnly: false };
   _editId       = null;
   paint();
 }
@@ -739,9 +742,10 @@ function paintResultados(el) {
   const quizNames = {};
   _results.forEach(r => { if (r.cuestionarioId) quizNames[r.cuestionarioId] = r.cuestionarioNombre || r.cuestionarioId; });
 
-  const filtered = _filterQuizId
+  const byQuiz = _filterQuizId
     ? _results.filter(r => r.cuestionarioId === _filterQuizId)
     : _results;
+  const filtered = byQuiz.filter(r => matchesExitFilter(r, _exitFilter));
 
   const avgPct = filtered.length
     ? Math.round(filtered.reduce((s, r) => s + (r.porcentaje || 0), 0) / filtered.length)
@@ -759,6 +763,17 @@ function paintResultados(el) {
             <option value="">— Todos los cuestionarios —</option>
             ${quizIds.map(id => `<option value="${id}" ${id === _filterQuizId ? 'selected' : ''}>${esc(quizNames[id] || id)}</option>`).join('')}
           </select>
+          <label>Salidas mínimas
+            <select class="form-input form-input--sm" id="filterExitCount">
+              ${[0, 1, 3, 5].map(n => `<option value="${n}" ${_exitFilter.minimumCount === n ? 'selected' : ''}>${n === 0 ? 'Todas' : `${n} o más`}</option>`).join('')}
+            </select>
+          </label>
+          <label>Tiempo fuera mínimo
+            <select class="form-input form-input--sm" id="filterExitTime">
+              ${[0, 10, 30, 60, 120].map(n => `<option value="${n}" ${_exitFilter.minimumSeconds === n ? 'selected' : ''}>${n === 0 ? 'Cualquiera' : formatExitDuration(n * 1000)}</option>`).join('')}
+            </select>
+          </label>
+          <label><input type="checkbox" id="filterForcedExits" ${_exitFilter.forcedOnly ? 'checked' : ''}> Solo entregas forzadas por salidas</label>
           ${sessionStorage.getItem('acadvet_auth') === 'eps' ? `
             <span title="No disponible en sesión EPS" style="font-size:.78rem;color:var(--color-text-muted);padding:0 4px">
               🔒 Descargas no disponibles en sesión EPS
@@ -774,8 +789,8 @@ function paintResultados(el) {
             📷 PDF con fotos
           </button>
           <button class="btn btn--danger btn--sm" id="btnDeleteAllResults" ${filtered.length ? '' : 'disabled'}
-            title="${_filterQuizId ? 'Eliminar todos los resultados del cuestionario seleccionado' : 'Filtrá por cuestionario para eliminar todos sus resultados'}">
-            🗑 Eliminar ${_filterQuizId ? 'todos' : 'resultados'}
+            title="Eliminar únicamente los resultados que coinciden con los filtros">
+            🗑 Eliminar resultados visibles
           </button>
           `}
         </div>
@@ -785,7 +800,7 @@ function paintResultados(el) {
         <div class="empty-state" style="padding:var(--space-12)">
           <div class="empty-state__icon">📊</div>
           <h3 class="empty-state__title">Sin resultados aún</h3>
-          <p class="empty-state__text">Cuando los alumnos completen un cuestionario, los resultados aparecen aquí.</p>
+          <p class="empty-state__text">No hay resultados que coincidan con los filtros seleccionados.</p>
         </div>` : `
         <div style="overflow-x:auto;margin-top:var(--space-4)">
           <table class="data-table cuest-results-table">
@@ -797,6 +812,7 @@ function paintResultados(el) {
                 <th>Nota</th>
                 <th>%</th>
                 <th>Salidas</th>
+                <th>Tiempo fuera</th>
                 <th>Fecha</th>
                 <th></th>
               </tr>
@@ -825,6 +841,7 @@ function paintResultados(el) {
                     </td>
                     <td><span class="${cls}" style="font-weight:700">${pct}%</span></td>
                     <td style="text-align:center">${r.blurs ?? 0}</td>
+                    <td style="white-space:nowrap">${formatExitDuration(exitSummary(r).totalMs)}${exitSummary(r).measured && exitSummary(r).count > exitSummary(r).events.length ? ' (parcial)' : ''}</td>
                     <td style="white-space:nowrap;font-size:.8rem;color:var(--color-text-muted)">${fecha}</td>
                     <td style="white-space:nowrap">
                       <button class="btn btn--secondary btn--sm" data-detail="${i}">Ver</button>
@@ -842,6 +859,18 @@ function paintResultados(el) {
 
   document.getElementById('filterQuiz')?.addEventListener('change', e => {
     _filterQuizId = e.target.value;
+    paintResultados(el);
+  });
+  document.getElementById('filterExitCount')?.addEventListener('change', e => {
+    _exitFilter.minimumCount = Number(e.target.value);
+    paintResultados(el);
+  });
+  document.getElementById('filterExitTime')?.addEventListener('change', e => {
+    _exitFilter.minimumSeconds = Number(e.target.value);
+    paintResultados(el);
+  });
+  document.getElementById('filterForcedExits')?.addEventListener('change', e => {
+    _exitFilter.forcedOnly = e.target.checked;
     paintResultados(el);
   });
 
@@ -867,7 +896,7 @@ function paintResultados(el) {
         closeModal();
         try {
           let n = 0;
-          if (_filterQuizId) {
+          if (_filterQuizId && !_exitFilter.minimumCount && !_exitFilter.minimumSeconds && !_exitFilter.forcedOnly) {
             n = await deleteResultadosByQuiz(_filterQuizId);
             _results = _results.filter(r => r.cuestionarioId !== _filterQuizId);
           } else {
@@ -919,6 +948,18 @@ function paintResultados(el) {
 }
 
 function openResultadoModal(r) {
+  const exits = exitSummary(r);
+  const exitLog = exits.events.length ? `
+    <div style="overflow-x:auto"><table class="data-table">
+      <thead><tr><th>Pregunta vista</th><th>Salida</th><th>Fin del registro</th><th>Duración</th><th>Cierre</th></tr></thead>
+      <tbody>${exits.events.map(e => `<tr>
+        <td>${esc(e.question ?? '—')}</td>
+        <td>${esc(new Date(e.startedAt).toLocaleString('es-SV'))}</td>
+        <td>${e.endedAt ? esc(new Date(e.endedAt).toLocaleString('es-SV')) : 'Sin retorno registrado'}</td>
+        <td>${formatExitDuration(e.durationMs)}</td>
+        <td>${e.endedBy === 'return' ? 'Regresó' : e.endedBy === 'recovery' ? 'Recuperación del intento' : 'Entrega durante la salida'}</td>
+      </tr>`).join('')}</tbody>
+    </table></div>` : `<p>${exits.measured ? 'No se registraron salidas con detalle.' : 'Este resultado es anterior al registro de duración; solo se conserva el contador.'}</p>`;
   const detalle   = normPreguntas(r.detalle);
   const fecha     = r.submitTime ? new Date(r.submitTime).toLocaleString('es-SV') : '—';
   const pct       = r.porcentaje ?? 0;
@@ -953,6 +994,8 @@ function openResultadoModal(r) {
             <p style="color:var(--color-text-muted);font-size:.85rem">Email: ${esc(r.alumno?.email || '—')}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Fecha: ${fecha}</p>
             <p style="color:var(--color-text-muted);font-size:.85rem">Salidas del examen: ${r.blurs ?? 0}</p>
+            <p>Tiempo fuera registrado: ${formatExitDuration(exits.totalMs)}${exits.measured && exits.count > exits.events.length ? ' (parcial; hay salidas anteriores sin duración)' : ''}</p>
+            ${r.forzadoPorSalidas ? '<p>Entrega automática por alcanzar el límite de salidas.</p>' : ''}
             ${r.notaModificada ? `<p style="margin-top:4px"><span class="cuest-status-badge cuest-status--warn">Nota modificada</span> <span style="color:var(--color-text-muted);font-size:.8rem">${esc(r.notaModificadaMotivo || '')}</span></p>` : ''}
             ${Array.isArray(r.blurSnapshots) && r.blurSnapshots.length ? `
               <div style="margin-top:8px">
@@ -973,6 +1016,9 @@ function openResultadoModal(r) {
             <div class="cuest-modal-nota">${r.puntos ?? 0}/${r.puntosTotal ?? 0} pts</div>
           </div>
         </div>
+        <h4>Registro de salidas</h4>
+        <p style="font-size:.85rem;color:var(--color-text-muted)">Las salidas indican pérdida de foco o visibilidad. Se muestran como incidencias para revisión.</p>
+        ${exitLog}
         <h4 style="font-size:.85rem;font-weight:700;margin:var(--space-4) 0 var(--space-2);color:var(--color-text-muted);text-transform:uppercase;letter-spacing:.05em">Detalle por pregunta</h4>
         <div class="cuest-detail-list">${detalleHtml || '<p style="color:var(--color-text-muted)">Sin detalle disponible.</p>'}</div>
       </div>`,
@@ -990,7 +1036,7 @@ async function exportXLSX(rows) {
   try {
     await loadXLSX();
     const data = [
-      ['Alumno', 'Carnet', 'Email', 'Cuestionario', 'Puntos', 'Total', '%', 'Salidas', 'Fecha'],
+      ['Alumno', 'Carnet', 'Email', 'Cuestionario', 'Puntos', 'Total', '%', 'Salidas', 'Fecha', 'Tiempo fuera (segundos)', 'Entrega forzada por salidas'],
       ...rows.map(r => [
         r.alumno?.nombre  || '',
         r.alumno?.carnet  || '',
@@ -1001,11 +1047,20 @@ async function exportXLSX(rows) {
         r.porcentaje     ?? 0,
         r.blurs          ?? 0,
         r.submitTime ? new Date(r.submitTime).toLocaleString('es-SV') : '',
+        exitSummary(r).totalMs == null ? 'Sin registro' : exitSummary(r).totalMs / 1000,
+        r.forzadoPorSalidas ? 'Sí' : 'No',
       ]),
     ];
     const wb = window.XLSX.utils.book_new();
     const ws = window.XLSX.utils.aoa_to_sheet(data);
     window.XLSX.utils.book_append_sheet(wb, ws, 'Resultados');
+    const exitRows = [['Alumno', 'Carnet', 'Cuestionario', 'Pregunta vista', 'Salida', 'Fin del registro', 'Segundos', 'Cierre']];
+    rows.forEach(r => exitSummary(r).events.forEach(e => exitRows.push([
+      r.alumno?.nombre || '', r.alumno?.carnet || '', r.cuestionarioNombre || '', e.question,
+      new Date(e.startedAt).toLocaleString('es-SV'), e.endedAt ? new Date(e.endedAt).toLocaleString('es-SV') : '',
+      (e.durationMs || 0) / 1000, e.endedBy === 'return' ? 'Regresó' : e.endedBy === 'recovery' ? 'Recuperación' : 'Entrega',
+    ])));
+    window.XLSX.utils.book_append_sheet(wb, window.XLSX.utils.aoa_to_sheet(exitRows), 'Salidas');
     window.XLSX.writeFile(wb, `resultados_cuestionarios_${Date.now()}.xlsx`);
     showToast('Excel generado.', 'success');
   } catch (err) {
@@ -1042,11 +1097,11 @@ async function exportPDF(rows, withPhotos = false) {
     const MARGIN  = 14;
 
     const cols = withPhotos
-      ? ['Foto', 'Alumno', 'Carnet', 'Cuestionario', 'Nota', '%', 'Salidas', 'Fecha']
-      : [        'Alumno', 'Carnet', 'Cuestionario', 'Nota', '%', 'Salidas', 'Fecha'];
+      ? ['Foto', 'Alumno', 'Carnet', 'Cuestionario', 'Nota', '%', 'Salidas', 'Fuera', 'Fecha']
+      : [        'Alumno', 'Carnet', 'Cuestionario', 'Nota', '%', 'Salidas', 'Fuera', 'Fecha'];
     const colW = withPhotos
-      ? [FOTO_W,    44,     24,       52,             20,    14,   17,        37]
-      : [            52,    28,       60,             22,    16,   20,        40];
+      ? [FOTO_W,    44,     24,       52,             20,    14,   17,   24,     37]
+      : [            52,    28,       60,             22,    16,   20,   24,     40];
 
     let y = 30;
 
@@ -1103,6 +1158,7 @@ async function exportPDF(rows, withPhotos = false) {
         `${r.puntos ?? 0}/${r.puntosTotal ?? 0}`,
         `${r.porcentaje ?? 0}%`,
         String(r.blurs ?? 0),
+        formatExitDuration(exitSummary(r).totalMs),
         r.submitTime ? new Date(r.submitTime).toLocaleDateString('es-SV') : '—',
       ];
 
@@ -1118,7 +1174,7 @@ async function exportPDF(rows, withPhotos = false) {
 
       // Nota: colorear % columna
       const pct     = r.porcentaje ?? 0;
-      const pctCol  = withPhotos ? 5 : 4;
+      const pctCol  = 4;
       let   xPct    = MARGIN + colW.slice(0, pctCol + colOffset).reduce((a, b) => a + b, 0);
       const ty      = withPhotos ? y + ROW_H / 2 + 1.5 : y + 5;
       doc.setTextColor(pct >= 60 ? 0 : 200, pct >= 60 ? 150 : 0, 0);
