@@ -565,6 +565,7 @@
         </div>
 
         <button class="btn btn--primary" id="btnIniciar" style="margin-top:8px">Iniciar cuestionario →</button>
+        <p style="font-size:.85rem">Si se interrumpió tu intento, ingresá el mismo carné en este navegador y presioná Iniciar para recuperarlo. Se conserva el vencimiento original.</p>
       </div>
     </div>
 
@@ -583,6 +584,7 @@
         <div class="quiz-progress-fill" id="progressFill" style="width:0%"></div>
       </div>
       <div class="quiz-progress-text" id="progressText">0 de 0 respondidas</div>
+      <p id="saveStatus" role="status" aria-live="polite"></p>
       <div class="quiz-progress-text" id="questionPosText" style="text-align:left;margin-top:-6px"></div>
 
       <div id="questionsContainer"></div>
@@ -593,6 +595,13 @@
       <button class="btn btn--primary hidden" id="btnSubmit" style="margin-top:8px">
         Entregar cuestionario
       </button>
+    </div>
+
+    <div id="vEntrega" class="hidden card">
+      <h2>Entrega del cuestionario</h2>
+      <p id="deliveryStatus" role="status" aria-live="polite"></p>
+      <p id="deliveryBackup"></p>
+      <button id="btnRetryDelivery" class="btn btn--primary">Reintentar entrega</button>
     </div>
 
     <!-- View: resultado -->
@@ -623,8 +632,9 @@
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js';
     import { getDatabase, ref, get, push, set, remove }
       from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
-    import { checkYaRespondio, saveCuestionarioResultado }
+    import { checkYaRespondio, saveCuestionarioResultado, getCuestionarioReceipt }
       from './js/db.js';
+    import { remainingSeconds, readAttempt, writeAttempt } from './js/quiz-recovery.js';
 
     const db = getDatabase(app);
 
@@ -663,6 +673,61 @@
     let submitted    = false;
     let stream       = null;   // MediaStream de la cámara
     let _backupKey   = '';     // clave localStorage para backup de respuestas
+    let attemptId = '';
+    let deadline = 0;
+    let pendingResult = null;
+    let deliveryPromise = null;
+    let backupSaved = false;
+
+    function persistAttempt() {
+      if (!_backupKey || !attemptId) return false;
+      try { backupSaved = writeAttempt(localStorage, _backupKey, {
+        version: 1, quizId, attemptId, deadline, quiz, studentData,
+        userAnswers, questionOrder, optionOrders, currentPos,
+        blurCount, blurSnapshots, pendingResult, ts: Date.now(),
+      }); } catch (_) { backupSaved = false; }
+      updateSaveStatus();
+      return backupSaved;
+    }
+
+    function updateSaveStatus() {
+      const el = document.getElementById('saveStatus');
+      if (el) el.textContent = backupSaved
+        ? `Respuestas guardadas en este dispositivo. ${navigator.onLine ? 'La entrega se confirma al enviar.' : 'Sin conexión.'}`
+        : 'No se pudo guardar el respaldo local. No cierres ni recargues esta página.';
+    }
+
+    function restoreAttempt(saved) {
+      ({ attemptId, deadline, quiz, studentData, userAnswers,
+        questionOrder, optionOrders, currentPos, blurCount, blurSnapshots, pendingResult } = saved);
+      _answers = {}; // Las claves antiguas no se respaldan en el dispositivo.
+      startQuiz(true);
+    }
+
+    function hasRecoverableAttempt() {
+      try {
+        for (let i = 0; i < localStorage.length; i++) {
+          const key = localStorage.key(i);
+          if (!key?.startsWith(`acadvet_quiz_${quizId}_`)) continue;
+          const raw = JSON.parse(localStorage.getItem(key));
+          if (readAttempt(localStorage, key, quizId, raw?.studentData?.carnet)) return true;
+        }
+      } catch (_) {}
+      return false;
+    }
+
+    function showRecoveryRegistration() {
+      setupRegistro({ nombre: 'Recuperar cuestionario', desc: 'Ingresá el mismo carné para recuperar el intento guardado en este navegador.', tiempo: '—' });
+      showView('vRegistro');
+    }
+
+    document.getElementById('btnRetryDelivery').addEventListener('click', () => sendPendingResult());
+    window.addEventListener('online', () => {
+      updateSaveStatus();
+      if (pendingResult) sendPendingResult();
+    });
+    window.addEventListener('offline', updateSaveStatus);
+    window.addEventListener('pagehide', () => { if (!submitted || pendingResult) persistAttempt(); });
 
     // -------------------------------------------------------------------------
     // Auth anónima — necesaria para que las reglas de Firebase permitan operar
@@ -680,7 +745,7 @@
     const fsOverlay = document.getElementById('fsOverlay');
 
     function showView(id) {
-      [vLoading, vError, vRegistro, vQuiz, vResult].forEach(v => v.classList.add('hidden'));
+      [vLoading, vError, vRegistro, vQuiz, vResult, document.getElementById('vEntrega')].forEach(v => v.classList.add('hidden'));
       document.getElementById(id)?.classList.remove('hidden');
     }
 
@@ -703,9 +768,14 @@
       try {
         // Solo cargamos metadatos del quiz para mostrar nombre y tiempo
         const snap = await get(ref(db, `cuestionarios/${id}`));
-        if (!snap.exists()) { showView('vError'); return; }
+        if (!snap.exists()) {
+          if (hasRecoverableAttempt()) showRecoveryRegistration();
+          else showView('vError');
+          return;
+        }
         const raw = snap.val();
         if (raw.activo === false) {
+          if (hasRecoverableAttempt()) { showRecoveryRegistration(); return; }
           showView('vError');
           document.getElementById('vErrorMsg').textContent = 'Este cuestionario ha sido desactivado por el docente.';
           return;
@@ -716,6 +786,7 @@
         showView('vRegistro');
       } catch (err) {
         console.error('[Cuestionario] Error:', err);
+        if (hasRecoverableAttempt()) { showRecoveryRegistration(); return; }
         showView('vError');
         document.getElementById('vErrorMsg').textContent = 'Error al cargar el cuestionario. Recargá la página.';
       }
@@ -727,6 +798,7 @@
     async function loadQuizPreguntas(id) {
       const snap = await get(ref(db, `cuestionarios/${id}`));
       if (!snap.exists()) throw new Error('Quiz no encontrado');
+      if (snap.val().activo === false) throw new Error('Cuestionario desactivado');
       const raw      = snap.val();
       const preguntas = Array.isArray(raw.preguntas)
         ? raw.preguntas
@@ -832,6 +904,45 @@
       const nombre = document.getElementById('rNombre').value.trim();
       const carnet = document.getElementById('rCarnet').value.trim();
       const email  = document.getElementById('rEmail').value.trim();
+      // El carné permite recuperar el trabajo local sin exigir otra fotografía.
+      if (CARNET_RE.test(carnet)) {
+        _backupKey = `acadvet_quiz_${quizId}_${carnet.replace(/\W/g,'_')}`;
+        let saved = null;
+        try { saved = readAttempt(localStorage, _backupKey, quizId, carnet); } catch (_) {}
+        if (saved) {
+          const startButton = document.getElementById('btnIniciar');
+          startButton.disabled = true;
+          try {
+            if (!navigator.onLine) {
+              if (stream) stream.getTracks().forEach(t => t.stop());
+              restoreAttempt(saved);
+              return;
+            }
+            const receipt = await getCuestionarioReceipt(saved.attemptId);
+            if (receipt) {
+              if (saved.pendingResult) {
+                if (stream) stream.getTracks().forEach(t => t.stop());
+                restoreAttempt(saved);
+              } else {
+                showView('vEntrega');
+                document.getElementById('deliveryStatus').textContent = `Entrega recibida. Comprobante: ${saved.attemptId}. Fecha: ${new Date(receipt.recibido_en).toLocaleString('es-SV')}.`;
+                try { localStorage.removeItem(_backupKey); } catch (_) {}
+                document.getElementById('btnRetryDelivery').classList.add('hidden');
+                if (stream) stream.getTracks().forEach(t => t.stop());
+              }
+              return;
+            }
+            if (!await claimSessionLock(quizId, carnet)) throw new Error('Sesión activa en otro dispositivo.');
+            if (stream) stream.getTracks().forEach(t => t.stop());
+            restoreAttempt(saved);
+          } catch (err) {
+            document.getElementById('errCarnet').textContent = 'No se pudo verificar la recuperación. Revisá tu conexión y reintentá. Tu respaldo se conserva.';
+            document.getElementById('errCarnet').classList.remove('hidden');
+            startButton.disabled = false;
+          }
+          return;
+        }
+      }
       let ok = true;
 
       const showErr = (id, msg) => {
@@ -912,6 +1023,8 @@
 
       studentData = { nombre, carnet, email, foto: photoDataUrl };
       _backupKey  = `acadvet_quiz_${quizId}_${carnet.replace(/\W/g,'_')}`;
+      attemptId = crypto.randomUUID();
+      deadline = Date.now() + (quiz.tiempo || 30) * 60_000;
       startQuiz();
     }
 
@@ -957,18 +1070,25 @@
     // -------------------------------------------------------------------------
     // Quiz activo
     // -------------------------------------------------------------------------
-    function startQuiz() {
-      userAnswers   = {};
-      blurCount     = 0;
-      blurSnapshots = [];
-      currentPos    = 0;
-      submitted     = false;
+    function startQuiz(restoring = false) {
+      if (!restoring) {
+        userAnswers = {}; blurCount = 0; blurSnapshots = []; currentPos = 0;
+      }
+      submitted = false;
+      if (pendingResult) {
+        submitted = true;
+        window.addEventListener('beforeunload', onBeforeUnload);
+        sendPendingResult();
+        return;
+      }
 
       document.getElementById('qQuizNombre').textContent = quiz.nombre || 'Cuestionario';
       renderStudentQuiz();
       showView('vQuiz');
 
-      timerSec = (quiz.tiempo || 30) * 60;
+      timerSec = remainingSeconds(deadline);
+      persistAttempt();
+      if (timerSec <= 0) { submitQuiz(true); return; }
       startTimer();
       setupAntiCheat();
       startMonitorCamera();
@@ -979,13 +1099,6 @@
         if (!submitted) refreshSessionLock();
       }, SESSION_HEARTBEAT_MS);
 
-      // Backup periódico de respuestas (cada 30 s) para recuperación ante cierre accidental
-      setInterval(() => {
-        if (!submitted && _backupKey) {
-          localStorage.setItem(_backupKey, JSON.stringify({ userAnswers, timerSec, ts: Date.now() }));
-        }
-      }, 30_000);
-
       // Advertir antes de cerrar/recargar la pestaña durante el examen
       window.addEventListener('beforeunload', onBeforeUnload);
 
@@ -994,7 +1107,8 @@
     }
 
     function onBeforeUnload(e) {
-      if (!submitted) {
+      if (!submitted || pendingResult) {
+        persistAttempt();
         e.preventDefault();
         e.returnValue = '';
       }
@@ -1006,15 +1120,24 @@
         .map((origIdx, pos) => buildStudentQuestion(quiz.preguntas[origIdx], origIdx, pos))
         .join('');
       updateProgress();
-      showQuestionAt(0);
+      showQuestionAt(currentPos);
+      container.querySelectorAll('.q-option, .q-tf-btn').forEach(el => {
+        el.classList.toggle('selected', String(userAnswers[el.dataset.qi]) === el.dataset.val);
+      });
+      container.querySelectorAll('.q-short-input').forEach(el => {
+        el.value = userAnswers[el.dataset.qi] ?? '';
+      });
 
       container.addEventListener('click', e => {
+        if (submitted) return;
+        if (remainingSeconds(deadline) <= 0) { submitQuiz(true); return; }
         // Opción múltiple
         const opt = e.target.closest('.q-option');
         if (opt) {
           const qi = parseInt(opt.dataset.qi);
           const val = parseInt(opt.dataset.val);
           userAnswers[qi] = val;
+          persistAttempt();
           container.querySelectorAll(`.q-option[data-qi="${qi}"]`).forEach(o => o.classList.remove('selected'));
           opt.classList.add('selected');
           updateProgress();
@@ -1025,6 +1148,7 @@
           const qi  = parseInt(tf.dataset.qi);
           const val = tf.dataset.val;
           userAnswers[qi] = val;
+          persistAttempt();
           container.querySelectorAll(`.q-tf-btn[data-qi="${qi}"]`).forEach(b => b.classList.remove('selected'));
           tf.classList.add('selected');
           updateProgress();
@@ -1034,7 +1158,10 @@
       // Short / Fill — capturar en tiempo real
       container.querySelectorAll('.q-short-input').forEach(input => {
         input.addEventListener('input', () => {
+          if (submitted) return;
+          if (remainingSeconds(deadline) <= 0) { submitQuiz(true); return; }
           userAnswers[parseInt(input.dataset.qi)] = input.value;
+          persistAttempt();
           updateProgress();
         });
       });
@@ -1137,7 +1264,10 @@
 
     function goToNextQuestion() {
       const total = quiz.preguntas.length;
-      if (currentPos < total - 1) showQuestionAt(currentPos + 1);
+      if (currentPos < total - 1) {
+        showQuestionAt(currentPos + 1);
+        persistAttempt();
+      }
     }
 
     function updateProgress() {
@@ -1157,7 +1287,7 @@
     function startTimer() {
       updateTimerDisplay();
       timerInterval = setInterval(() => {
-        timerSec--;
+        timerSec = remainingSeconds(deadline);
         updateTimerDisplay();
         if (timerSec <= 0) {
           clearInterval(timerInterval);
@@ -1180,9 +1310,13 @@
     // Anti-copia
     // -------------------------------------------------------------------------
     function onVisibilityChange() {
+      if (!document.hidden && antiActive && remainingSeconds(deadline) <= 0) {
+        submitQuiz(true); return;
+      }
       if (document.hidden && antiActive) {
         blurCount++;
         captureMonitorSnapshot();
+        persistAttempt();
         if (blurCount >= MAX_BLURS) {
           submitQuiz(false, true); // entrega forzada por exceso de salidas
         } else {
@@ -1194,6 +1328,7 @@
       if (antiActive) {
         blurCount++;
         captureMonitorSnapshot();
+        persistAttempt();
         if (blurCount >= MAX_BLURS) {
           submitQuiz(false, true);
         } else {
@@ -1302,6 +1437,8 @@
       }
 
       const resultado = {
+        attemptId,
+        deadline,
         cuestionarioId:     quizId,
         cuestionarioNombre: quiz.nombre || '',
         submitTime:         Date.now(),
@@ -1317,34 +1454,58 @@
         detalle,
       };
 
-      // Guardar en Firebase — usa saveCuestionarioResultado que primero reclama el slot
+      pendingResult = resultado;
+      persistAttempt();
+      window.addEventListener('beforeunload', onBeforeUnload);
+      await sendPendingResult();
+    }
+
+    async function sendPendingResult() {
+      if (!pendingResult || deliveryPromise) return;
+      showView('vEntrega');
+      const status = document.getElementById('deliveryStatus');
+      const retry = document.getElementById('btnRetryDelivery');
+      retry.classList.remove('hidden');
+      retry.disabled = true;
+      status.textContent = 'Enviando entrega. Esperando confirmación del servidor…';
+      persistAttempt();
+      document.getElementById('deliveryBackup').textContent = backupSaved
+        ? 'La copia final está guardada en este dispositivo. Si se interrumpe, volvé al mismo enlace e ingresá tu carné para recuperarla.'
+        : 'No se pudo guardar la copia local. Mantené esta página abierta hasta confirmar la entrega.';
+      // Firebase puede mantener una escritura pendiente sin rechazarla al perder red.
+      const waitingNotice = setTimeout(() => {
+        status.textContent = 'La entrega sigue pendiente de confirmación. Se enviará cuando vuelva la conexión. No se ha confirmado la recepción.';
+      }, 12_000);
+      const resultado = pendingResult;
+      deliveryPromise = (async () => {
       try {
-        await saveCuestionarioResultado(quizId, studentData.carnet, resultado);
-        // Limpiar backup local tras guardado exitoso
-        if (_backupKey) localStorage.removeItem(_backupKey);
+        // Primero resolver una posible confirmación perdida, incluso tras recargar.
+        let receipt = await getCuestionarioReceipt(attemptId);
+        if (!receipt) {
+          await saveCuestionarioResultado(quizId, studentData.carnet, resultado);
+          receipt = await getCuestionarioReceipt(attemptId);
+        }
+        if (!receipt || receipt.cuestionarioId !== quizId || receipt.carnet !== studentData.carnet) throw new Error('Entrega sin recibo verificable');
+        pendingResult = null;
+        try { localStorage.removeItem(_backupKey); } catch (_) {}
+        clearInterval(sessionHeartbeatInterval);
         releaseSessionLock();
+        window.removeEventListener('beforeunload', onBeforeUnload);
+        showResultScreen(resultado);
+        const proof = document.createElement('p');
+        proof.textContent = `Comprobante: ${attemptId}. Recibido: ${new Date(receipt.recibido_en).toLocaleString('es-SV')}.`;
+        document.getElementById('resultContent').appendChild(proof);
       } catch (err) {
         console.error('[Cuestionario] Error guardando resultado:', err);
-        submitted = false; // Permitir reintento
-
-        if (err.code === 'PERMISSION_DENIED') {
-          // El slot ya estaba tomado — intento duplicado
-          showView('vError');
-          document.getElementById('vErrorMsg').textContent =
-            'Ya entregaste este cuestionario anteriormente. No se permiten múltiples intentos.';
-        } else {
-          // Error de red u otro
-          showView('vError');
-          document.getElementById('vErrorMsg').textContent =
-            'No se pudo guardar tu cuestionario por un problema de conexión. ' +
-            'Notificá al docente inmediatamente y no cierres esta página. ' +
-            'Tus respuestas están guardadas temporalmente en este dispositivo.';
-        }
-        if (btn) { btn.disabled = false; btn.textContent = 'Reintentar entrega'; }
-        return;
+        status.textContent = err.code === 'PERMISSION_DENIED'
+          ? 'No se pudo autorizar esta entrega. Puede existir otro intento entregado. Tu copia se conserva; contactá al docente o reintentá.'
+          : 'No se confirmó la recepción. Tu entrega sigue pendiente. Revisá la conexión y reintentá.';
+      } finally {
+        clearTimeout(waitingNotice);
+        retry.disabled = false;
       }
-
-      showResultScreen(resultado);
+      })();
+      try { await deliveryPromise; } finally { deliveryPromise = null; }
     }
 
     function evaluarRespuesta(tipo, respuesta, correcta) {

@@ -7,7 +7,7 @@ import { getDatabase, ref, get, set, push, update, remove, onValue, onDisconnect
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-database.js';
 import { getStorage, ref as sRef, deleteObject, uploadBytes, getDownloadURL }
   from 'https://www.gstatic.com/firebasejs/10.14.1/firebase-storage.js';
-import { app } from './firebase-config.js';
+import { app, auth } from './firebase-config.js';
 
 const db      = getDatabase(app);
 const storage = getStorage(app);
@@ -843,16 +843,39 @@ export async function checkYaRespondio(quizId, carnet) {
  * Al ser un solo update(), ambas escrituras son atómicas: si cualquiera falla
  * (incluyendo PERMISSION_DENIED por duplicado), ninguna se aplica.
  */
+export async function getCuestionarioReceipt(attemptId) {
+  const snap = await get(ref(db, `cuestionarios_recibos/${attemptId}`));
+  return snap.exists() ? snap.val() : null;
+}
+
 export async function saveCuestionarioResultado(quizId, carnet, resultado) {
   const key    = sanitizeKey(carnet);
-  const newRef = push(ref(db, 'cuestionarios_resultados')); // genera key sin escribir
+  const attemptId = resultado.attemptId;
+  const newRef = attemptId
+    ? ref(db, `cuestionarios_resultados/${attemptId}`)
+    : push(ref(db, 'cuestionarios_resultados'));
 
   const updates = {};
   updates[`cuestionarios_enviados/${quizId}/${key}`]  = Date.now();
   updates[`cuestionarios_resultados/${newRef.key}`]   = { ...resultado, carnet, guardado_en: Date.now() };
+  if (attemptId) {
+    updates[`cuestionarios_recibos/${attemptId}`] = {
+      uid: auth.currentUser.uid,
+      cuestionarioId: quizId,
+      carnet,
+      recibido_en: { '.sv': 'timestamp' },
+    };
+  }
 
   // update() en la raíz aplica ambas rutas atómicamente
-  await update(ref(db), updates);
+  try {
+    await update(ref(db), updates);
+  } catch (err) {
+    // Una confirmación perdida no debe convertirse en una segunda entrega.
+    if (!attemptId) throw err;
+    const receipt = await getCuestionarioReceipt(attemptId).catch(() => null);
+    if (!receipt || receipt.cuestionarioId !== quizId || receipt.carnet !== carnet) throw err;
+  }
   return newRef.key;
 }
 

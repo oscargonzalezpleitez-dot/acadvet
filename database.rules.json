@@ -200,6 +200,14 @@
       }
     },
 
+    "cuestionarios_recibos": {
+      "$attemptId": {
+        ".read": "auth != null && (!data.exists() || data.child('uid').val() === auth.uid || root.child('admins').child(auth.uid).val() === true)",
+        ".write": "auth != null && !data.exists() && newData.child('uid').val() === auth.uid",
+        ".validate": "newData.hasChildren(['uid', 'cuestionarioId', 'carnet', 'recibido_en']) && newData.child('cuestionarioId').isString() && newData.child('carnet').isString() && newData.child('recibido_en').val() === now && newData.parent().parent().child('cuestionarios_resultados').child($attemptId).child('attemptId').val() === $attemptId && newData.parent().parent().child('cuestionarios_resultados').child($attemptId).child('cuestionarioId').val() === newData.child('cuestionarioId').val() && newData.parent().parent().child('cuestionarios_resultados').child($attemptId).child('carnet').val() === newData.child('carnet').val()"
+      }
+    },
+
     "cuestionarios_resultados": {
       ".read":  "auth != null && (root.child('admins').child(auth.uid).val() === true)",
       "$resultId": {
