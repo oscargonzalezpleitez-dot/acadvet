@@ -342,14 +342,31 @@ function wireEvents() {
         await pushConfig();
         btn.disabled = false;
         btn.textContent = '✓ Ubicación capturada';
-        if (status) status.textContent = `Lat: ${pos.coords.latitude.toFixed(5)}, Lng: ${pos.coords.longitude.toFixed(5)}`;
+        const acc = pos.coords.accuracy;
+        const warn = Number.isFinite(acc) && acc > 500
+          ? ' ⚠️ Precisión muy baja: en iPhone activá "Ubicación precisa" para este sitio en Safari y volvé a capturar.'
+          : '';
+        if (status) status.textContent =
+          `Lat: ${pos.coords.latitude.toFixed(5)}, Lng: ${pos.coords.longitude.toFixed(5)}` +
+          (Number.isFinite(acc) ? ` (±${Math.round(acc)} m)` : '') + warn;
       },
       err => {
         btn.disabled = false;
         btn.textContent = '📍 Capturar mi ubicación';
-        if (status) status.textContent = 'Error: ' + err.message;
+        const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+        let msg;
+        if (err.code === 1) {
+          msg = isIOS
+            ? 'Permiso denegado. Permití la ubicación para este sitio en Safari (ícono "aA" en la barra de direcciones) y en Ajustes > Privacidad y seguridad > Localización.'
+            : 'Permiso de ubicación denegado. Revisá los ajustes del navegador.';
+        } else if (err.code === 3) {
+          msg = 'Se agotó el tiempo esperando el GPS. Acercate a una ventana o salí al exterior y volvé a intentar.';
+        } else {
+          msg = 'No se pudo obtener la ubicación. Activá el GPS/ubicación del dispositivo y volvé a intentar.' + (err.message ? ` (${err.message})` : '');
+        }
+        if (status) status.textContent = 'Error: ' + msg;
       },
-      { timeout: 10000, enableHighAccuracy: true }
+      { timeout: 15000, enableHighAccuracy: true }
     );
   });
 }

@@ -178,11 +178,15 @@ async function locateGPS() {
 
   // Una respuesta exitosa puede ser aproximada o estar fuera del aula.
   // También en ese caso pedimos una lectura nueva de alta precisión.
+  // El GPS en frío de un iPhone puede tardar más de 20s dentro de un edificio,
+  // por eso se agrega un tercer intento con más tiempo antes de rendirse.
   const options = [
     { timeout: 10000, enableHighAccuracy: false, maximumAge: 0 },
     { timeout: 20000, enableHighAccuracy: true, maximumAge: 0 },
+    { timeout: 25000, enableHighAccuracy: true, maximumAge: 0 },
   ];
   let best = null;
+  let lastErrCode = null;
   for (const opts of options) {
     try {
       const pos = await new Promise((resolve, reject) => {
@@ -195,6 +199,7 @@ async function locateGPS() {
       const dist = haversine(best.lat, best.lng, _cfg.aulaLat, _cfg.aulaLng);
       if (dist <= (_cfg.geoRadius ?? 100) && best.accuracy <= (_cfg.geoRadius ?? 100)) break;
     } catch (err) {
+      lastErrCode = err.code;
       if (err.code === 1) {
         onGPSPermissionDenied();
         return;
@@ -204,14 +209,22 @@ async function locateGPS() {
   }
 
   if (!best) {
-    onGPSFinalError();
+    onGPSFinalError(lastErrCode);
     return;
   }
   _gpsCoords = best;
   const dist = haversine(best.lat, best.lng, _cfg.aulaLat, _cfg.aulaLng);
   const radio = _cfg.geoRadius ?? 100;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  // iOS 14+ tiene un interruptor separado de "Ubicación precisa" por sitio web.
+  // Si está apagado, el iPhone solo entrega una ubicación aproximada (a veces
+  // de varios km), que casi siempre cae fuera del radio del aula.
+  const imprecisa = isIOS && Number.isFinite(best.accuracy) && best.accuracy > 500;
   if (dist > radio) {
-    setGPSStatus(`La ubicación indica ${Math.round(dist)} m del aula (radio: ${radio} m). Reintentá con ubicación precisa o pedí el código de acceso al docente.`, 'error');
+    const tip = imprecisa
+      ? ' Tu iPhone está dando una ubicación aproximada: en Ajustes del sitio (ícono "aA" en la barra de direcciones de Safari) o en Ajustes > Privacidad y seguridad > Localización > Safari, activá "Ubicación precisa" y volvé a intentar.'
+      : '';
+    setGPSStatus(`La ubicación indica ${Math.round(dist)} m del aula (radio: ${radio} m).${tip} Reintentá con ubicación precisa o pedí el código de acceso al docente.`, 'error');
     document.getElementById('gpsIcon').textContent = '⚠️';
   } else {
     const precision = Number.isFinite(best.accuracy) ? ` (precisión aproximada: ${Math.round(best.accuracy)} m)` : '';
@@ -233,8 +246,23 @@ function onGPSPermissionDenied() {
   document.getElementById('gpsRetryBtn')?.classList.remove('hidden');
 }
 
-function onGPSFinalError() {
-  setGPSStatus('⚠️ No se pudo obtener la ubicación. Activá la ubicación del teléfono y los permisos del navegador; mantené esta página abierta y tocá Reintentar. Si sigue fallando, pedí el código de acceso al docente.', 'error');
+function onGPSFinalError(errCode) {
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  let message;
+  if (errCode === 3) {
+    // TIMEOUT: el GPS no logró un fix a tiempo (frecuente en interiores).
+    message = isIOS
+      ? '⚠️ El iPhone tardó demasiado en obtener el GPS. Desactivá el Modo de bajo consumo, acercate a una ventana o salí al exterior, y tocá Reintentar.'
+      : '⚠️ El teléfono tardó demasiado en obtener el GPS. Acercate a una ventana o salí al exterior y tocá Reintentar.';
+  } else if (errCode === 2) {
+    // POSITION_UNAVAILABLE
+    message = isIOS
+      ? '⚠️ El iPhone no pudo determinar tu ubicación. Activá Wi-Fi y la Localización (Ajustes > Privacidad y seguridad > Localización) y tocá Reintentar.'
+      : '⚠️ El teléfono no pudo determinar tu ubicación. Activá el GPS/ubicación en los ajustes y tocá Reintentar.';
+  } else {
+    message = '⚠️ No se pudo obtener la ubicación. Activá la ubicación del teléfono y los permisos del navegador; mantené esta página abierta y tocá Reintentar.';
+  }
+  setGPSStatus(`${message} Si sigue fallando, pedí el código de acceso al docente.`, 'error');
   document.getElementById('gpsIcon').textContent = '⚠️';
   document.getElementById('gpsRetryBtn')?.classList.remove('hidden');
 }
